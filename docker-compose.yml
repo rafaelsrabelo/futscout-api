@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  futscout-api-pg:
+    image: bitnami/postgresql
+    container_name: futscout-api-pg
+    environment:
+      POSTGRESQL_USERNAME: docker
+      POSTGRESQL_PASSWORD: docker
+      POSTGRESQL_DATABASE: futscoutapi
+    ports:
+      - "5432:5432"
