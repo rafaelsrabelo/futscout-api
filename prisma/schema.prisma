@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -14,14 +11,138 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id String @id @default(uuid())
+enum UserRole {
+  ATHLETE
+  OBSERVER
+  ADMIN
+}
 
-  name String
-  email String @unique
-  password String
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum Category {
+  SUB_9
+  SUB_11
+  SUB_13
+  SUB_15
+  SUB_17
+  SUB_20
+}
+
+enum Position {
+  GOALKEEPER
+  DEFENDER
+  MIDFIELDER
+  FORWARD
+}
+
+enum DominantFoot {
+  RIGHT
+  LEFT
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      UserRole @default(ATHLETE)
+  isActive  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  athleteProfile AthleteProfile?
+
   @@map("users")
+}
+
+model AthleteProfile {
+  id             String        @id @default(uuid())
+  userId         String        @unique
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  cpf            String        @unique
+  gender         Gender
+  nickname       String?        @unique
+  profilePhoto   String?
+  birthDate      DateTime
+  
+
+  instagramUrl   String?
+  twitterUrl     String?
+  
+  height         Float         
+  weight         Float 
+  dominantFoot   DominantFoot
+  
+
+  primaryPosition   Position
+  secondaryPosition Position?
+  currentClub       String?
+  biography         String?
+  
+  hasManager        Boolean     @default(false)
+  managerName       String?
+  managerCompany    String?
+  managerContact    String?
+  
+  address           Address?
+  teams             AthleteTeam[]
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@map("athlete_profiles")
+}
+
+model Address {
+  id          String         @id @default(uuid())
+  athleteId   String         @unique
+  athlete     AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  
+  zipCode     String        
+  street      String        
+  number      String        
+  complement  String?       
+  district    String        
+  city        String        
+  state       String         
+  
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("addresses")
+}
+
+model Team {
+  id          String         @id @default(uuid())
+  name        String
+  acronym     String         
+  shieldPhoto String?        
+  category    Category  
+  
+  athletes    AthleteTeam[]
+  
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("teams")
+}
+
+model AthleteTeam {
+  id        String         @id @default(uuid())
+  athleteId String
+  teamId    String
+  
+  athlete   AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  team      Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([athleteId, teamId])
+  @@map("athlete_teams")
 }
