@@ -6,7 +6,7 @@ export const app = fastify()
 
 app.register(appRoutes, { prefix: '/api' })
 
-app.setErrorHandler((error, request, reply) => {
+app.setErrorHandler((error, _, reply) => {
   if (error instanceof ZodError) {
     return reply.status(400).send({
       message: 'Validation error',
