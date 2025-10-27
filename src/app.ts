@@ -16,6 +16,8 @@ app.setErrorHandler((error, request, reply) => {
 
   if (process.env.NODE_ENV !== 'production') {
     console.error(error)
+  } else {
+    // Here you can integrate with a logging service like Sentry, LogRocket, etc.
   }
 
   return reply.status(500).send({
