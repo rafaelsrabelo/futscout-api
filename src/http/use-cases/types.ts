@@ -12,3 +12,11 @@ export interface RegisterUseCaseRequest {
 export interface RegisterUseCaseResponse {
   user: User
 }
+
+export interface AuthenticateUseCaseRequest {
+  email: string
+  password: string
+}
+export interface AuthenticateUseCaseResponse {
+  user: User
+}
