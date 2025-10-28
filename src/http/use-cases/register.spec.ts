@@ -1,12 +1,27 @@
-import { expect, test, describe, it } from 'vitest'
+import { expect, describe, it } from 'vitest'
 import { RegisterUseCase } from './register.js'
-import { PrismaUsersRepository } from '../repositories/prisma/prisma-users-repository.js'
 import { compare } from 'bcryptjs'
 
 describe('Register Use Case', () => {
   it('should hash user password upon registration', async () => {
-    const prismaUsersRepository = new PrismaUsersRepository()
-    const registerUseCase = new RegisterUseCase(prismaUsersRepository)
+    const registerUseCase = new RegisterUseCase({
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      async findByEmail(email: string) {
+        return null
+      },
+      async create(data) {
+        return {
+          id: 'user-1',
+          name: data.name,
+          email: data.email,
+          password: data.password,
+          role: data.role!,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+      },
+    })
 
     const { user } = await registerUseCase.execute({
       name: 'Test User',
