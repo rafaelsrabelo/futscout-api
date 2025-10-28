@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
+import { GetMyAthleteProfileUseCase } from '../use-cases/get-my-athlete-profile.js'
 
 export async function getMyAthleteProfile(
   request: FastifyRequest,
@@ -9,42 +10,47 @@ export async function getMyAthleteProfile(
     const userId = request.user.sub
 
     const athleteProfileRepository = new PrismaAthleteProfileRepository()
-    const athleteProfile = await athleteProfileRepository.findByUserId(userId)
+    const getMyAthleteProfileUseCase = new GetMyAthleteProfileUseCase(
+      athleteProfileRepository,
+    )
 
-    if (!athleteProfile) {
+    const { profile } = await getMyAthleteProfileUseCase.execute({ userId })
+
+    return reply.status(200).send({
+      athleteProfile: {
+        id: profile.id,
+        cpf: profile.cpf,
+        gender: profile.gender,
+        nickname: profile.nickname,
+        profilePhoto: profile.profilePhoto,
+        birthDate: profile.birthDate,
+        instagramUrl: profile.instagramUrl,
+        twitterUrl: profile.twitterUrl,
+        height: profile.height,
+        weight: profile.weight,
+        dominantFoot: profile.dominantFoot,
+        primaryPosition: profile.primaryPosition,
+        secondaryPosition: profile.secondaryPosition,
+        currentClub: profile.currentClub,
+        biography: profile.biography,
+        hasManager: profile.hasManager,
+        managerName: profile.managerName,
+        managerCompany: profile.managerCompany,
+        managerContact: profile.managerContact,
+        createdAt: profile.createdAt,
+        updatedAt: profile.updatedAt,
+      },
+    })
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === 'Athlete profile not found'
+    ) {
       return reply.status(404).send({
         message: 'Athlete profile not found. Please create your profile first.',
       })
     }
 
-    return reply.status(200).send({
-      athleteProfile: {
-        id: athleteProfile.id,
-        cpf: athleteProfile.cpf,
-        gender: athleteProfile.gender,
-        nickname: athleteProfile.nickname,
-        profilePhoto: athleteProfile.profilePhoto,
-        birthDate: athleteProfile.birthDate,
-        instagramUrl: athleteProfile.instagramUrl,
-        twitterUrl: athleteProfile.twitterUrl,
-        height: athleteProfile.height,
-        weight: athleteProfile.weight,
-        dominantFoot: athleteProfile.dominantFoot,
-        primaryPosition: athleteProfile.primaryPosition,
-        secondaryPosition: athleteProfile.secondaryPosition,
-        currentClub: athleteProfile.currentClub,
-        biography: athleteProfile.biography,
-        hasManager: athleteProfile.hasManager,
-        managerName: athleteProfile.managerName,
-        managerCompany: athleteProfile.managerCompany,
-        managerContact: athleteProfile.managerContact,
-        createdAt: athleteProfile.createdAt,
-        updatedAt: athleteProfile.updatedAt,
-        user: athleteProfile.user,
-        address: athleteProfile.address,
-      },
-    })
-  } catch (error) {
     return reply.status(500).send({ message: 'Internal server error' })
   }
 }
