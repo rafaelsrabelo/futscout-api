@@ -1,0 +1,35 @@
+import type { User } from 'generated/prisma/client.js'
+import type { UsersRepository } from '../users-repository.js'
+import type { UserCreateInput } from 'generated/prisma/models.js'
+
+export class InMemoryUsersRepository implements UsersRepository {
+  public items: User[] = []
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async findByEmail(email: string): Promise<User | null> {
+    const user = this.items.find((user) => user.email === email)
+
+    if (!user) {
+      return null
+    }
+    return user
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async create(data: UserCreateInput) {
+    const user = {
+      id: 'user-1',
+      name: data.name,
+      email: data.email,
+      password: data.password,
+      role: data.role!,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    this.items.push(user)
+
+    return user
+  }
+}
