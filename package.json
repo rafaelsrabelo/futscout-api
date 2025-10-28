@@ -13,6 +13,7 @@
     "format": "prettier --write src/**/*.{ts,tsx,js,jsx}",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "db:seed": "tsx prisma/seed.ts"
   },
   "keywords": [],
@@ -22,6 +23,7 @@
     "@rocketseat/eslint-config": "2.2.2",
     "@types/bcryptjs": "3.0.0",
     "@types/node": "24.9.1",
+    "@vitest/coverage-v8": "4.0.4",
     "eslint": "8.57.1",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-prettier": "5.5.4",

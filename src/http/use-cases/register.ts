@@ -1,20 +1,10 @@
 import { hash } from 'bcryptjs'
 import type { UsersRepository } from '../repositories/users-repository.js'
 import { EmailAlreadyExistsError } from './errors/email-already-exists-error.js'
-import type { User } from 'generated/prisma/client.js'
-
-type UserRole = 'ATHLETE' | 'OBSERVER' | 'ADMIN'
-
-interface RegisterUseCaseRequest {
-  name: string
-  email: string
-  password: string
-  role: UserRole
-}
-
-interface RegisterUseCaseResponse {
-  user: User
-}
+import type {
+  RegisterUseCaseRequest,
+  RegisterUseCaseResponse,
+} from './types.js'
 
 export class RegisterUseCase {
   constructor(private usersRepository: UsersRepository) {}

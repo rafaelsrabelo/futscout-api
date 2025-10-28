@@ -16,7 +16,7 @@ describe('Register Use Case', () => {
       password: '123456',
     })
 
-    expect(user.id).toEqual(expect.any(String))
+    await expect(user.id).toEqual(expect.any(String))
   })
 
   it('should hash user password upon registration', async () => {
@@ -32,7 +32,7 @@ describe('Register Use Case', () => {
 
     const isPasswordCorrectlyHashed = await compare('123456', user.password)
 
-    expect(isPasswordCorrectlyHashed).toBe(true)
+    await expect(isPasswordCorrectlyHashed).toBe(true)
   })
 
   it('should not be able to register with same email twice', async () => {
@@ -56,5 +56,21 @@ describe('Register Use Case', () => {
         role: 'ATHLETE',
       }),
     ).rejects.toBeInstanceOf(EmailAlreadyExistsError)
+  })
+
+  it('should be able to register with default role when role is not provided', async () => {
+    const usersRepository = new InMemoryUsersRepository()
+    const registerUseCase = new RegisterUseCase(usersRepository)
+
+    const { user } = await registerUseCase.execute({
+      name: 'Jane Doe',
+      email: 'janedoe@example.com',
+      password: '123456',
+    })
+
+    expect(user.id).toEqual(expect.any(String))
+    expect(user.name).toEqual('Jane Doe')
+    expect(user.email).toEqual('janedoe@example.com')
+    expect(user.role).toEqual('ATHLETE')
   })
 })
