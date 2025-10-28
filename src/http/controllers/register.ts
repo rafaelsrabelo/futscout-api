@@ -16,11 +16,21 @@ export async function register(request: FastifyRequest, reply: FastifyReply) {
   try {
     const prismaUsersRepository = new PrismaUsersRepository()
     const registerUseCase = new RegisterUseCase(prismaUsersRepository)
-    await registerUseCase.execute({
+    const { user } = await registerUseCase.execute({
       name,
       email,
       password,
       role: role || 'ATHLETE',
+    })
+
+    return reply.status(201).send({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        password: user.password,
+      },
     })
   } catch (error) {
     if (error instanceof EmailAlreadyExistsError) {
@@ -28,6 +38,4 @@ export async function register(request: FastifyRequest, reply: FastifyReply) {
     }
     throw error
   }
-
-  return reply.status(201).send()
 }
