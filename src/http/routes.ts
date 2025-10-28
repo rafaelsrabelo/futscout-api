@@ -6,13 +6,16 @@ import { logout, logoutAll } from './controllers/logout.js'
 import { getProfile } from './controllers/get-profile.js'
 import { createAthleteProfile } from './controllers/create-athlete-profile.js'
 import { editAthleteProfile } from './controllers/edit-athlete-profile.js'
+import { getMyAthleteProfile } from './controllers/get-my-athlete-profile.js'
 import { listAthletes } from './controllers/list-athletes.js'
 import { getAthlete } from './controllers/get-athlete.js'
+import { verifyEmail } from './controllers/verify-email.js'
 import { verifyJwt } from './middlewares/verify-jwt.js'
 
 export async function appRoutes(app: FastifyInstance) {
   // Public auth routes
   app.post('/auth/users', register)
+  app.post('/auth/verify-email', verifyEmail)
   app.post('/auth/sessions', authenticate)
   app.post('/auth/refresh', refreshToken)
 
@@ -27,6 +30,7 @@ export async function appRoutes(app: FastifyInstance) {
     { onRequest: [verifyJwt] },
     createAthleteProfile,
   )
+  app.get('/athletes/profile', { onRequest: [verifyJwt] }, getMyAthleteProfile)
   app.put('/athletes/profile', { onRequest: [verifyJwt] }, editAthleteProfile)
   app.get('/athletes', { onRequest: [verifyJwt] }, listAthletes)
   app.get('/athletes/:id', { onRequest: [verifyJwt] }, getAthlete)

@@ -2,14 +2,20 @@ import { expect, describe, it, beforeEach } from 'vitest'
 import { RegisterUseCase } from './register.js'
 import { compare } from 'bcryptjs'
 import { InMemoryUsersRepository } from '../repositories/in-memory/in-merory-users-repository.js'
+import { InMemoryVerificationCodeRepository } from '../repositories/in-memory/in-memory-verification-code-repository.js'
 import { EmailAlreadyExistsError } from './errors/email-already-exists-error.js'
 
 let inMemoryUsersRepository: InMemoryUsersRepository
+let inMemoryVerificationCodeRepository: InMemoryVerificationCodeRepository
 let registerUseCase: RegisterUseCase
 
 beforeEach(() => {
   inMemoryUsersRepository = new InMemoryUsersRepository()
-  registerUseCase = new RegisterUseCase(inMemoryUsersRepository)
+  inMemoryVerificationCodeRepository = new InMemoryVerificationCodeRepository()
+  registerUseCase = new RegisterUseCase(
+    inMemoryUsersRepository,
+    inMemoryVerificationCodeRepository,
+  )
 })
 
 describe('Register Use Case', () => {

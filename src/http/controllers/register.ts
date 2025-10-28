@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import z from 'zod'
 import { PrismaUsersRepository } from '../repositories/prisma/prisma-users-repository.js'
+import { PrismaVerificationCodeRepository } from '../repositories/prisma/prisma-verification-code-repository.js'
 import { RegisterUseCase } from '../use-cases/register.js'
 import { EmailAlreadyExistsError } from '../use-cases/errors/email-already-exists-error.js'
 
@@ -15,7 +16,11 @@ export async function register(request: FastifyRequest, reply: FastifyReply) {
 
   try {
     const prismaUsersRepository = new PrismaUsersRepository()
-    const registerUseCase = new RegisterUseCase(prismaUsersRepository)
+    const verificationCodeRepository = new PrismaVerificationCodeRepository()
+    const registerUseCase = new RegisterUseCase(
+      prismaUsersRepository,
+      verificationCodeRepository,
+    )
     const { user } = await registerUseCase.execute({
       name,
       email,

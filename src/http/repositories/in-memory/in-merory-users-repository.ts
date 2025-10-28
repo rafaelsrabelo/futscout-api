@@ -56,4 +56,21 @@ export class InMemoryUsersRepository implements UsersRepository {
 
     return user
   }
+
+  async updateUserActiveStatus(
+    userId: string,
+    isActive: boolean,
+  ): Promise<User> {
+    const userIndex = this.items.findIndex((user) => user.id === userId)
+
+    if (userIndex === -1) {
+      throw new Error('User not found')
+    }
+
+    const user = this.items[userIndex]!
+    user.isActive = isActive
+    user.updatedAt = new Date()
+
+    return user
+  }
 }

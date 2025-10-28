@@ -6,4 +6,5 @@ export interface UsersRepository {
   findByEmail(email: string): Promise<User | null>
   findById(userId: string): Promise<User | null>
   updateProfile(userId: string, isProfile: boolean): Promise<User>
+  updateUserActiveStatus(userId: string, isActive: boolean): Promise<User>
 }

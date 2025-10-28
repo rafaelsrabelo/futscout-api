@@ -35,4 +35,13 @@ export class PrismaUsersRepository implements UsersRepository {
 
     return user
   }
+
+  async updateUserActiveStatus(userId: string, isActive: boolean) {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { isActive },
+    })
+
+    return user
+  }
 }

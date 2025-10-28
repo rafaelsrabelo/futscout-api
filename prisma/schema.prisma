@@ -58,6 +58,7 @@ model User {
   athleteProfile AthleteProfile?
   refreshTokens  RefreshToken[]
   tokenBlacklist TokenBlacklist[]
+  verificationCodes VerificationCode[]
 
   @@map("users")
 }
@@ -82,6 +83,20 @@ model TokenBlacklist {
   createdAt DateTime @default(now())
 
   @@map("token_blacklist")
+}
+
+model VerificationCode {
+  id        String   @id @default(uuid())
+  code      String   // Código de 6 dígitos
+  email     String   
+  userId    String?  // Opcional, caso o usuário ainda não esteja criado
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // "EMAIL_VERIFICATION", "PASSWORD_RESET", etc.
+  expiresAt DateTime // Código expira em 15 minutos
+  usedAt    DateTime? // Quando foi usado
+  createdAt DateTime @default(now())
+
+  @@map("verification_codes")
 }
 
 model AthleteProfile {
