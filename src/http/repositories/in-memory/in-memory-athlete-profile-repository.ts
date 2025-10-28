@@ -4,6 +4,7 @@ import type {
   CreateAthleteProfileData,
   AthleteFilters,
   AthleteProfileWithUser,
+  UpdateAthleteProfileData,
 } from '../athlete-profile-repository.js'
 
 export class InMemoryAthleteProfileRepository
@@ -144,6 +145,28 @@ export class InMemoryAthleteProfileRepository
   async findByNickname(nickname: string): Promise<AthleteProfile | null> {
     const athleteProfile = this.items.find((item) => item.nickname === nickname)
     return athleteProfile || null
+  }
+
+  async update(
+    userId: string,
+    data: UpdateAthleteProfileData,
+  ): Promise<AthleteProfile> {
+    const athleteProfileIndex = this.items.findIndex(
+      (item) => item.userId === userId,
+    )
+
+    if (athleteProfileIndex === -1) {
+      throw new Error('Athlete profile not found')
+    }
+
+    const updatedProfile = {
+      ...this.items[athleteProfileIndex],
+      ...data,
+      updatedAt: new Date(),
+    } as AthleteProfile
+
+    this.items[athleteProfileIndex] = updatedProfile
+    return updatedProfile
   }
 
   // Helper method for tests

@@ -3,6 +3,7 @@ import type {
   AthleteProfileRepository,
   CreateAthleteProfileData,
   AthleteFilters,
+  UpdateAthleteProfileData,
 } from '../athlete-profile-repository.js'
 
 export class PrismaAthleteProfileRepository
@@ -146,5 +147,14 @@ export class PrismaAthleteProfileRepository
     })
 
     return athletes
+  }
+
+  async update(userId: string, data: UpdateAthleteProfileData) {
+    const athleteProfile = await prisma.athleteProfile.update({
+      where: { userId },
+      data,
+    })
+
+    return athleteProfile
   }
 }

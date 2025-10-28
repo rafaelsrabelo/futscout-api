@@ -8,6 +8,29 @@ export type CreateAthleteProfileData = Omit<
   userId: string
 }
 
+export type UpdateAthleteProfileData = {
+  nickname?: string
+  profilePhoto?: string
+  instagramUrl?: string
+  twitterUrl?: string
+  height?: number
+  weight?: number
+  dominantFoot?: 'RIGHT' | 'LEFT'
+  primaryPosition?: 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD'
+  secondaryPosition?:
+    | 'GOALKEEPER'
+    | 'DEFENDER'
+    | 'MIDFIELDER'
+    | 'FORWARD'
+    | null
+  currentClub?: string
+  biography?: string
+  hasManager?: boolean
+  managerName?: string | null
+  managerCompany?: string | null
+  managerContact?: string | null
+}
+
 export interface AthleteFilters {
   gender?: 'MALE' | 'FEMALE' | 'OTHER'
   dominantFoot?: 'RIGHT' | 'LEFT'
@@ -32,4 +55,8 @@ export interface AthleteProfileRepository {
   findByUserId(userId: string): Promise<AthleteProfile | null>
   findMany(filters: AthleteFilters): Promise<AthleteProfileWithUser[]>
   findByNickname(nickname: string): Promise<AthleteProfile | null>
+  update(
+    userId: string,
+    data: UpdateAthleteProfileData,
+  ): Promise<AthleteProfile>
 }
