@@ -51,6 +51,7 @@ model User {
   password  String
   role      UserRole @default(ATHLETE)
   isActive  Boolean  @default(false)
+  isProfile Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -69,7 +70,6 @@ model AthleteProfile {
   nickname       String?        @unique
   profilePhoto   String?
   birthDate      DateTime
-  
 
   instagramUrl   String?
   twitterUrl     String?
@@ -77,7 +77,6 @@ model AthleteProfile {
   height         Float         
   weight         Float 
   dominantFoot   DominantFoot
-  
 
   primaryPosition   Position
   secondaryPosition Position?
