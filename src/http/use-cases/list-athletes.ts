@@ -25,6 +25,7 @@ interface ListAthletesUseCaseResponse {
     dominantFoot: string
     primaryPosition: string
     currentClub?: string | null
+    hasManager: boolean
     user: {
       id: string
       name: string
@@ -54,6 +55,7 @@ export class ListAthletesUseCase {
         dominantFoot: athlete.dominantFoot,
         primaryPosition: athlete.primaryPosition,
         currentClub: athlete.currentClub,
+        hasManager: athlete.hasManager,
         user: {
           id: athlete.user.id,
           name: athlete.user.name,

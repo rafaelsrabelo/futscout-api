@@ -27,7 +27,7 @@ export class InMemoryUsersRepository implements UsersRepository {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async create(data: UserCreateInput) {
     const user = {
-      id: 'user-1',
+      id: `user-${this.items.length + 1}`,
       name: data.name,
       email: data.email,
       password: data.password,
