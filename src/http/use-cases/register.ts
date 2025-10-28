@@ -37,7 +37,7 @@ export class RegisterUseCase {
       name,
       email,
       password: password_hash,
-      role: role || 'ATHLETE',
+      role,
       isActive: false, // Usuário começa inativo até verificar email
     })
 

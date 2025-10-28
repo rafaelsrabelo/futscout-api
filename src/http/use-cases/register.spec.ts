@@ -68,6 +68,7 @@ describe('Register Use Case', () => {
       name: 'Jane Doe',
       email: 'janedoe@example.com',
       password: '123456',
+      role: 'ATHLETE',
     })
 
     expect(user.id).toEqual(expect.any(String))
