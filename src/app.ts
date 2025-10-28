@@ -1,8 +1,14 @@
 import { fastify } from 'fastify'
 import { appRoutes } from './http/routes.js'
 import { ZodError } from 'zod'
+import { env } from './env/index.js'
 
 export const app = fastify()
+
+// Register JWT plugin
+app.register(import('@fastify/jwt'), {
+  secret: env.JWT_SECRET,
+})
 
 app.register(appRoutes, { prefix: '/api' })
 

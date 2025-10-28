@@ -3,13 +3,7 @@ import { PrismaUsersRepository } from '../repositories/prisma/prisma-users-repos
 import { GetProfileUseCase } from '../use-cases/get-profile.js'
 
 export async function getProfile(request: FastifyRequest, reply: FastifyReply) {
-  // TODO: Implementar autenticação JWT middleware
-  // Por enquanto, vamos assumir que o userId vem como parâmetro ou header
-  const userId = request.headers['user-id'] as string
-
-  if (!userId) {
-    return reply.status(401).send({ message: 'User ID required' })
-  }
+  const userId = request.user.sub
 
   try {
     const prismaUsersRepository = new PrismaUsersRepository()

@@ -36,13 +36,7 @@ export async function createAthleteProfile(
     managerContact: z.string().max(100).optional(),
   })
 
-  // TODO: Extrair userId do JWT token
-  const userId = request.headers['user-id'] as string
-
-  if (!userId) {
-    return reply.status(401).send({ message: 'User ID required' })
-  }
-
+  const userId = request.user.sub
   const data = createAthleteProfileBodySchema.parse(request.body)
 
   try {
