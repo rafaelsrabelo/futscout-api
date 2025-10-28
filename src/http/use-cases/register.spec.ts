@@ -1,14 +1,19 @@
-import { expect, describe, it } from 'vitest'
+import { expect, describe, it, beforeEach } from 'vitest'
 import { RegisterUseCase } from './register.js'
 import { compare } from 'bcryptjs'
 import { InMemoryUsersRepository } from '../repositories/in-memory/in-merory-users-repository.js'
 import { EmailAlreadyExistsError } from './errors/email-already-exists-error.js'
 
+let inMemoryUsersRepository: InMemoryUsersRepository
+let registerUseCase: RegisterUseCase
+
+beforeEach(() => {
+  inMemoryUsersRepository = new InMemoryUsersRepository()
+  registerUseCase = new RegisterUseCase(inMemoryUsersRepository)
+})
+
 describe('Register Use Case', () => {
   it('should be able to register a new user', async () => {
-    const usersRepository = new InMemoryUsersRepository()
-    const registerUseCase = new RegisterUseCase(usersRepository)
-
     const { user } = await registerUseCase.execute({
       name: 'Test User',
       role: 'ATHLETE',
@@ -20,9 +25,6 @@ describe('Register Use Case', () => {
   })
 
   it('should hash user password upon registration', async () => {
-    const usersRepository = new InMemoryUsersRepository()
-    const registerUseCase = new RegisterUseCase(usersRepository)
-
     const { user } = await registerUseCase.execute({
       name: 'Test User',
       role: 'ATHLETE',
@@ -36,9 +38,6 @@ describe('Register Use Case', () => {
   })
 
   it('should not be able to register with same email twice', async () => {
-    const usersRepository = new InMemoryUsersRepository()
-    const registerUseCase = new RegisterUseCase(usersRepository)
-
     const email = 'johndoe@example.com'
 
     await registerUseCase.execute({
@@ -59,9 +58,6 @@ describe('Register Use Case', () => {
   })
 
   it('should be able to register with default role when role is not provided', async () => {
-    const usersRepository = new InMemoryUsersRepository()
-    const registerUseCase = new RegisterUseCase(usersRepository)
-
     const { user } = await registerUseCase.execute({
       name: 'Jane Doe',
       email: 'janedoe@example.com',
