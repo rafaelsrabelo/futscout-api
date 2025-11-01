@@ -64,6 +64,9 @@ export async function createAthleteProfile(
       if (error.message === 'Nickname already exists') {
         return reply.status(409).send({ message: 'Nickname already exists' })
       }
+      if (error.message === 'CPF already exists') {
+        return reply.status(409).send({ message: 'CPF already exists' })
+      }
     }
 
     return reply.status(500).send({ message: 'Internal server error' })

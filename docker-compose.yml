@@ -10,3 +10,8 @@ services:
       POSTGRESQL_DATABASE: futscoutapi
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/bitnami/postgresql
+
+volumes:
+  postgres_data:

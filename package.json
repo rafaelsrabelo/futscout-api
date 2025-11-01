@@ -15,7 +15,10 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:setup": "./setup-db.sh",
+    "db:reset": "docker-compose down -v && npm run db:setup",
+    "studio": "npx prisma studio"
   },
   "keywords": [],
   "author": "",

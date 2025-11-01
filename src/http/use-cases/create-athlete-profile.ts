@@ -3,6 +3,7 @@ import type {
   AthleteProfileRepository,
   CreateAthleteProfileData,
 } from '../repositories/athlete-profile-repository.js'
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library'
 
 interface CreateAthleteProfileUseCaseRequest {
   userId: string
@@ -102,26 +103,41 @@ export class CreateAthleteProfileUseCase {
       managerContact: data.managerContact ?? null,
     }
 
-    const athleteProfile =
-      await this.athleteProfileRepository.create(athleteData)
+    try {
+      const athleteProfile =
+        await this.athleteProfileRepository.create(athleteData)
 
-    // Atualizar o usuário para marcar que tem perfil
-    await this.usersRepository.updateProfile(data.userId, true)
+      // Atualizar o usuário para marcar que tem perfil
+      await this.usersRepository.updateProfile(data.userId, true)
 
-    return {
-      athleteProfile: {
-        id: athleteProfile.id,
-        userId: athleteProfile.userId,
-        cpf: athleteProfile.cpf,
-        gender: athleteProfile.gender,
-        nickname: athleteProfile.nickname,
-        height: athleteProfile.height,
-        weight: athleteProfile.weight,
-        dominantFoot: athleteProfile.dominantFoot,
-        primaryPosition: athleteProfile.primaryPosition,
-        currentClub: athleteProfile.currentClub,
-        createdAt: athleteProfile.createdAt,
-      },
+      return {
+        athleteProfile: {
+          id: athleteProfile.id,
+          userId: athleteProfile.userId,
+          cpf: athleteProfile.cpf,
+          gender: athleteProfile.gender,
+          nickname: athleteProfile.nickname,
+          height: athleteProfile.height,
+          weight: athleteProfile.weight,
+          dominantFoot: athleteProfile.dominantFoot,
+          primaryPosition: athleteProfile.primaryPosition,
+          currentClub: athleteProfile.currentClub,
+          createdAt: athleteProfile.createdAt,
+        },
+      }
+    } catch (error) {
+      if (error instanceof PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          const target = error.meta?.target as string[]
+          if (target?.includes('cpf')) {
+            throw new Error('CPF already exists')
+          }
+          if (target?.includes('nickname')) {
+            throw new Error('Nickname already exists')
+          }
+        }
+      }
+      throw error
     }
   }
 }
