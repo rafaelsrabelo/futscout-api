@@ -59,6 +59,7 @@ model User {
   refreshTokens  RefreshToken[]
   tokenBlacklist TokenBlacklist[]
   verificationCodes VerificationCode[]
+  favorites      Favorite[]
 
   @@map("users")
 }
@@ -129,6 +130,7 @@ model AthleteProfile {
   
   address           Address?
   teams             AthleteTeam[]
+  favorites         Favorite[]
   
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
@@ -183,4 +185,18 @@ model AthleteTeam {
 
   @@unique([athleteId, teamId])
   @@map("athlete_teams")
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  athleteId String
+  
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  athlete   AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, athleteId])
+  @@map("favorites")
 }

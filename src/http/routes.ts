@@ -10,6 +10,8 @@ import { getMyAthleteProfile } from './controllers/get-my-athlete-profile.js'
 import { listAthletes } from './controllers/list-athletes.js'
 import { getAthlete } from './controllers/get-athlete.js'
 import { verifyEmail } from './controllers/verify-email.js'
+import { toggleFavorite } from './controllers/toggle-favorite.js'
+import { listFavorites } from './controllers/list-favorites.js'
 import { verifyJwt } from './middlewares/verify-jwt.js'
 
 export async function appRoutes(app: FastifyInstance) {
@@ -34,4 +36,8 @@ export async function appRoutes(app: FastifyInstance) {
   app.put('/athletes/profile', { onRequest: [verifyJwt] }, editAthleteProfile)
   app.get('/athletes', { onRequest: [verifyJwt] }, listAthletes)
   app.get('/athletes/:id', { onRequest: [verifyJwt] }, getAthlete)
+
+  // Favorite routes
+  app.post('/athletes/:id/favorite', { onRequest: [verifyJwt] }, toggleFavorite)
+  app.get('/athletes/favorites', { onRequest: [verifyJwt] }, listFavorites)
 }

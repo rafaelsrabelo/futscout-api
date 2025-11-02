@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
+import { PrismaFavoriteRepository } from '../repositories/prisma/prisma-favorite-repository.js'
 import { GetMyAthleteProfileUseCase } from '../use-cases/get-my-athlete-profile.js'
 
 export async function getMyAthleteProfile(
@@ -10,11 +11,17 @@ export async function getMyAthleteProfile(
     const userId = request.user.sub
 
     const athleteProfileRepository = new PrismaAthleteProfileRepository()
+    const favoriteRepository = new PrismaFavoriteRepository()
     const getMyAthleteProfileUseCase = new GetMyAthleteProfileUseCase(
       athleteProfileRepository,
     )
 
     const { profile } = await getMyAthleteProfileUseCase.execute({ userId })
+
+    // Count how many users favorited this athlete
+    const favoritesCount = await favoriteRepository.countFavoritesByAthlete(
+      profile.id,
+    )
 
     return reply.status(200).send({
       athleteProfile: {
@@ -37,6 +44,7 @@ export async function getMyAthleteProfile(
         managerName: profile.managerName,
         managerCompany: profile.managerCompany,
         managerContact: profile.managerContact,
+        favorites: favoritesCount,
         createdAt: profile.createdAt,
         updatedAt: profile.updatedAt,
       },
