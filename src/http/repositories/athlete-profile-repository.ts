@@ -36,6 +36,8 @@ export interface AthleteFilters {
   dominantFoot?: 'RIGHT' | 'LEFT'
   primaryPosition?: 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD'
   currentClub?: string
+  nickname?: string
+  name?: string
   hasManager?: boolean
   minHeight?: number
   maxHeight?: number

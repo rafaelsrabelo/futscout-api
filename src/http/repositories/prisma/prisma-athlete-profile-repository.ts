@@ -95,6 +95,8 @@ export class PrismaAthleteProfileRepository
       dominantFoot,
       primaryPosition,
       currentClub,
+      nickname,
+      name,
       hasManager,
       minHeight,
       maxHeight,
@@ -112,6 +114,14 @@ export class PrismaAthleteProfileRepository
     if (primaryPosition) where.primaryPosition = primaryPosition
     if (currentClub) {
       where.currentClub = { contains: currentClub, mode: 'insensitive' }
+    }
+    if (nickname) {
+      where.nickname = { contains: nickname, mode: 'insensitive' }
+    }
+    if (name) {
+      where.user = {
+        name: { contains: name, mode: 'insensitive' },
+      }
     }
     if (hasManager !== undefined) where.hasManager = hasManager
 

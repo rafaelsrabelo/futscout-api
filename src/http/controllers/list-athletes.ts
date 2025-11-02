@@ -14,6 +14,8 @@ export async function listAthletes(
       .enum(['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD'])
       .optional(),
     currentClub: z.string().optional(),
+    nickname: z.string().optional(),
+    name: z.string().optional(),
     hasManager: z
       .string()
       .transform((val) => val === 'true')
