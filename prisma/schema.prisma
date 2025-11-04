@@ -24,12 +24,24 @@ enum Gender {
 }
 
 enum Category {
-  SUB_9
-  SUB_11
-  SUB_13
-  SUB_15
-  SUB_17
-  SUB_20
+  U5
+  U6
+  U7
+  U8
+  U9
+  U10
+  U11
+  U12
+  U13
+  U14
+  U15
+  U16
+  U17
+  U18
+  U19
+  U20
+  AMATEUR
+  PROFESSIONAL
 }
 
 enum Position {
@@ -42,6 +54,49 @@ enum Position {
 enum DominantFoot {
   RIGHT
   LEFT
+}
+
+enum MatchResult {
+  WIN
+  LOSS
+  DRAW
+  NOT_FINISHED
+}
+
+enum Modality {
+  FUT_11
+  FUT_7
+  FUTSAL
+}
+
+enum PlayerPosition {
+  STARTER
+  SUBSTITUTE
+}
+
+enum PlayType {
+  GOAL
+  DIFFICULT_SAVE
+  EASY_SAVE
+  ASSIST
+  FOUL_COMMITTED
+  FOUL_RECEIVED
+  DRIBBLE
+  ANTICIPATION
+  LONG_PASS
+  FREE_KICK
+  YELLOW_CARD
+  RED_CARD
+  RIGHT_FOOT_SHOT
+  LEFT_FOOT_SHOT
+  HEADER
+  TACKLE
+  INTERCEPTION
+  CROSS
+  CORNER_KICK
+  PENALTY
+  PASS
+  KEY_PASS
 }
 
 model User {
@@ -131,6 +186,7 @@ model AthleteProfile {
   address           Address?
   teams             AthleteTeam[]
   favorites         Favorite[]
+  matches           Match[]
   
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
@@ -199,4 +255,95 @@ model Favorite {
   
   @@unique([userId, athleteId])
   @@map("favorites")
+}
+
+model Match {
+  id              String         @id @default(uuid())
+  athleteId       String
+  athlete         AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  
+  myTeam          String
+  adversaryTeam   String
+  date            DateTime
+  modality        Modality
+  category        Category
+  location        String
+  streamUrl       String?
+  
+  result          MatchResult    @default(NOT_FINISHED)
+  myTeamScore     Int?
+  adversaryScore  Int?
+  
+  playerPosition  PlayerPosition
+  observations    String?
+  
+  approximateTime Int?           // tempo em minutos em campo
+  photoUrl        String?
+  videoUrl        String?
+  performanceRating Int?         // nota de 1 a 5
+  
+  plays           Play[]
+  scout           Scout?
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@map("matches")
+}
+
+model Play {
+  id              String   @id @default(uuid())
+  matchId         String
+  match           Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  
+  playType        PlayType
+  videoUrl        String?
+  photoUrl        String?
+  rating          Int?     // nota de 1 a 5
+  approximateTime Int?     // tempo aproximado do lance (em minutos)
+  observations    String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("plays")
+}
+
+model Scout {
+  id                    String         @id @default(uuid())
+  matchId               String         @unique
+  match                 Match          @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  
+  // Estatísticas gerais
+  totalPlays            Int            @default(0)
+  positiveActions       Int            @default(0)
+  negativeActions       Int            @default(0)
+  neutralActions        Int            @default(0)
+  
+  // Estatísticas por categoria
+  goals                 Int            @default(0)
+  assists               Int            @default(0)
+  saves                 Int            @default(0)
+  defensiveActions      Int            @default(0)
+  tackles               Int            @default(0)
+  interceptions         Int            @default(0)
+  crosses               Int            @default(0)
+  dribbles              Int            @default(0)
+  fouls                 Int            @default(0)
+  yellowCards           Int            @default(0)
+  redCards              Int            @default(0)
+  
+  // Avaliação geral
+  overallRating         Float?         // média das notas dos plays
+  performanceNote       String?        // observações gerais
+  
+  // Pontos fortes e fracos identificados
+  strengths             String?        // JSON array de strings
+  weaknesses            String?        // JSON array de strings
+  
+  // Metadados
+  generatedAt           DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@map("scouts")
 }
