@@ -16,8 +16,8 @@ export async function createAthleteProfile(
     birthDate: z.string().datetime(),
     instagramUrl: z.string().url().optional(),
     twitterUrl: z.string().url().optional(),
-    height: z.number().min(0.5).max(2.5),
-    weight: z.number().min(30).max(150),
+    height: z.number().min(50).max(250),
+    weight: z.number().min(10).max(200),
     dominantFoot: z.enum(['RIGHT', 'LEFT']),
     primaryPosition: z.enum([
       'GOALKEEPER',

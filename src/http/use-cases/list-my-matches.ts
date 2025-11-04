@@ -5,6 +5,7 @@ import type { AthleteProfileRepository } from '../repositories/athlete-profile-r
 interface ListMyMatchesRequest {
   userId: string
   includePlays?: boolean
+  status?: 'FINISHED' | 'NOT_FINISHED' | 'ALL'
 }
 
 class AthleteProfileNotFoundError extends Error {
@@ -33,11 +34,25 @@ export class ListMyMatchesUseCase {
     }
 
     // Buscar partidas usando o ID do perfil de atleta
+    let matches: Match[]
     if (request.includePlays) {
-      return this.matchRepository.findByAthleteWithPlays(athleteProfile.id)
+      matches = await this.matchRepository.findByAthleteWithPlays(
+        athleteProfile.id,
+      )
+    } else {
+      matches = await this.matchRepository.findByAthlete(athleteProfile.id)
     }
 
-    return this.matchRepository.findByAthlete(athleteProfile.id)
+    // Filtrar por status se especificado
+    if (request.status && request.status !== 'ALL') {
+      if (request.status === 'FINISHED') {
+        matches = matches.filter((match) => match.result !== 'NOT_FINISHED')
+      } else if (request.status === 'NOT_FINISHED') {
+        matches = matches.filter((match) => match.result === 'NOT_FINISHED')
+      }
+    }
+
+    return matches
   }
 }
 

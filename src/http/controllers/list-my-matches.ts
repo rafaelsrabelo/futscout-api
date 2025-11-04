@@ -13,9 +13,13 @@ export async function listMyMatches(
       .string()
       .optional()
       .transform((val) => val === 'true'),
+    status: z
+      .enum(['FINISHED', 'NOT_FINISHED', 'ALL'])
+      .optional()
+      .default('ALL'),
   })
 
-  const { includePlays } = listMyMatchesQuerySchema.parse(request.query)
+  const { includePlays, status } = listMyMatchesQuerySchema.parse(request.query)
 
   const matchRepository = new PrismaMatchRepository()
   const athleteProfileRepository = new PrismaAthleteProfileRepository()
@@ -27,6 +31,7 @@ export async function listMyMatches(
   const matches = await listMyMatchesUseCase.execute({
     userId: request.user.sub,
     includePlays,
+    status,
   })
 
   return reply.send({ matches })

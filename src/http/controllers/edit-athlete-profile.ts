@@ -12,8 +12,8 @@ export async function editAthleteProfile(
     profilePhoto: z.string().url().optional(),
     instagramUrl: z.string().url().optional(),
     twitterUrl: z.string().url().optional(),
-    height: z.number().min(100).max(250).optional(),
-    weight: z.number().min(30).max(200).optional(),
+    height: z.number().min(50).max(250).optional(), // Altura em centímetros (50cm a 250cm)
+    weight: z.number().min(10).max(200).optional(), // Peso em quilos (10kg a 200kg)
     dominantFoot: z.enum(['RIGHT', 'LEFT']).optional(),
     primaryPosition: z
       .enum(['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD'])
