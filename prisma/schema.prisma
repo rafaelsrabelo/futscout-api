@@ -104,6 +104,34 @@ enum PlayType {
   PENALTY
   PASS
   KEY_PASS
+  
+  // Específicos para Goleiro
+  PENALTY_SAVE
+  ONE_ON_ONE_SAVE
+  REFLEX_SAVE
+  DIVING_SAVE
+  CATCH
+  PUNCH
+  DISTRIBUTION
+  GOAL_KICK
+  THROW_OUT
+  
+  // Específicos para Linha
+  SHOT_BLOCKED
+  CLEARANCE
+  OFFENSIVE_FOUL
+  DEFENSIVE_FOUL
+  BALL_RECOVERY
+  THROUGH_PASS
+  BACKHEEL
+  VOLLLEY
+  BICYCLE_KICK
+  
+  // Situações Especiais
+  OFFSIDE
+  MISSED_SHOT
+  SHOT_ON_TARGET
+  SHOT_OFF_TARGET
 }
 
 model User {
