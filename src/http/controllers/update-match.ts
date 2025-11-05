@@ -46,6 +46,7 @@ export async function updateMatch(
       .optional(),
     location: z.string().optional(),
     streamUrl: z.string().optional(),
+    status: z.enum(['SCHEDULED', 'LIVE', 'FINISHED', 'CANCELLED']).optional(),
     result: z.enum(['WIN', 'LOSS', 'DRAW', 'NOT_FINISHED']).optional(),
     myTeamScore: z.number().int().min(0).optional(),
     adversaryScore: z.number().int().min(0).optional(),

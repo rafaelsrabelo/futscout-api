@@ -3,6 +3,7 @@ import type {
   Modality,
   Category,
   MatchResult,
+  MatchStatus,
   PlayerPosition,
 } from '../../../generated/prisma/client.js'
 import type { MatchRepository } from '../repositories/match-repository.js'
@@ -17,6 +18,7 @@ interface CreateMatchRequest {
   category: Category
   location: string
   streamUrl?: string | null
+  status?: MatchStatus
   result?: MatchResult
   myTeamScore?: number | null
   adversaryScore?: number | null
@@ -64,6 +66,7 @@ export class CreateMatchUseCase {
       category: request.category,
       location: request.location,
       streamUrl: request.streamUrl ?? null,
+      status: request.status || 'SCHEDULED',
       result: request.result || 'NOT_FINISHED',
       myTeamScore: request.myTeamScore ?? null,
       adversaryScore: request.adversaryScore ?? null,

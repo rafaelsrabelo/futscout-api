@@ -14,7 +14,7 @@ export async function listMyMatches(
       .optional()
       .transform((val) => val === 'true'),
     status: z
-      .enum(['FINISHED', 'NOT_FINISHED', 'ALL'])
+      .enum(['SCHEDULED', 'LIVE', 'FINISHED', 'CANCELLED', 'ALL'])
       .optional()
       .default('ALL'),
   })

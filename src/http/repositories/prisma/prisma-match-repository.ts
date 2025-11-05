@@ -18,7 +18,7 @@ export class PrismaMatchRepository implements MatchRepository {
   async findByAthlete(athleteId: string): Promise<Match[]> {
     return prisma.match.findMany({
       where: { athleteId },
-      orderBy: { date: 'desc' },
+      orderBy: { date: 'asc' },
     })
   }
 
@@ -43,7 +43,7 @@ export class PrismaMatchRepository implements MatchRepository {
           orderBy: { approximateTime: 'asc' },
         },
       },
-      orderBy: { date: 'desc' },
+      orderBy: { date: 'asc' },
     })
   }
 

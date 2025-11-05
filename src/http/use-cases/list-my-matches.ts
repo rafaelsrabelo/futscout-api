@@ -5,7 +5,7 @@ import type { AthleteProfileRepository } from '../repositories/athlete-profile-r
 interface ListMyMatchesRequest {
   userId: string
   includePlays?: boolean
-  status?: 'FINISHED' | 'NOT_FINISHED' | 'ALL'
+  status?: 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'CANCELLED' | 'ALL'
 }
 
 class AthleteProfileNotFoundError extends Error {
@@ -46,9 +46,13 @@ export class ListMyMatchesUseCase {
     // Filtrar por status se especificado
     if (request.status && request.status !== 'ALL') {
       if (request.status === 'FINISHED') {
-        matches = matches.filter((match) => match.result !== 'NOT_FINISHED')
-      } else if (request.status === 'NOT_FINISHED') {
-        matches = matches.filter((match) => match.result === 'NOT_FINISHED')
+        matches = matches.filter((match) => match.status === 'FINISHED')
+      } else if (request.status === 'SCHEDULED') {
+        matches = matches.filter((match) => match.status === 'SCHEDULED')
+      } else if (request.status === 'LIVE') {
+        matches = matches.filter((match) => match.status === 'LIVE')
+      } else if (request.status === 'CANCELLED') {
+        matches = matches.filter((match) => match.status === 'CANCELLED')
       }
     }
 
