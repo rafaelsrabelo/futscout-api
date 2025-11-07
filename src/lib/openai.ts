@@ -154,7 +154,7 @@ Considere:
         } catch (regexError) {
           console.error('Failed to parse JSON from regex match:', regexError)
           console.error('Regex match result:', jsonMatch[0])
-          
+
           // Fallback: criar resposta básica
           return {
             performanceNote:
@@ -166,7 +166,7 @@ Considere:
         }
       } else {
         console.error('No JSON found in response:', response)
-        
+
         // Fallback: criar resposta básica
         return {
           performanceNote:
@@ -186,7 +186,7 @@ Considere:
       !jsonResponse.recommendations
     ) {
       console.error('Invalid response structure:', jsonResponse)
-      
+
       // Fallback com dados parciais
       return {
         performanceNote:
