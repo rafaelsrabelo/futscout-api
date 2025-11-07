@@ -8,6 +8,11 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: z.string().default('15m'),
   REFRESH_TOKEN_EXPIRES_IN_DAYS: z.coerce.number().default(30),
 
+  // Database configuration
+  DATABASE_URL: z.string(),
+  DATABASE_URL_TEST: z.string().optional(),
+  DATABASE_URL_PROD: z.string().optional(),
+
   // Email configuration
   SMTP_HOST: z.string().default('smtp.gmail.com'),
   SMTP_PORT: z.coerce.number().default(587),
@@ -15,6 +20,9 @@ const envSchema = z.object({
   SMTP_PASS: z.string().optional(),
   SMTP_FROM_NAME: z.string().default('FutScout'),
   SMTP_FROM_EMAIL: z.string().optional(),
+
+  // OpenAI configuration
+  OPENAI_API_KEY: z.string().optional(),
 })
 
 const _env = envSchema.safeParse(process.env)
@@ -25,3 +33,18 @@ if (!_env.success) {
 }
 
 export const env = _env.data
+
+// Função para obter a URL do banco baseado no ambiente
+export function getDatabaseUrl(): string {
+  const { NODE_ENV, DATABASE_URL, DATABASE_URL_TEST, DATABASE_URL_PROD } = env
+
+  switch (NODE_ENV) {
+    case 'test':
+      return DATABASE_URL_TEST || DATABASE_URL
+    case 'production':
+      return DATABASE_URL_PROD || DATABASE_URL
+    case 'dev':
+    default:
+      return DATABASE_URL
+  }
+}

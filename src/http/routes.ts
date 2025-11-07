@@ -19,6 +19,7 @@ import { updateMatch } from './controllers/update-match.js'
 import { addPlay } from './controllers/add-play.js'
 import { generateScout } from './controllers/generate-scout.js'
 import { generateScoutByPosition } from './controllers/generate-scout-by-position.js'
+import { generateAIScout } from './controllers/generate-ai-scout.js'
 import { getScout } from './controllers/get-scout.js'
 import { getGeneralStats } from './controllers/get-general-stats.js'
 import { verifyJwt } from './middlewares/verify-jwt.js'
@@ -64,6 +65,7 @@ export async function appRoutes(app: FastifyInstance) {
     { onRequest: [verifyJwt] },
     generateScoutByPosition,
   )
+  app.post('/matches/:id/scout/ai', { onRequest: [verifyJwt] }, generateAIScout)
   app.get('/matches/:id/scout', { onRequest: [verifyJwt] }, getScout)
 
   // General stats route
