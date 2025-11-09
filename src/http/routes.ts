@@ -18,6 +18,7 @@ import { getMatch } from './controllers/get-match.js'
 import { updateMatch } from './controllers/update-match.js'
 import { addPlay } from './controllers/add-play.js'
 import { uploadVideoToPlay } from './controllers/upload-video-to-play.js'
+import { getVideoFeed } from './controllers/get-video-feed.js'
 import { generateScout } from './controllers/generate-scout.js'
 import { generateScoutByPosition } from './controllers/generate-scout-by-position.js'
 import { generateAIScout } from './controllers/generate-ai-scout.js'
@@ -63,6 +64,9 @@ export async function appRoutes(app: FastifyInstance) {
     { onRequest: [verifyJwt] },
     uploadVideoToPlay,
   )
+
+  // Video feed route
+  app.get('/videos/feed', { onRequest: [verifyJwt] }, getVideoFeed)
 
   // Scout routes
   app.post('/matches/:id/scout', { onRequest: [verifyJwt] }, generateScout)
