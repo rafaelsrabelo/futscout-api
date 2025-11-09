@@ -17,6 +17,7 @@ import { listMyMatches } from './controllers/list-my-matches.js'
 import { getMatch } from './controllers/get-match.js'
 import { updateMatch } from './controllers/update-match.js'
 import { addPlay } from './controllers/add-play.js'
+import { uploadVideoToPlay } from './controllers/upload-video-to-play.js'
 import { generateScout } from './controllers/generate-scout.js'
 import { generateScoutByPosition } from './controllers/generate-scout-by-position.js'
 import { generateAIScout } from './controllers/generate-ai-scout.js'
@@ -57,6 +58,11 @@ export async function appRoutes(app: FastifyInstance) {
   app.get('/matches/:id', { onRequest: [verifyJwt] }, getMatch)
   app.put('/matches/:id', { onRequest: [verifyJwt] }, updateMatch)
   app.post('/matches/:id/plays', { onRequest: [verifyJwt] }, addPlay)
+  app.post(
+    '/plays/:playId/video',
+    { onRequest: [verifyJwt] },
+    uploadVideoToPlay,
+  )
 
   // Scout routes
   app.post('/matches/:id/scout', { onRequest: [verifyJwt] }, generateScout)

@@ -10,6 +10,13 @@ import {
 
 export const app = fastify()
 
+// Register multipart plugin for file uploads
+app.register(import('@fastify/multipart'), {
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB
+  },
+})
+
 // Register JWT plugin
 app.register(import('@fastify/jwt'), {
   secret: env.JWT_SECRET,

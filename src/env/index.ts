@@ -23,6 +23,12 @@ const envSchema = z.object({
 
   // OpenAI configuration
   OPENAI_API_KEY: z.string().optional(),
+
+  // Cloudflare configuration
+  CLOUDFLARE_ACCOUNT_ID: z.string().optional(),
+  CLOUDFLARE_API_TOKEN: z.string().optional(),
+  CLOUDFLARE_R2_BUCKET: z.string().optional(),
+  CLOUDFLARE_R2_PUBLIC_URL: z.string().optional(),
 })
 
 const _env = envSchema.safeParse(process.env)
