@@ -11,7 +11,7 @@ import type { AthleteProfileRepository } from '../repositories/athlete-profile-r
 
 interface CreateMatchRequest {
   athleteId: string
-  myTeam: string
+  myTeamId: string
   adversaryTeam: string
   date: Date
   modality: Modality
@@ -59,7 +59,9 @@ export class CreateMatchUseCase {
       athlete: {
         connect: { id: athleteProfile.id },
       },
-      myTeam: request.myTeam,
+      myTeam: {
+        connect: { id: request.myTeamId },
+      },
       adversaryTeam: request.adversaryTeam,
       date: request.date,
       modality: request.modality,

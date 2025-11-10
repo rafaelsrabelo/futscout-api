@@ -150,6 +150,7 @@ model User {
   tokenBlacklist TokenBlacklist[]
   verificationCodes VerificationCode[]
   favorites      Favorite[]
+  teams          Team[]
 
   @@map("users")
 }
@@ -220,6 +221,7 @@ model AthleteProfile {
   
   address           Address?
   teams             AthleteTeam[]
+  teamHistory       TeamHistory[]
   favorites         Favorite[]
   matches           Match[]
   
@@ -248,14 +250,38 @@ model Address {
   @@map("addresses")
 }
 
+model TeamHistory {
+  id          String         @id @default(uuid())
+  athleteId   String
+  athlete     AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  
+  teamId      String
+  team        Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  startDate   DateTime
+  endDate     DateTime?      // null se ainda joga no time
+  
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("team_history")
+}
+
 model Team {
   id          String         @id @default(uuid())
   name        String
+  nickname    String?        // Nome popular/apelido (ex: "Palmeiras")
   acronym     String         
   shieldPhoto String?        
-  category    Category  
   
+  // Relacionamento com o atleta que criou o time
+  userId      String         
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Relacionamentos
   athletes    AthleteTeam[]
+  teamHistory TeamHistory[]
+  matches     Match[]        // Partidas onde esse time jogou
   
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
@@ -297,8 +323,9 @@ model Match {
   athleteId       String
   athlete         AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
   
-  myTeam          String
-  adversaryTeam   String
+  myTeamId        String
+  myTeam          Team           @relation(fields: [myTeamId], references: [id])
+  adversaryTeam   String         
   date            DateTime
   modality        Modality
   category        Category

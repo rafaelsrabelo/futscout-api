@@ -12,14 +12,20 @@ export class PrismaMatchRepository implements MatchRepository {
   async findById(id: string): Promise<Match | null> {
     return prisma.match.findUnique({
       where: { id },
+      include: {
+        myTeam: true,
+      },
     })
   }
 
   async findByAthlete(athleteId: string): Promise<Match[]> {
     return prisma.match.findMany({
       where: { athleteId },
+      include: {
+        myTeam: true,
+      },
       orderBy: { date: 'desc' }, // Mais recentes primeiro
-    })
+    }) as unknown as Match[]
   }
 
   async update(id: string, data: Prisma.MatchUpdateInput): Promise<Match> {
@@ -56,5 +62,22 @@ export class PrismaMatchRepository implements MatchRepository {
         },
       },
     })
+  }
+
+  async findByAthleteIdAndStatus(
+    athleteId: string,
+    status: string,
+  ): Promise<Match[]> {
+    return prisma.match.findMany({
+      where: {
+        athleteId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        status: status as any,
+      },
+      include: {
+        myTeam: true,
+      },
+      orderBy: { date: 'desc' },
+    }) as unknown as Match[]
   }
 }

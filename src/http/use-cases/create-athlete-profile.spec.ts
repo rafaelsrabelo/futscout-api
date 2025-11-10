@@ -29,7 +29,7 @@ describe('Create Athlete Profile Use Case', () => {
 
     const { athleteProfile } = await sut.execute({
       userId: user.id,
-      cpf: '12345678901',
+      cpf: '97456321558', // Valid CPF
       gender: 'MALE',
       nickname: 'Johnny',
       birthDate: '1995-01-15T00:00:00.000Z',
@@ -47,7 +47,7 @@ describe('Create Athlete Profile Use Case', () => {
     })
 
     expect(athleteProfile.id).toEqual(expect.any(String))
-    expect(athleteProfile.cpf).toEqual('12345678901')
+    expect(athleteProfile.cpf).toEqual('97456321558')
     expect(athleteProfile.nickname).toEqual('Johnny')
     expect(athleteProfile.primaryPosition).toEqual('FORWARD')
   })
@@ -56,7 +56,7 @@ describe('Create Athlete Profile Use Case', () => {
     await expect(() =>
       sut.execute({
         userId: 'non-existent-user',
-        cpf: '12345678901',
+        cpf: '71428793860', // Valid CPF
         gender: 'MALE',
         birthDate: '1995-01-15T00:00:00.000Z',
         height: 1.8,
@@ -79,7 +79,7 @@ describe('Create Athlete Profile Use Case', () => {
     // Create first profile
     await sut.execute({
       userId: user.id,
-      cpf: '12345678901',
+      cpf: '87748248800', // Valid CPF
       gender: 'MALE',
       birthDate: '1995-01-15T00:00:00.000Z',
       height: 1.8,
@@ -92,7 +92,7 @@ describe('Create Athlete Profile Use Case', () => {
     await expect(() =>
       sut.execute({
         userId: user.id,
-        cpf: '98765432109',
+        cpf: '877.48248800', // Valid CPF with different format
         gender: 'MALE',
         birthDate: '1996-01-15T00:00:00.000Z',
         height: 1.75,
@@ -114,7 +114,7 @@ describe('Create Athlete Profile Use Case', () => {
 
     await sut.execute({
       userId: user1.id,
-      cpf: '12345678901',
+      cpf: '877.482.488-00', // Valid CPF with formatting
       gender: 'MALE',
       nickname: 'Superstar',
       birthDate: '1995-01-15T00:00:00.000Z',
@@ -136,7 +136,7 @@ describe('Create Athlete Profile Use Case', () => {
     await expect(() =>
       sut.execute({
         userId: user2.id,
-        cpf: '98765432109',
+        cpf: '877.48248800', // Valid CPF
         gender: 'FEMALE',
         nickname: 'Superstar',
         birthDate: '1996-01-15T00:00:00.000Z',
@@ -161,7 +161,7 @@ describe('Create Athlete Profile Use Case', () => {
 
     await sut.execute({
       userId: user.id,
-      cpf: '12345678901',
+      cpf: '877.482.48800', // Valid CPF with partial formatting
       gender: 'MALE',
       birthDate: '1995-01-15T00:00:00.000Z',
       height: 1.8,
@@ -172,5 +172,28 @@ describe('Create Athlete Profile Use Case', () => {
 
     const updatedUser = await usersRepository.findById(user.id)
     expect(updatedUser?.isProfile).toBe(true)
+  })
+
+  it('should not be able to create profile with invalid CPF', async () => {
+    // Create a user first
+    const user = await usersRepository.create({
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: await hash('123456', 6),
+      role: 'ATHLETE',
+    })
+
+    await expect(() =>
+      sut.execute({
+        userId: user.id,
+        cpf: '12345678901', // Invalid CPF
+        gender: 'MALE',
+        birthDate: '1995-01-15T00:00:00.000Z',
+        height: 1.8,
+        weight: 75,
+        dominantFoot: 'RIGHT',
+        primaryPosition: 'FORWARD',
+      }),
+    ).rejects.toThrow('Invalid CPF format')
   })
 })

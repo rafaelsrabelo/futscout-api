@@ -4,6 +4,7 @@ import type {
   CreateAthleteProfileData,
 } from '../repositories/athlete-profile-repository.js'
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library'
+import { validateCpf, normalizeCpf } from '../../utils/validateCpf.js'
 
 interface CreateAthleteProfileUseCaseRequest {
   userId: string
@@ -57,6 +58,11 @@ export class CreateAthleteProfileUseCase {
   async execute(
     data: CreateAthleteProfileUseCaseRequest,
   ): Promise<CreateAthleteProfileUseCaseResponse> {
+    // Validar CPF
+    if (!validateCpf(data.cpf)) {
+      throw new Error('Invalid CPF format')
+    }
+
     // Verificar se o usuário existe
     const user = await this.usersRepository.findById(data.userId)
     if (!user) {
@@ -83,7 +89,7 @@ export class CreateAthleteProfileUseCase {
     // Create athlete profile - convert undefined to null for Prisma compatibility
     const athleteData: CreateAthleteProfileData = {
       userId: data.userId,
-      cpf: data.cpf,
+      cpf: normalizeCpf(data.cpf), // Normalize CPF (remove formatting)
       gender: data.gender,
       nickname: data.nickname ?? null,
       profilePhoto: data.profilePhoto ?? null,

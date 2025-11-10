@@ -41,4 +41,29 @@ export class PrismaPlayRepository implements PlayRepository {
       where: { id },
     })
   }
+
+  async findVideosByAthleteId(athleteId: string): Promise<Play[]> {
+    return prisma.play.findMany({
+      where: {
+        match: {
+          athleteId,
+        },
+        videoUrl: {
+          not: null,
+        },
+      },
+      include: {
+        match: {
+          select: {
+            id: true,
+            adversaryTeam: true,
+            date: true,
+            category: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20, // Limitar a 20 vídeos mais recentes
+    })
+  }
 }

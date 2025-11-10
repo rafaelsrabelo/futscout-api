@@ -9,7 +9,7 @@ export async function createMatch(
   reply: FastifyReply,
 ) {
   const createMatchBodySchema = z.object({
-    myTeam: z.string(),
+    myTeamId: z.string().uuid(),
     adversaryTeam: z.string(),
     date: z.string().transform((val) => new Date(val)),
     modality: z.enum(['FUT_11', 'FUT_7', 'FUTSAL']),
@@ -48,7 +48,7 @@ export async function createMatch(
   })
 
   const {
-    myTeam,
+    myTeamId,
     adversaryTeam,
     date,
     modality,
@@ -76,7 +76,7 @@ export async function createMatch(
 
   const match = await createMatchUseCase.execute({
     athleteId: request.user.sub,
-    myTeam,
+    myTeamId,
     adversaryTeam,
     date,
     modality,

@@ -3,13 +3,20 @@ import z from 'zod'
 import { PrismaUsersRepository } from '../repositories/prisma/prisma-users-repository.js'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
 import { CreateAthleteProfileUseCase } from '../use-cases/create-athlete-profile.js'
+import { validateCpf } from '../../utils/validateCpf.js'
 
 export async function createAthleteProfile(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
   const createAthleteProfileBodySchema = z.object({
-    cpf: z.string().min(11).max(14),
+    cpf: z
+      .string()
+      .min(11)
+      .max(14)
+      .refine((cpf) => validateCpf(cpf), {
+        message: 'Invalid CPF format',
+      }),
     gender: z.enum(['MALE', 'FEMALE', 'OTHER']),
     nickname: z.string().min(3).max(30).optional(),
     profilePhoto: z.string().url().optional(),
@@ -66,6 +73,9 @@ export async function createAthleteProfile(
       }
       if (error.message === 'CPF already exists') {
         return reply.status(409).send({ message: 'CPF already exists' })
+      }
+      if (error.message === 'Invalid CPF format') {
+        return reply.status(400).send({ message: 'Invalid CPF format' })
       }
     }
 

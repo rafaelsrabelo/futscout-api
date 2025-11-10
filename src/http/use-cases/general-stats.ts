@@ -261,7 +261,8 @@ export class GeneralStatsCalculator {
     return {
       id: match.id,
       date: match.date,
-      myTeam: match.myTeam,
+      // @ts-expect-error - Prisma include relation type issue
+      myTeam: match.myTeam?.name || 'Unknown Team',
       adversaryTeam: match.adversaryTeam,
       result: match.result,
       myTeamScore: match.myTeamScore,

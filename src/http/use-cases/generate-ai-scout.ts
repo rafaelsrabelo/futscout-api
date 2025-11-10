@@ -77,7 +77,8 @@ export class GenerateAIScoutUseCase {
         currentClub: athleteProfile.currentClub || 'Sem clube',
       },
       match: {
-        myTeam: match.myTeam,
+        // @ts-expect-error - Prisma include relation type issue
+        myTeam: match.myTeam?.name || 'Unknown Team',
         adversaryTeam: match.adversaryTeam,
         result: match.result,
         myTeamScore: match.myTeamScore || 0,

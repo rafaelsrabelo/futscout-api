@@ -24,6 +24,12 @@ import { generateScoutByPosition } from './controllers/generate-scout-by-positio
 import { generateAIScout } from './controllers/generate-ai-scout.js'
 import { getScout } from './controllers/get-scout.js'
 import { getGeneralStats } from './controllers/get-general-stats.js'
+import { createTeam } from './controllers/create-team.js'
+import { listMyTeams } from './controllers/list-my-teams.js'
+import { editTeam } from './controllers/edit-team.js'
+import { addTeamHistory } from './controllers/add-team-history.js'
+import { listTeamHistory } from './controllers/list-team-history.js'
+import { editTeamHistory } from './controllers/edit-team-history.js'
 import { verifyJwt } from './middlewares/verify-jwt.js'
 
 export async function appRoutes(app: FastifyInstance) {
@@ -80,4 +86,14 @@ export async function appRoutes(app: FastifyInstance) {
 
   // General stats route
   app.get('/stats/general', { onRequest: [verifyJwt] }, getGeneralStats)
+
+  // Team routes
+  app.post('/teams', { onRequest: [verifyJwt] }, createTeam)
+  app.get('/teams/my', { onRequest: [verifyJwt] }, listMyTeams)
+  app.put('/teams/:id', { onRequest: [verifyJwt] }, editTeam)
+
+  // Team history routes
+  app.post('/team-history', { onRequest: [verifyJwt] }, addTeamHistory)
+  app.get('/team-history/my', { onRequest: [verifyJwt] }, listTeamHistory)
+  app.put('/team-history/:id', { onRequest: [verifyJwt] }, editTeamHistory)
 }
