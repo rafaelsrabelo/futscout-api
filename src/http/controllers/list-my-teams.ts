@@ -18,6 +18,7 @@ export async function listMyTeams(
         nickname: team.nickname,
         acronym: team.acronym,
         shieldPhoto: team.shieldPhoto,
+        isPrincipal: team.isPrincipal,
         createdAt: team.createdAt,
       })),
     })

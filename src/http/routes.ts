@@ -16,6 +16,7 @@ import { createMatch } from './controllers/create-match.js'
 import { listMyMatches } from './controllers/list-my-matches.js'
 import { getMatch } from './controllers/get-match.js'
 import { updateMatch } from './controllers/update-match.js'
+import { deleteMatch } from './controllers/delete-match.js'
 import { addPlay } from './controllers/add-play.js'
 import { uploadVideoToPlay } from './controllers/upload-video-to-play.js'
 import { getVideoFeed } from './controllers/get-video-feed.js'
@@ -27,6 +28,7 @@ import { getGeneralStats } from './controllers/get-general-stats.js'
 import { createTeam } from './controllers/create-team.js'
 import { listMyTeams } from './controllers/list-my-teams.js'
 import { editTeam } from './controllers/edit-team.js'
+import { deleteTeam } from './controllers/delete-team.js'
 import { addTeamHistory } from './controllers/add-team-history.js'
 import { listTeamHistory } from './controllers/list-team-history.js'
 import { editTeamHistory } from './controllers/edit-team-history.js'
@@ -64,6 +66,7 @@ export async function appRoutes(app: FastifyInstance) {
   app.get('/matches', { onRequest: [verifyJwt] }, listMyMatches)
   app.get('/matches/:id', { onRequest: [verifyJwt] }, getMatch)
   app.put('/matches/:id', { onRequest: [verifyJwt] }, updateMatch)
+  app.delete('/matches/:id', { onRequest: [verifyJwt] }, deleteMatch)
   app.post('/matches/:id/plays', { onRequest: [verifyJwt] }, addPlay)
   app.post(
     '/plays/:playId/video',
@@ -91,6 +94,7 @@ export async function appRoutes(app: FastifyInstance) {
   app.post('/teams', { onRequest: [verifyJwt] }, createTeam)
   app.get('/teams/my', { onRequest: [verifyJwt] }, listMyTeams)
   app.put('/teams/:id', { onRequest: [verifyJwt] }, editTeam)
+  app.delete('/teams/:id', { onRequest: [verifyJwt] }, deleteTeam)
 
   // Team history routes
   app.post('/team-history', { onRequest: [verifyJwt] }, addTeamHistory)

@@ -57,10 +57,10 @@ export interface GeneralStatsResponse {
     headers: number
   }
   averagePerMatch: {
-    goals: number
-    assists: number
-    rating: number
-    timeOnField: number
+    goals: number // Formatado com 1 casa decimal
+    assists: number // Formatado com 1 casa decimal
+    rating: number // Formatado com 1 casa decimal
+    timeOnField: number // Formatado sem casas decimais (minutos)
   }
   positionStats: {
     starterMatches: number
@@ -81,11 +81,25 @@ export interface GeneralStatsResponse {
   }
   recentForm: {
     last5Matches: MatchSummary[]
-    winRate: number
+    winRate: number // Formatado como percentual com 1 casa decimal
+  }
+  summary?: {
+    overallPerformance: string
+    strongestSkill: string
+    preferredModality: string
+    formTrend: string
   }
 }
 
 export class GeneralStatsCalculator {
+  private static formatNumber(num: number, decimals: number = 2): number {
+    return Math.round(num * Math.pow(10, decimals)) / Math.pow(10, decimals)
+  }
+
+  private static formatPercentage(num: number): number {
+    return this.formatNumber(num, 1)
+  }
+
   static calculate(matches: Match[], plays: Play[]): GeneralStatsResponse {
     const finishedMatches = matches.filter((m) => m.result !== 'NOT_FINISHED')
 
@@ -126,14 +140,20 @@ export class GeneralStatsCalculator {
     const averagePerMatch = {
       goals:
         finishedMatches.length > 0
-          ? playsByType.goals / finishedMatches.length
+          ? this.formatNumber(playsByType.goals / finishedMatches.length, 1)
           : 0,
       assists:
         finishedMatches.length > 0
-          ? playsByType.assists / finishedMatches.length
+          ? this.formatNumber(playsByType.assists / finishedMatches.length, 1)
           : 0,
-      rating: this.calculateAverageRating(finishedMatches),
-      timeOnField: this.calculateAverageTime(finishedMatches),
+      rating: this.formatNumber(
+        this.calculateAverageRating(finishedMatches),
+        1,
+      ),
+      timeOnField: this.formatNumber(
+        this.calculateAverageTime(finishedMatches),
+        0,
+      ),
     }
 
     // Estatísticas por posição
@@ -169,6 +189,14 @@ export class GeneralStatsCalculator {
     // Forma recente
     const recentForm = this.calculateRecentForm(finishedMatches, plays)
 
+    // Resumo executivo
+    const summary = this.generateSummary(
+      finishedMatches,
+      averagePerMatch,
+      performanceByModality,
+      recentForm,
+    )
+
     return {
       totalMatches,
       matchesByResult,
@@ -180,6 +208,7 @@ export class GeneralStatsCalculator {
       performanceByCategory,
       bestPerformances,
       recentForm,
+      summary,
     }
   }
 
@@ -226,7 +255,10 @@ export class GeneralStatsCalculator {
       draws: modalityMatches.filter((m) => m.result === 'DRAW').length,
       goals: modalityPlays.filter((p) => p.playType === 'GOAL').length,
       assists: modalityPlays.filter((p) => p.playType === 'ASSIST').length,
-      averageRating: this.calculateAverageRating(modalityMatches),
+      averageRating: this.formatNumber(
+        this.calculateAverageRating(modalityMatches),
+        1,
+      ),
     }
   }
 
@@ -248,7 +280,10 @@ export class GeneralStatsCalculator {
         wins: categoryMatches.filter((m) => m.result === 'WIN').length,
         goals: categoryPlays.filter((p) => p.playType === 'GOAL').length,
         assists: categoryPlays.filter((p) => p.playType === 'ASSIST').length,
-        averageRating: this.calculateAverageRating(categoryMatches),
+        averageRating: this.formatNumber(
+          this.calculateAverageRating(categoryMatches),
+          1,
+        ),
       }
     })
 
@@ -351,11 +386,74 @@ export class GeneralStatsCalculator {
 
     const wins = sortedMatches.filter((m) => m.result === 'WIN').length
     const winRate =
-      sortedMatches.length > 0 ? (wins / sortedMatches.length) * 100 : 0
+      sortedMatches.length > 0
+        ? this.formatPercentage((wins / sortedMatches.length) * 100)
+        : 0
 
     return {
       last5Matches,
       winRate,
+    }
+  }
+
+  private static generateSummary(
+    matches: Match[],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    averagePerMatch: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    performanceByModality: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recentForm: any,
+  ) {
+    // Determinar performance geral baseado na nota média
+    let overallPerformance = 'Iniciante'
+    if (averagePerMatch.rating >= 4) {
+      overallPerformance = 'Excelente'
+    } else if (averagePerMatch.rating >= 3) {
+      overallPerformance = 'Bom'
+    } else if (averagePerMatch.rating >= 2) {
+      overallPerformance = 'Regular'
+    }
+
+    // Identificar habilidade mais forte
+    let strongestSkill = 'Versatilidade'
+    if (averagePerMatch.goals > averagePerMatch.assists) {
+      strongestSkill = 'Finalização'
+    } else if (averagePerMatch.assists > averagePerMatch.goals) {
+      strongestSkill = 'Criação de jogadas'
+    }
+
+    // Modalidade preferida (onde tem melhor performance)
+    let preferredModality = 'FUT_11'
+    let bestRating = 0
+    Object.entries(performanceByModality).forEach(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ([modality, stats]: [string, any]) => {
+        if (stats.matches > 0 && stats.averageRating > bestRating) {
+          bestRating = stats.averageRating
+          preferredModality =
+            modality === 'FUT_11'
+              ? 'Futebol 11'
+              : modality === 'FUT_7'
+                ? 'Futebol 7'
+                : 'Futsal'
+        }
+      },
+    )
+
+    // Tendência da forma
+    let formTrend = 'Estável'
+    if (recentForm.winRate >= 60) {
+      formTrend = 'Em alta'
+    } else if (recentForm.winRate <= 30) {
+      formTrend = 'Em baixa'
+    }
+
+    return {
+      overallPerformance,
+      strongestSkill,
+      preferredModality,
+      formTrend,
     }
   }
 }

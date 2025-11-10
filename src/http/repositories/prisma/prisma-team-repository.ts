@@ -39,7 +39,10 @@ export class PrismaTeamRepository implements TeamRepository {
   async findByUserId(userId: string): Promise<Team[]> {
     const teams = await prisma.team.findMany({
       where: { userId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { isPrincipal: 'desc' }, // Time principal primeiro
+        { createdAt: 'desc' }, // Depois por data de criação
+      ],
     })
 
     return teams
@@ -68,6 +71,18 @@ export class PrismaTeamRepository implements TeamRepository {
   async delete(id: string): Promise<void> {
     await prisma.team.delete({
       where: { id },
+    })
+  }
+
+  async unsetPrincipalTeams(userId: string): Promise<void> {
+    await prisma.team.updateMany({
+      where: {
+        userId,
+        isPrincipal: true,
+      },
+      data: {
+        isPrincipal: false,
+      },
     })
   }
 }

@@ -273,6 +273,7 @@ model Team {
   nickname    String?        // Nome popular/apelido (ex: "Palmeiras")
   acronym     String         
   shieldPhoto String?        
+  isPrincipal Boolean        @default(false) // Indica se é o time principal do usuário
   
   // Relacionamento com o atleta que criou o time
   userId      String         

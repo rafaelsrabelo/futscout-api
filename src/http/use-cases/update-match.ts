@@ -64,9 +64,27 @@ export class UpdateMatchUseCase {
       throw new MatchNotBelongsToAthleteError()
     }
 
+    // Calcular o resultado automaticamente se os placares foram fornecidos
+    const finalUpdateData = { ...request.updateData }
+
+    const newMyTeamScore =
+      request.updateData.myTeamScore ?? existingMatch.myTeamScore
+    const newAdversaryScore =
+      request.updateData.adversaryScore ?? existingMatch.adversaryScore
+
+    if (newMyTeamScore !== null && newAdversaryScore !== null) {
+      if (newMyTeamScore > newAdversaryScore) {
+        finalUpdateData.result = 'WIN'
+      } else if (newMyTeamScore < newAdversaryScore) {
+        finalUpdateData.result = 'LOSS'
+      } else {
+        finalUpdateData.result = 'DRAW'
+      }
+    }
+
     const updatedMatch = await this.matchRepository.update(
       request.matchId,
-      request.updateData,
+      finalUpdateData,
     )
 
     // Se a partida foi finalizada (resultado diferente de NOT_FINISHED), gerar scout automaticamente

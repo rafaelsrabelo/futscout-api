@@ -8,6 +8,7 @@ export async function createTeam(request: FastifyRequest, reply: FastifyReply) {
     nickname: z.string().min(1).max(50).optional(),
     acronym: z.string().min(1).max(10),
     shieldPhoto: z.string().url().optional(),
+    isPrincipal: z.boolean().optional().default(false),
   })
 
   const userId = request.user.sub
@@ -28,11 +29,17 @@ export async function createTeam(request: FastifyRequest, reply: FastifyReply) {
       })
     }
 
+    // Se estiver marcando como principal, desmarcar outros times principais do usuário
+    if (data.isPrincipal) {
+      await prismaTeamRepository.unsetPrincipalTeams(userId)
+    }
+
     const team = await prismaTeamRepository.create({
       name: data.name,
       nickname: data.nickname || null,
       acronym: data.acronym,
       shieldPhoto: data.shieldPhoto || null,
+      isPrincipal: data.isPrincipal,
       userId,
     })
 
@@ -43,6 +50,7 @@ export async function createTeam(request: FastifyRequest, reply: FastifyReply) {
         nickname: team.nickname,
         acronym: team.acronym,
         shieldPhoto: team.shieldPhoto,
+        isPrincipal: team.isPrincipal,
         createdAt: team.createdAt,
       },
     })

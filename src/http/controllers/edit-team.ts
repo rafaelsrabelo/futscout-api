@@ -12,6 +12,7 @@ export async function editTeam(request: FastifyRequest, reply: FastifyReply) {
     nickname: z.string().min(1).max(50).optional(),
     acronym: z.string().min(1).max(10).optional(),
     shieldPhoto: z.string().url().optional().nullable(),
+    isPrincipal: z.boolean().optional(),
   })
 
   const { id } = editTeamParamsSchema.parse(request.params)
@@ -50,12 +51,18 @@ export async function editTeam(request: FastifyRequest, reply: FastifyReply) {
       }
     }
 
+    // Se está marcando como principal, desmarcar outros times principais do usuário
+    if (data.isPrincipal === true) {
+      await prismaTeamRepository.unsetPrincipalTeams(userId)
+    }
+
     // Atualizar apenas os campos fornecidos
     const updatedTeam = await prismaTeamRepository.update(id, {
       ...(data.name && { name: data.name }),
       ...(data.nickname !== undefined && { nickname: data.nickname }),
       ...(data.acronym && { acronym: data.acronym }),
       ...(data.shieldPhoto !== undefined && { shieldPhoto: data.shieldPhoto }),
+      ...(data.isPrincipal !== undefined && { isPrincipal: data.isPrincipal }),
     })
 
     return reply.status(200).send({
@@ -65,6 +72,7 @@ export async function editTeam(request: FastifyRequest, reply: FastifyReply) {
         nickname: updatedTeam.nickname,
         acronym: updatedTeam.acronym,
         shieldPhoto: updatedTeam.shieldPhoto,
+        isPrincipal: updatedTeam.isPrincipal,
         createdAt: updatedTeam.createdAt,
         updatedAt: updatedTeam.updatedAt,
       },

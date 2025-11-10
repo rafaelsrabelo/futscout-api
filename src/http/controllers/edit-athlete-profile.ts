@@ -10,6 +10,7 @@ export async function editAthleteProfile(
   const editAthleteProfileBodySchema = z.object({
     nickname: z.string().min(2).max(50).optional(),
     profilePhoto: z.string().url().optional(),
+    birthDate: z.string().datetime().optional(), // Data de nascimento editável
     instagramUrl: z.string().url().optional(),
     twitterUrl: z.string().url().optional(),
     height: z.number().min(50).max(250).optional(), // Altura em centímetros (50cm a 250cm)

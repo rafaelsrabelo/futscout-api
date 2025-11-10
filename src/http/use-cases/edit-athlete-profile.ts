@@ -8,6 +8,7 @@ interface EditAthleteProfileUseCaseRequest {
   userId: string
   nickname?: string | undefined
   profilePhoto?: string | undefined
+  birthDate?: string | undefined // Data de nascimento editável
   instagramUrl?: string | undefined
   twitterUrl?: string | undefined
   height?: number | undefined

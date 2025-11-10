@@ -55,6 +55,24 @@ export class CreateMatchUseCase {
       throw new AthleteProfileNotFoundError()
     }
 
+    // Calcular o resultado automaticamente baseado no placar
+    let calculatedResult: MatchResult = request.result || 'NOT_FINISHED'
+
+    if (
+      request.myTeamScore !== null &&
+      request.myTeamScore !== undefined &&
+      request.adversaryScore !== null &&
+      request.adversaryScore !== undefined
+    ) {
+      if (request.myTeamScore > request.adversaryScore) {
+        calculatedResult = 'WIN'
+      } else if (request.myTeamScore < request.adversaryScore) {
+        calculatedResult = 'LOSS'
+      } else {
+        calculatedResult = 'DRAW'
+      }
+    }
+
     const match = await this.matchRepository.create({
       athlete: {
         connect: { id: athleteProfile.id },
@@ -69,7 +87,7 @@ export class CreateMatchUseCase {
       location: request.location,
       streamUrl: request.streamUrl ?? null,
       status: request.status || 'SCHEDULED',
-      result: request.result || 'NOT_FINISHED',
+      result: calculatedResult,
       myTeamScore: request.myTeamScore ?? null,
       adversaryScore: request.adversaryScore ?? null,
       playerPosition: request.playerPosition,

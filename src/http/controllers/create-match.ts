@@ -74,6 +74,25 @@ export async function createMatch(
     athleteProfileRepository,
   )
 
+  // Lógica inteligente para status baseado na data
+  const now = new Date()
+  let intelligentStatus = status || 'SCHEDULED'
+  let intelligentResult = result || 'NOT_FINISHED'
+
+  // Se a data é anterior a hoje, provavelmente é uma partida já finalizada
+  if (date < now && !status) {
+    intelligentStatus = 'FINISHED'
+
+    // Se tem placar definido, mas não tem resultado definido, usar NOT_FINISHED
+    // para que a lógica automática do use case calcule baseado no placar
+    if (
+      (myTeamScore !== undefined || adversaryScore !== undefined) &&
+      !result
+    ) {
+      intelligentResult = 'NOT_FINISHED' // Será recalculado automaticamente
+    }
+  }
+
   const match = await createMatchUseCase.execute({
     athleteId: request.user.sub,
     myTeamId,
@@ -83,8 +102,8 @@ export async function createMatch(
     category,
     location,
     streamUrl: streamUrl || null,
-    status: status || 'SCHEDULED',
-    result: result || 'NOT_FINISHED',
+    status: intelligentStatus,
+    result: intelligentResult,
     myTeamScore: myTeamScore || null,
     adversaryScore: adversaryScore || null,
     playerPosition,

@@ -3,6 +3,7 @@ export interface CreateTeamData {
   nickname?: string | null
   acronym: string
   shieldPhoto?: string | null
+  isPrincipal?: boolean
   userId: string
 }
 
@@ -10,25 +11,7 @@ export interface UpdateTeamData {
   name?: string
   acronym?: string
   shieldPhoto?: string | null
-  category?:
-    | 'U5'
-    | 'U6'
-    | 'U7'
-    | 'U8'
-    | 'U9'
-    | 'U10'
-    | 'U11'
-    | 'U12'
-    | 'U13'
-    | 'U14'
-    | 'U15'
-    | 'U16'
-    | 'U17'
-    | 'U18'
-    | 'U19'
-    | 'U20'
-    | 'AMATEUR'
-    | 'PROFESSIONAL'
+  isPrincipal?: boolean
 }
 
 export interface Team {
@@ -37,6 +20,7 @@ export interface Team {
   nickname: string | null
   acronym: string
   shieldPhoto: string | null
+  isPrincipal: boolean
   userId: string
   createdAt: Date
   updatedAt: Date
@@ -49,4 +33,5 @@ export interface TeamRepository {
   findByName(name: string, userId: string): Promise<Team | null>
   update(id: string, data: UpdateTeamData): Promise<Team>
   delete(id: string): Promise<void>
+  unsetPrincipalTeams(userId: string): Promise<void>
 }
