@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import z from 'zod'
 import { PrismaTeamRepository } from '../repositories/prisma/prisma-team-repository.js'
+import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
 
 export async function createTeam(request: FastifyRequest, reply: FastifyReply) {
   const createTeamBodySchema = z.object({
@@ -42,6 +43,19 @@ export async function createTeam(request: FastifyRequest, reply: FastifyReply) {
       isPrincipal: data.isPrincipal,
       userId,
     })
+
+    // Se está criando como principal, atualizar o currentClub do perfil do atleta
+    if (data.isPrincipal) {
+      const athleteProfileRepository = new PrismaAthleteProfileRepository()
+      try {
+        await athleteProfileRepository.update(userId, {
+          currentClub: team.name,
+        })
+      } catch (error) {
+        // Se não conseguir atualizar o perfil do atleta, não falhar a operação do time
+        console.warn('Failed to update currentClub in athlete profile:', error)
+      }
+    }
 
     return reply.status(201).send({
       team: {

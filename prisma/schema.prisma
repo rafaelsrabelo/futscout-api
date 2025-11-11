@@ -134,6 +134,13 @@ enum PlayType {
   SHOT_OFF_TARGET
 }
 
+enum PlayClassification {
+  PHYSICAL  // Physical aspects: speed, strength, endurance
+  TACTICAL  // Tactical aspects: positioning, marking, coverage
+  MENTAL    // Mental aspects: concentration, decision making, pressure
+  TECHNICAL // Technical aspects: ball control, passing, finishing
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -385,10 +392,26 @@ model Play {
   approximateTime Int?     // tempo aproximado do lance (em minutos)
   observations    String?
   
+  // Relacionamento com classificações
+  classifications PlayClassifications[]
+  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@map("plays")
+}
+
+model PlayClassifications {
+  id             String           @id @default(uuid())
+  playId         String
+  classification PlayClassification
+  
+  play           Play             @relation(fields: [playId], references: [id], onDelete: Cascade)
+  
+  createdAt      DateTime         @default(now())
+
+  @@unique([playId, classification]) // Evita classificação duplicada no mesmo play
+  @@map("play_classifications")
 }
 
 model Scout {

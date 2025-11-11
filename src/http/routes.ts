@@ -37,6 +37,8 @@ import { createObserverProfile } from './controllers/create-observer-profile.js'
 import { getObserverProfile } from './controllers/get-observer-profile.js'
 import { updateObserverProfile } from './controllers/update-observer-profile.js'
 import { uploadObserverProfilePhoto } from './controllers/upload-observer-profile-photo.js'
+import { updatePlay } from './controllers/update-play.js'
+import { syncCurrentClub } from './controllers/sync-current-club.js'
 import { verifyJwt } from './middlewares/verify-jwt.js'
 
 export async function appRoutes(app: FastifyInstance) {
@@ -78,6 +80,7 @@ export async function appRoutes(app: FastifyInstance) {
   app.put('/matches/:id', { onRequest: [verifyJwt] }, updateMatch)
   app.delete('/matches/:id', { onRequest: [verifyJwt] }, deleteMatch)
   app.post('/matches/:id/plays', { onRequest: [verifyJwt] }, addPlay)
+  app.put('/plays/:playId', { onRequest: [verifyJwt] }, updatePlay)
   app.post(
     '/plays/:playId/video',
     { onRequest: [verifyJwt] },
@@ -127,5 +130,15 @@ export async function appRoutes(app: FastifyInstance) {
     '/observer/profile/photo',
     { onRequest: [verifyJwt] },
     uploadObserverProfilePhoto,
+  )
+
+  // Utility routes
+  app.post('/athletes/sync-club', { onRequest: [verifyJwt] }, syncCurrentClub)
+
+  // Utility routes
+  app.post(
+    '/athletes/sync-current-club',
+    { onRequest: [verifyJwt] },
+    syncCurrentClub,
   )
 }

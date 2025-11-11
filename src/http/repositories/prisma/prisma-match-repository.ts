@@ -46,6 +46,9 @@ export class PrismaMatchRepository implements MatchRepository {
       where: { athleteId },
       include: {
         plays: {
+          include: {
+            classifications: true,
+          },
           orderBy: { approximateTime: 'asc' }, // Lances por tempo do jogo
         },
       },
@@ -58,6 +61,9 @@ export class PrismaMatchRepository implements MatchRepository {
       where: { id },
       include: {
         plays: {
+          include: {
+            classifications: true,
+          },
           orderBy: { approximateTime: 'asc' },
         },
       },

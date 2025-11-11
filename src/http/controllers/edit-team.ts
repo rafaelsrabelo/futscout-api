@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import z from 'zod'
 import { PrismaTeamRepository } from '../repositories/prisma/prisma-team-repository.js'
+import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
 
 export async function editTeam(request: FastifyRequest, reply: FastifyReply) {
   const editTeamParamsSchema = z.object({
@@ -64,6 +65,32 @@ export async function editTeam(request: FastifyRequest, reply: FastifyReply) {
       ...(data.shieldPhoto !== undefined && { shieldPhoto: data.shieldPhoto }),
       ...(data.isPrincipal !== undefined && { isPrincipal: data.isPrincipal }),
     })
+
+    // Se está marcando como principal, atualizar o currentClub do perfil do atleta
+    if (data.isPrincipal === true) {
+      const athleteProfileRepository = new PrismaAthleteProfileRepository()
+      try {
+        await athleteProfileRepository.update(userId, {
+          currentClub: updatedTeam.name,
+        })
+      } catch (error) {
+        // Se não conseguir atualizar o perfil do atleta, não falhar a operação do time
+        console.warn('Failed to update currentClub in athlete profile:', error)
+      }
+    }
+
+    // Se está desmarcando como principal, limpar o currentClub do perfil do atleta
+    if (data.isPrincipal === false) {
+      const athleteProfileRepository = new PrismaAthleteProfileRepository()
+      try {
+        await athleteProfileRepository.update(userId, {
+          currentClub: null,
+        })
+      } catch (error) {
+        // Se não conseguir atualizar o perfil do atleta, não falhar a operação do time
+        console.warn('Failed to clear currentClub in athlete profile:', error)
+      }
+    }
 
     return reply.status(200).send({
       team: {

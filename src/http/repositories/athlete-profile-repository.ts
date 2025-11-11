@@ -24,7 +24,7 @@ export type UpdateAthleteProfileData = {
     | 'MIDFIELDER'
     | 'FORWARD'
     | null
-  currentClub?: string
+  currentClub?: string | null
   biography?: string
   hasManager?: boolean
   managerName?: string | null

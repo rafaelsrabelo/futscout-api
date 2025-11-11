@@ -41,6 +41,7 @@ export async function getVideoFeed(
         },
       },
       include: {
+        classifications: true,
         match: {
           select: {
             id: true,

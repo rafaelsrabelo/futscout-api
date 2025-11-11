@@ -12,12 +12,18 @@ export class PrismaPlayRepository implements PlayRepository {
   async findById(id: string): Promise<Play | null> {
     return prisma.play.findUnique({
       where: { id },
+      include: {
+        classifications: true,
+      },
     })
   }
 
   async findByMatch(matchId: string): Promise<Play[]> {
     return prisma.play.findMany({
       where: { matchId },
+      include: {
+        classifications: true,
+      },
       orderBy: { approximateTime: 'asc' },
     })
   }
@@ -25,6 +31,9 @@ export class PrismaPlayRepository implements PlayRepository {
   async findManyByMatchId(matchId: string): Promise<Play[]> {
     return prisma.play.findMany({
       where: { matchId },
+      include: {
+        classifications: true,
+      },
       orderBy: { approximateTime: 'asc' },
     })
   }
@@ -53,6 +62,7 @@ export class PrismaPlayRepository implements PlayRepository {
         },
       },
       include: {
+        classifications: true,
         match: {
           select: {
             id: true,

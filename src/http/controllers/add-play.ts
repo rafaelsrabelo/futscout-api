@@ -40,6 +40,9 @@ export async function addPlay(request: FastifyRequest, reply: FastifyReply) {
     rating: z.number().int().min(1).max(5).optional(),
     approximate_time: z.number().int().min(0).max(120).optional(),
     observations: z.string().optional(),
+    classifications: z
+      .array(z.enum(['PHYSICAL', 'TACTICAL', 'MENTAL', 'TECHNICAL']))
+      .optional(),
   })
 
   const { id } = addPlayParamsSchema.parse(request.params)
@@ -50,6 +53,7 @@ export async function addPlay(request: FastifyRequest, reply: FastifyReply) {
     rating,
     approximate_time: approximateTime,
     observations,
+    classifications,
   } = addPlayBodySchema.parse(request.body)
 
   const playRepository = new PrismaPlayRepository()
@@ -70,6 +74,7 @@ export async function addPlay(request: FastifyRequest, reply: FastifyReply) {
     rating: rating || null,
     approximateTime: approximateTime || null,
     observations: observations || null,
+    classifications: classifications || [],
   })
 
   return reply.status(201).send({ play })

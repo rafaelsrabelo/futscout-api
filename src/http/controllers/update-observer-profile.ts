@@ -26,14 +26,17 @@ export async function updateObserverProfile(
       observerProfileRepository,
     )
 
-    const { observerProfile } = await updateObserverProfileUseCase.execute({
+    const updateData = {
       userId: request.user.sub,
-      cpf,
-      name,
-      currentClub,
-      phone,
-      profilePhoto,
-    })
+      ...(cpf !== undefined && { cpf }),
+      ...(name !== undefined && { name }),
+      ...(currentClub !== undefined && { currentClub }),
+      ...(phone !== undefined && { phone }),
+      ...(profilePhoto !== undefined && { profilePhoto }),
+    }
+
+    const { observerProfile } =
+      await updateObserverProfileUseCase.execute(updateData)
 
     return reply.status(200).send({
       observerProfile: {

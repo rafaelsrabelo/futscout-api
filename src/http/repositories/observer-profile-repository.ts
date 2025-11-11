@@ -2,17 +2,17 @@ export interface CreateObserverProfileData {
   userId: string
   cpf: string
   name: string
-  currentClub?: string
+  currentClub?: string | null
   phone: string
-  profilePhoto?: string
+  profilePhoto?: string | null
 }
 
 export interface UpdateObserverProfileData {
   cpf?: string
   name?: string
-  currentClub?: string
+  currentClub?: string | null
   phone?: string
-  profilePhoto?: string
+  profilePhoto?: string | null
 }
 
 export interface ObserverProfile {

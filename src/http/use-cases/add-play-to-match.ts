@@ -1,7 +1,12 @@
-import type { Play, PlayType } from '../../../generated/prisma/client.js'
+import type {
+  Play,
+  PlayType,
+  PlayClassification,
+} from '../../../generated/prisma/client.js'
 import type { PlayRepository } from '../repositories/play-repository.js'
 import type { MatchRepository } from '../repositories/match-repository.js'
 import type { AthleteProfileRepository } from '../repositories/athlete-profile-repository.js'
+import { prisma } from '../../lib/prisma.js'
 
 interface AddPlayToMatchRequest {
   matchId: string
@@ -12,6 +17,7 @@ interface AddPlayToMatchRequest {
   rating?: number | null
   approximateTime?: number | null
   observations?: string | null
+  classifications?: PlayClassification[]
 }
 
 class MatchNotFoundError extends Error {
@@ -66,19 +72,43 @@ export class AddPlayToMatchUseCase {
       throw new MatchNotBelongsToAthleteError()
     }
 
-    const play = await this.playRepository.create({
-      match: {
-        connect: { id: request.matchId },
-      },
-      playType: request.playType,
-      videoUrl: request.videoUrl ?? null,
-      photoUrl: request.photoUrl ?? null,
-      rating: request.rating ?? null,
-      approximateTime: request.approximateTime ?? null,
-      observations: request.observations ?? null,
+    // Usar transação para criar o play e suas classificações
+    const play = await prisma.$transaction(async (tx) => {
+      // Criar o play
+      const createdPlay = await tx.play.create({
+        data: {
+          match: {
+            connect: { id: request.matchId },
+          },
+          playType: request.playType,
+          videoUrl: request.videoUrl ?? null,
+          photoUrl: request.photoUrl ?? null,
+          rating: request.rating ?? null,
+          approximateTime: request.approximateTime ?? null,
+          observations: request.observations ?? null,
+        },
+      })
+
+      // Criar as classificações se fornecidas
+      if (request.classifications && request.classifications.length > 0) {
+        await tx.playClassifications.createMany({
+          data: request.classifications.map((classification) => ({
+            playId: createdPlay.id,
+            classification,
+          })),
+        })
+      }
+
+      // Buscar o play com classificações para retornar
+      return await tx.play.findUnique({
+        where: { id: createdPlay.id },
+        include: {
+          classifications: true,
+        },
+      })
     })
 
-    return play
+    return play!
   }
 }
 
