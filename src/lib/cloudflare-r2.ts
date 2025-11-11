@@ -19,9 +19,11 @@ export class CloudflareR2Service {
     this.accountId = env.CLOUDFLARE_ACCOUNT_ID
     this.apiToken = env.CLOUDFLARE_API_TOKEN
     this.bucketName = env.CLOUDFLARE_R2_BUCKET
+
+    // Se não tiver URL customizada, usa a URL pública padrão do bucket
     this.publicBaseUrl =
       env.CLOUDFLARE_R2_PUBLIC_URL ||
-      'https://pub-0dfa82468e274a9cb1498740d1ce6c91.r2.dev'
+      `https://${this.bucketName}.${this.accountId}.r2.cloudflarestorage.com`
   }
 
   /**
@@ -91,6 +93,68 @@ export class CloudflareR2Service {
         `Failed to delete video: ${error instanceof Error ? error.message : 'Unknown error'}`,
       )
     }
+  }
+
+  /**
+   * Upload image to Cloudflare R2
+   */
+  async uploadImage(
+    buffer: Buffer,
+    filename: string,
+  ): Promise<{ url: string }> {
+    // Gerar nome único para o arquivo
+    const timestamp = Date.now()
+    const uniqueFilename = `profile-photos/${timestamp}_${filename}`
+
+    try {
+      const response = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/r2/buckets/${this.bucketName}/objects/${uniqueFilename}`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${this.apiToken}`,
+            'Content-Type': this.getImageContentType(filename),
+          },
+          body: buffer as unknown as BodyInit,
+        },
+      )
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Cloudflare R2 upload error:', errorText)
+        throw new Error(`Failed to upload image: ${errorText}`)
+      }
+
+      // Construir URL pública
+      const publicUrl = `${this.publicBaseUrl}/${uniqueFilename}`
+      console.log('✅ Image uploaded successfully:', publicUrl)
+
+      return { url: publicUrl }
+    } catch (error) {
+      console.error('Error uploading image to R2:', error)
+      throw new Error(
+        `Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      )
+    }
+  }
+
+  /**
+   * Get content type for image files
+   */
+  private getImageContentType(filename: string): string {
+    const ext = filename.toLowerCase().split('.').pop()
+
+    const mimeTypes: Record<string, string> = {
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      gif: 'image/gif',
+      webp: 'image/webp',
+      bmp: 'image/bmp',
+      svg: 'image/svg+xml',
+    }
+
+    return mimeTypes[ext || ''] || 'image/jpeg'
   }
 
   /**

@@ -22,6 +22,7 @@ interface ListAthletesUseCaseResponse {
     userId: string
     gender: string
     nickname?: string | null
+    profilePhoto?: string | null
     height: number
     weight: number
     dominantFoot: string
@@ -52,6 +53,7 @@ export class ListAthletesUseCase {
         userId: athlete.userId,
         gender: athlete.gender,
         nickname: athlete.nickname,
+        profilePhoto: athlete.profilePhoto,
         height: athlete.height,
         weight: athlete.weight,
         dominantFoot: athlete.dominantFoot,

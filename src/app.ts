@@ -17,6 +17,8 @@ app.register(import('@fastify/multipart'), {
   },
 })
 
+// Note: Static files not needed - using Cloudflare R2 for image storage
+
 // Register JWT plugin
 app.register(import('@fastify/jwt'), {
   secret: env.JWT_SECRET,

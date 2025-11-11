@@ -7,6 +7,7 @@ import { getProfile } from './controllers/get-profile.js'
 import { createAthleteProfile } from './controllers/create-athlete-profile.js'
 import { editAthleteProfile } from './controllers/edit-athlete-profile.js'
 import { getMyAthleteProfile } from './controllers/get-my-athlete-profile.js'
+import { uploadProfilePhoto } from './controllers/upload-profile-photo.js'
 import { listAthletes } from './controllers/list-athletes.js'
 import { getAthlete } from './controllers/get-athlete.js'
 import { verifyEmail } from './controllers/verify-email.js'
@@ -54,6 +55,11 @@ export async function appRoutes(app: FastifyInstance) {
   )
   app.get('/athletes/profile', { onRequest: [verifyJwt] }, getMyAthleteProfile)
   app.put('/athletes/profile', { onRequest: [verifyJwt] }, editAthleteProfile)
+  app.post(
+    '/athletes/profile/photo',
+    { onRequest: [verifyJwt] },
+    uploadProfilePhoto,
+  )
   app.get('/athletes', { onRequest: [verifyJwt] }, listAthletes)
   app.get('/athletes/:id', { onRequest: [verifyJwt] }, getAthlete)
 
