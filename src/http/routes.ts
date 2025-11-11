@@ -33,6 +33,10 @@ import { deleteTeam } from './controllers/delete-team.js'
 import { addTeamHistory } from './controllers/add-team-history.js'
 import { listTeamHistory } from './controllers/list-team-history.js'
 import { editTeamHistory } from './controllers/edit-team-history.js'
+import { createObserverProfile } from './controllers/create-observer-profile.js'
+import { getObserverProfile } from './controllers/get-observer-profile.js'
+import { updateObserverProfile } from './controllers/update-observer-profile.js'
+import { uploadObserverProfilePhoto } from './controllers/upload-observer-profile-photo.js'
 import { verifyJwt } from './middlewares/verify-jwt.js'
 
 export async function appRoutes(app: FastifyInstance) {
@@ -106,4 +110,22 @@ export async function appRoutes(app: FastifyInstance) {
   app.post('/team-history', { onRequest: [verifyJwt] }, addTeamHistory)
   app.get('/team-history/my', { onRequest: [verifyJwt] }, listTeamHistory)
   app.put('/team-history/:id', { onRequest: [verifyJwt] }, editTeamHistory)
+
+  // Observer profile routes
+  app.post(
+    '/observer/profile',
+    { onRequest: [verifyJwt] },
+    createObserverProfile,
+  )
+  app.get('/observer/profile', { onRequest: [verifyJwt] }, getObserverProfile)
+  app.put(
+    '/observer/profile',
+    { onRequest: [verifyJwt] },
+    updateObserverProfile,
+  )
+  app.post(
+    '/observer/profile/photo',
+    { onRequest: [verifyJwt] },
+    uploadObserverProfilePhoto,
+  )
 }

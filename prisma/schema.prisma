@@ -146,6 +146,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   athleteProfile AthleteProfile?
+  observerProfile ObserverProfile?
   refreshTokens  RefreshToken[]
   tokenBlacklist TokenBlacklist[]
   verificationCodes VerificationCode[]
@@ -229,6 +230,23 @@ model AthleteProfile {
   updatedAt         DateTime    @updatedAt
 
   @@map("athlete_profiles")
+}
+
+model ObserverProfile {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  cpf            String   @unique
+  name           String
+  currentClub    String?  // Clube atual é opcional
+  phone          String   // Telefone de contato
+  profilePhoto   String?  // Foto de perfil
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("observer_profiles")
 }
 
 model Address {
