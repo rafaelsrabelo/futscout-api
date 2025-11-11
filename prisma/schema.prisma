@@ -159,6 +159,7 @@ model User {
   verificationCodes VerificationCode[]
   favorites      Favorite[]
   teams          Team[]
+  savedSearches  SavedSearch[]
 
   @@map("users")
 }
@@ -451,4 +452,24 @@ model Scout {
   updatedAt             DateTime       @updatedAt
 
   @@map("scouts")
+}
+
+model SavedSearch {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title       String   // "Zagueiros Canhotos Sub-15"
+  description String?  // Descrição opcional do filtro
+  
+  // Filtros salvos (JSON com os critérios)
+  filters     Json     // { "primaryPosition": "DEFENDER", "dominantFoot": "LEFT", "category": "U15", ... }
+  
+  // Metadados
+  isActive    Boolean  @default(true)  // Permite desativar sem deletar
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("saved_searches")
 }

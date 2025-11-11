@@ -39,6 +39,11 @@ import { updateObserverProfile } from './controllers/update-observer-profile.js'
 import { uploadObserverProfilePhoto } from './controllers/upload-observer-profile-photo.js'
 import { updatePlay } from './controllers/update-play.js'
 import { syncCurrentClub } from './controllers/sync-current-club.js'
+import { createSavedSearch } from './controllers/create-saved-search.js'
+import { listSavedSearches } from './controllers/list-saved-searches.js'
+import { executeSavedSearch } from './controllers/execute-saved-search.js'
+import { updateSavedSearch } from './controllers/update-saved-search.js'
+import { deleteSavedSearch } from './controllers/delete-saved-search.js'
 import { verifyJwt } from './middlewares/verify-jwt.js'
 
 export async function appRoutes(app: FastifyInstance) {
@@ -130,6 +135,21 @@ export async function appRoutes(app: FastifyInstance) {
     '/observer/profile/photo',
     { onRequest: [verifyJwt] },
     uploadObserverProfilePhoto,
+  )
+
+  // Saved searches routes (Observer only)
+  app.post('/saved-searches', { onRequest: [verifyJwt] }, createSavedSearch)
+  app.get('/saved-searches', { onRequest: [verifyJwt] }, listSavedSearches)
+  app.put('/saved-searches/:id', { onRequest: [verifyJwt] }, updateSavedSearch)
+  app.delete(
+    '/saved-searches/:id',
+    { onRequest: [verifyJwt] },
+    deleteSavedSearch,
+  )
+  app.get(
+    '/saved-searches/:id/execute',
+    { onRequest: [verifyJwt] },
+    executeSavedSearch,
   )
 
   // Utility routes
