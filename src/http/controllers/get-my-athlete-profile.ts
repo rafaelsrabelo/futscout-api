@@ -47,6 +47,7 @@ export async function getMyAthleteProfile(
         hasNutritionist: profile.hasNutritionist,
         hasPsychologist: profile.hasPsychologist,
         hasPersonalTrainer: profile.hasPersonalTrainer,
+        address: profile.address,
         favorites: favoritesCount,
         createdAt: profile.createdAt,
         updatedAt: profile.updatedAt,

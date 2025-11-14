@@ -92,6 +92,7 @@ export async function editAthleteProfile(
         hasPersonalTrainer: athleteProfile.hasPersonalTrainer,
         instagramUrl: athleteProfile.instagramUrl,
         twitterUrl: athleteProfile.twitterUrl,
+        address: athleteProfile.address,
         updatedAt: athleteProfile.updatedAt,
       },
     })

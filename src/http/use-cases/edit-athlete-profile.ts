@@ -50,7 +50,22 @@ interface EditAthleteProfileUseCaseRequest {
 }
 
 interface EditAthleteProfileUseCaseResponse {
-  athleteProfile: AthleteProfile
+  athleteProfile: AthleteProfile & {
+    address: {
+      id: string
+      athleteId: string
+      zipCode: string
+      street: string
+      number: string
+      complement: string | null
+      district: string
+      city: string
+      state: string
+      country: string
+      createdAt: Date
+      updatedAt: Date
+    } | null
+  }
 }
 
 export class EditAthleteProfileUseCase {
@@ -160,8 +175,11 @@ export class EditAthleteProfileUseCase {
       }
     }
 
+    // Return updated profile with address included
+    const updatedProfile = await this.athleteProfileRepository.findByUserId(userId)
+    
     return {
-      athleteProfile,
+      athleteProfile: updatedProfile!,
     }
   }
 }
