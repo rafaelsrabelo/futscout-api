@@ -3,6 +3,7 @@ import type {
   AthleteProfileRepository,
   CreateAthleteProfileData,
 } from '../repositories/athlete-profile-repository.js'
+import type { AddressRepository } from '../repositories/address-repository.js'
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library'
 import { validateCpf, normalizeCpf } from '../../utils/validateCpf.js'
 
@@ -31,6 +32,18 @@ interface CreateAthleteProfileUseCaseRequest {
   managerName?: string | undefined
   managerCompany?: string | undefined
   managerContact?: string | undefined
+  hasNutritionist?: boolean | undefined
+  hasPsychologist?: boolean | undefined
+  hasPersonalTrainer?: boolean | undefined
+  // Campos de endereço (opcionais)
+  zipCode?: string | undefined
+  street?: string | undefined
+  number?: string | undefined
+  complement?: string | undefined
+  district?: string | undefined
+  city?: string | undefined
+  state?: string | undefined
+  country?: string | undefined
 }
 
 interface CreateAthleteProfileUseCaseResponse {
@@ -53,6 +66,7 @@ export class CreateAthleteProfileUseCase {
   constructor(
     private athleteProfileRepository: AthleteProfileRepository,
     private usersRepository: UsersRepository,
+    private addressRepository: AddressRepository,
   ) {}
 
   async execute(
@@ -75,6 +89,14 @@ export class CreateAthleteProfileUseCase {
     )
     if (existingProfile) {
       throw new Error('User already has an athlete profile')
+    }
+
+    // Verificar se o CPF já existe
+    const existingCpf = await this.athleteProfileRepository.findByCpf(
+      normalizeCpf(data.cpf),
+    )
+    if (existingCpf) {
+      throw new Error('CPF already exists')
     }
 
     // Verificar se o nickname já existe (se fornecido)
@@ -107,11 +129,52 @@ export class CreateAthleteProfileUseCase {
       managerName: data.managerName ?? null,
       managerCompany: data.managerCompany ?? null,
       managerContact: data.managerContact ?? null,
+      hasNutritionist: data.hasNutritionist ?? false,
+      hasPsychologist: data.hasPsychologist ?? false,
+      hasPersonalTrainer: data.hasPersonalTrainer ?? false,
     }
 
     try {
       const athleteProfile =
         await this.athleteProfileRepository.create(athleteData)
+
+      // Criar endereço se fornecido
+      if (
+        data.zipCode &&
+        data.street &&
+        data.number &&
+        data.district &&
+        data.city &&
+        data.state &&
+        data.country
+      ) {
+        const addressData: {
+          athleteId: string
+          zipCode: string
+          street: string
+          number: string
+          complement?: string
+          district: string
+          city: string
+          state: string
+          country: string
+        } = {
+          athleteId: athleteProfile.id,
+          zipCode: data.zipCode,
+          street: data.street,
+          number: data.number,
+          district: data.district,
+          city: data.city,
+          state: data.state,
+          country: data.country,
+        }
+
+        if (data.complement !== undefined) {
+          addressData.complement = data.complement
+        }
+
+        await this.addressRepository.create(addressData)
+      }
 
       // Atualizar o usuário para marcar que tem perfil
       await this.usersRepository.updateProfile(data.userId, true)

@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
+import { PrismaAddressRepository } from '../repositories/prisma/prisma-address-repository.js'
 import { EditAthleteProfileUseCase } from '../use-cases/edit-athlete-profile.js'
 
 export async function editAthleteProfile(
@@ -29,6 +30,23 @@ export async function editAthleteProfile(
     managerName: z.string().max(100).nullable().optional(),
     managerCompany: z.string().max(100).nullable().optional(),
     managerContact: z.string().max(100).nullable().optional(),
+    // Acompanhamentos profissionais
+    hasNutritionist: z.boolean().optional(),
+    hasPsychologist: z.boolean().optional(),
+    hasPersonalTrainer: z.boolean().optional(),
+    // Endereço (opcional)
+    address: z
+      .object({
+        zipCode: z.string().max(10).optional(),
+        street: z.string().max(255).optional(),
+        number: z.string().max(20).optional(),
+        complement: z.string().max(100).optional(),
+        district: z.string().max(100).optional(),
+        city: z.string().max(100).optional(),
+        state: z.string().max(100).optional(),
+        country: z.string().max(100).optional(),
+      })
+      .optional(),
   })
 
   try {
@@ -36,14 +54,22 @@ export async function editAthleteProfile(
     const userId = request.user.sub
 
     const athleteProfileRepository = new PrismaAthleteProfileRepository()
+    const addressRepository = new PrismaAddressRepository()
     const editAthleteProfileUseCase = new EditAthleteProfileUseCase(
       athleteProfileRepository,
+      addressRepository,
     )
 
-    const { athleteProfile } = await editAthleteProfileUseCase.execute({
+    // Prepare data for use case, excluding undefined values
+    const { address, ...otherData } = profileData
+    const useCaseRequest = {
       userId,
-      ...profileData,
-    })
+      ...otherData,
+      ...(address !== undefined && { address }),
+    }
+
+    const { athleteProfile } =
+      await editAthleteProfileUseCase.execute(useCaseRequest)
 
     return reply.status(200).send({
       athleteProfile: {
@@ -61,6 +87,9 @@ export async function editAthleteProfile(
         managerName: athleteProfile.managerName,
         managerCompany: athleteProfile.managerCompany,
         managerContact: athleteProfile.managerContact,
+        hasNutritionist: athleteProfile.hasNutritionist,
+        hasPsychologist: athleteProfile.hasPsychologist,
+        hasPersonalTrainer: athleteProfile.hasPersonalTrainer,
         instagramUrl: athleteProfile.instagramUrl,
         twitterUrl: athleteProfile.twitterUrl,
         updatedAt: athleteProfile.updatedAt,

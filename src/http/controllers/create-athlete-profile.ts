@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify'
 import z from 'zod'
 import { PrismaUsersRepository } from '../repositories/prisma/prisma-users-repository.js'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
+import { PrismaAddressRepository } from '../repositories/prisma/prisma-address-repository.js'
 import { CreateAthleteProfileUseCase } from '../use-cases/create-athlete-profile.js'
 import { validateCpf } from '../../utils/validateCpf.js'
 
@@ -41,6 +42,18 @@ export async function createAthleteProfile(
     managerName: z.string().max(100).optional(),
     managerCompany: z.string().max(100).optional(),
     managerContact: z.string().max(100).optional(),
+    hasNutritionist: z.boolean().default(false),
+    hasPsychologist: z.boolean().default(false),
+    hasPersonalTrainer: z.boolean().default(false),
+    // Campos de endereço (opcionais)
+    zipCode: z.string().max(10).optional(),
+    street: z.string().max(255).optional(),
+    number: z.string().max(20).optional(),
+    complement: z.string().max(100).optional(),
+    district: z.string().max(100).optional(),
+    city: z.string().max(100).optional(),
+    state: z.string().max(100).optional(),
+    country: z.string().max(100).optional(),
   })
 
   const userId = request.user.sub
@@ -49,9 +62,11 @@ export async function createAthleteProfile(
   try {
     const prismaUsersRepository = new PrismaUsersRepository()
     const prismaAthleteProfileRepository = new PrismaAthleteProfileRepository()
+    const prismaAddressRepository = new PrismaAddressRepository()
     const createAthleteProfileUseCase = new CreateAthleteProfileUseCase(
       prismaAthleteProfileRepository,
       prismaUsersRepository,
+      prismaAddressRepository,
     )
 
     const { athleteProfile } = await createAthleteProfileUseCase.execute({

@@ -228,6 +228,11 @@ model AthleteProfile {
   managerCompany    String?
   managerContact    String?
   
+  // Acompanhamentos profissionais
+  hasNutritionist      Boolean     @default(false)  // Acompanhamento nutricional
+  hasPsychologist      Boolean     @default(false)  // Acompanhamento psicológico
+  hasPersonalTrainer   Boolean     @default(false)  // Treino personalizado com professor de educação física
+  
   address           Address?
   teams             AthleteTeam[]
   teamHistory       TeamHistory[]
@@ -268,7 +273,8 @@ model Address {
   complement  String?       
   district    String        
   city        String        
-  state       String         
+  state       String
+  country     String         @default("Brasil")
   
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt

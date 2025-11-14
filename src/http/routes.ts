@@ -44,6 +44,7 @@ import { listSavedSearches } from './controllers/list-saved-searches.js'
 import { executeSavedSearch } from './controllers/execute-saved-search.js'
 import { updateSavedSearch } from './controllers/update-saved-search.js'
 import { deleteSavedSearch } from './controllers/delete-saved-search.js'
+
 import { verifyJwt } from './middlewares/verify-jwt.js'
 
 export async function appRoutes(app: FastifyInstance) {
@@ -71,6 +72,7 @@ export async function appRoutes(app: FastifyInstance) {
     { onRequest: [verifyJwt] },
     uploadProfilePhoto,
   )
+
   app.get('/athletes', { onRequest: [verifyJwt] }, listAthletes)
   app.get('/athletes/:id', { onRequest: [verifyJwt] }, getAthlete)
 

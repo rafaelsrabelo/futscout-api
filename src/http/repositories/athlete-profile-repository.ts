@@ -30,6 +30,10 @@ export type UpdateAthleteProfileData = {
   managerName?: string | null
   managerCompany?: string | null
   managerContact?: string | null
+  // Acompanhamentos profissionais
+  hasNutritionist?: boolean
+  hasPsychologist?: boolean
+  hasPersonalTrainer?: boolean
 }
 
 export interface AthleteFilters {
@@ -56,6 +60,7 @@ export interface AthleteProfileRepository {
   create(data: CreateAthleteProfileData): Promise<AthleteProfile>
   findById(id: string): Promise<AthleteProfileWithUser | null>
   findByUserId(userId: string): Promise<AthleteProfile | null>
+  findByCpf(cpf: string): Promise<AthleteProfile | null>
   findMany(filters: AthleteFilters): Promise<AthleteProfileWithUser[]>
   findByNickname(nickname: string): Promise<AthleteProfile | null>
   update(

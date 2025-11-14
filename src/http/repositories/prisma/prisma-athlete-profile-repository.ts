@@ -47,6 +47,7 @@ export class PrismaAthleteProfileRepository
             isActive: true,
           },
         },
+        address: true,
       },
     })
 
@@ -84,6 +85,14 @@ export class PrismaAthleteProfileRepository
           },
         },
       },
+    })
+
+    return athleteProfile
+  }
+
+  async findByCpf(cpf: string) {
+    const athleteProfile = await prisma.athleteProfile.findUnique({
+      where: { cpf },
     })
 
     return athleteProfile
@@ -139,29 +148,7 @@ export class PrismaAthleteProfileRepository
 
     const athletes = await prisma.athleteProfile.findMany({
       where,
-      select: {
-        id: true,
-        userId: true,
-        cpf: true,
-        gender: true,
-        nickname: true,
-        profilePhoto: true, // Incluir explicitamente a foto de perfil
-        birthDate: true,
-        instagramUrl: true,
-        twitterUrl: true,
-        height: true,
-        weight: true,
-        dominantFoot: true,
-        primaryPosition: true,
-        secondaryPosition: true,
-        currentClub: true,
-        biography: true,
-        hasManager: true,
-        managerName: true,
-        managerCompany: true,
-        managerContact: true,
-        createdAt: true,
-        updatedAt: true,
+      include: {
         user: {
           select: {
             id: true,
@@ -170,6 +157,7 @@ export class PrismaAthleteProfileRepository
             isActive: true,
           },
         },
+        address: true,
       },
       orderBy: {
         createdAt: 'desc',
