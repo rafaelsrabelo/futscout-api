@@ -224,10 +224,10 @@ model AthleteProfile {
   currentClub       String?
   biography         String?
   
-  hasManager        Boolean     @default(false)
-  managerName       String?
-  managerCompany    String?
-  managerContact    String?
+  hasManager        Boolean     @default(false)  // Possui empresário ou responsável
+  managerName       String?                      // Nome do empresário ou responsável
+  managerCompany    String?                      // Empresa do empresário ou responsável
+  managerContact    String?                      // Contato do empresário ou responsável
   
   // Acompanhamentos profissionais
   hasNutritionist      Boolean     @default(false)  // Acompanhamento nutricional
