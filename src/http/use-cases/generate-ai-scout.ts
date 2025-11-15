@@ -90,7 +90,6 @@ export class GenerateAIScoutUseCase {
       plays: plays.map((play) => ({
         playType: play.playType,
         rating: play.rating || 3,
-        approximateTime: play.approximateTime || 0,
         observations: play.observations || '',
       })),
       stats: {

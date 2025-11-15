@@ -49,7 +49,7 @@ export class PrismaMatchRepository implements MatchRepository {
           include: {
             classifications: true,
           },
-          orderBy: { approximateTime: 'asc' }, // Lances por tempo do jogo
+          orderBy: { createdAt: 'asc' }, // Lances por ordem de criação
         },
       },
       orderBy: { date: 'desc' }, // Partidas mais recentes primeiro
@@ -64,7 +64,7 @@ export class PrismaMatchRepository implements MatchRepository {
           include: {
             classifications: true,
           },
-          orderBy: { approximateTime: 'asc' },
+          orderBy: { createdAt: 'asc' }, // Ordenar por data de criação
         },
       },
     })

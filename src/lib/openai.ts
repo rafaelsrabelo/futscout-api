@@ -25,7 +25,6 @@ interface PerformanceAnalysisData {
   plays: {
     playType: string
     rating: number
-    approximateTime: number
     observations: string
   }[]
   stats: {
@@ -87,7 +86,7 @@ Você é um analista de performance esportiva especializado em futebol. Analise 
 ${data.plays
   .map(
     (play, index) =>
-      `${index + 1}. ${play.playType} (${play.approximateTime}min) - Nota: ${play.rating}/5 - ${play.observations}`,
+      `${index + 1}. ${play.playType} - Nota: ${play.rating}/5 - ${play.observations}`,
   )
   .join('\n')}
 

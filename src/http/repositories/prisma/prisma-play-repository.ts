@@ -24,7 +24,7 @@ export class PrismaPlayRepository implements PlayRepository {
       include: {
         classifications: true,
       },
-      orderBy: { approximateTime: 'asc' },
+      orderBy: { createdAt: 'asc' },
     })
   }
 
@@ -34,7 +34,7 @@ export class PrismaPlayRepository implements PlayRepository {
       include: {
         classifications: true,
       },
-      orderBy: { approximateTime: 'asc' },
+      orderBy: { createdAt: 'asc' },
     })
   }
 
