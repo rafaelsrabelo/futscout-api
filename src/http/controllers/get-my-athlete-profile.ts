@@ -33,6 +33,7 @@ export async function getMyAthleteProfile(
         birthDate: profile.birthDate,
         instagramUrl: profile.instagramUrl,
         twitterUrl: profile.twitterUrl,
+        youtubeUrl: profile.youtubeUrl,
         height: profile.height,
         weight: profile.weight,
         dominantFoot: profile.dominantFoot,

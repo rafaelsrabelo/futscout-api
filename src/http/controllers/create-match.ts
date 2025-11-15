@@ -39,12 +39,13 @@ export async function createMatch(
     result: z.enum(['WIN', 'LOSS', 'DRAW', 'NOT_FINISHED']).optional(),
     myTeamScore: z.number().int().min(0).optional(),
     adversaryScore: z.number().int().min(0).optional(),
-    playerPosition: z.enum(['STARTER', 'SUBSTITUTE']),
+    playerPosition: z.enum(['STARTER', 'SUBSTITUTE']).optional(), // Pode ser definido ao finalizar
     observations: z.string().optional(),
     matchDuration: z.number().int().min(0).max(240).optional(), // duração total da partida
     approximateTime: z.number().int().min(0).max(240).optional(), // tempo jogado pelo atleta
     photoUrl: z.string().url().optional(),
     videoUrl: z.string().url().optional(),
+    youtubeUrl: z.string().url().optional(), // link do YouTube
     performanceRating: z.number().int().min(1).max(5).optional(),
   })
 
@@ -66,6 +67,7 @@ export async function createMatch(
     approximateTime,
     photoUrl,
     videoUrl,
+    youtubeUrl,
     performanceRating,
   } = createMatchBodySchema.parse(request.body)
 
@@ -108,12 +110,13 @@ export async function createMatch(
     result: intelligentResult,
     myTeamScore: myTeamScore || null,
     adversaryScore: adversaryScore || null,
-    playerPosition,
+    playerPosition: playerPosition || null,
     observations: observations || null,
     matchDuration: matchDuration || null,
     approximateTime: approximateTime || null,
     photoUrl: photoUrl || null,
     videoUrl: videoUrl || null,
+    youtubeUrl: youtubeUrl || null,
     performanceRating: performanceRating || null,
   })
 

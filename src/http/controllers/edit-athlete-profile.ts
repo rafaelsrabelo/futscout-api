@@ -14,6 +14,7 @@ export async function editAthleteProfile(
     birthDate: z.string().datetime().optional(), // Data de nascimento editável
     instagramUrl: z.string().url().optional(),
     twitterUrl: z.string().url().optional(),
+    youtubeUrl: z.string().url().optional(),
     height: z.number().min(50).max(250).optional(), // Altura em centímetros (50cm a 250cm)
     weight: z.number().min(10).max(200).optional(), // Peso em quilos (10kg a 200kg)
     dominantFoot: z.enum(['RIGHT', 'LEFT']).optional(),

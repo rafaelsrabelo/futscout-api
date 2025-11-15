@@ -22,11 +22,13 @@ interface CreateMatchRequest {
   result?: MatchResult
   myTeamScore?: number | null
   adversaryScore?: number | null
-  playerPosition: PlayerPosition
+  playerPosition?: PlayerPosition | null
   observations?: string | null
+  matchDuration?: number | null
   approximateTime?: number | null
   photoUrl?: string | null
   videoUrl?: string | null
+  youtubeUrl?: string | null
   performanceRating?: number | null
 }
 
@@ -90,11 +92,13 @@ export class CreateMatchUseCase {
       result: calculatedResult,
       myTeamScore: request.myTeamScore ?? null,
       adversaryScore: request.adversaryScore ?? null,
-      playerPosition: request.playerPosition,
+      playerPosition: request.playerPosition ?? null,
       observations: request.observations ?? null,
+      matchDuration: request.matchDuration ?? null,
       approximateTime: request.approximateTime ?? null,
       photoUrl: request.photoUrl ?? null,
       videoUrl: request.videoUrl ?? null,
+      youtubeUrl: request.youtubeUrl ?? null,
       performanceRating: request.performanceRating ?? null,
     })
 

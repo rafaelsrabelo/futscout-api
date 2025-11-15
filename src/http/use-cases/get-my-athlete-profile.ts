@@ -1,12 +1,14 @@
 import type { AthleteProfileRepository } from '../repositories/athlete-profile-repository.js'
-import type { AthleteProfile } from 'generated/prisma/client.js'
+import type { AthleteProfile, Address } from 'generated/prisma/client.js'
 
 interface GetMyAthleteProfileUseCaseRequest {
   userId: string
 }
 
 interface GetMyAthleteProfileUseCaseResponse {
-  profile: AthleteProfile
+  profile: AthleteProfile & {
+    address: Address | null
+  }
 }
 
 export class GetMyAthleteProfileUseCase {

@@ -12,6 +12,7 @@ interface EditAthleteProfileUseCaseRequest {
   birthDate?: string | undefined // Data de nascimento editável
   instagramUrl?: string | undefined
   twitterUrl?: string | undefined
+  youtubeUrl?: string | undefined
   height?: number | undefined
   weight?: number | undefined
   dominantFoot?: 'RIGHT' | 'LEFT' | undefined

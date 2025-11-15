@@ -213,6 +213,7 @@ model AthleteProfile {
 
   instagramUrl   String?
   twitterUrl     String?
+  youtubeUrl     String?
   
   height         Float         
   weight         Float 
@@ -370,13 +371,14 @@ model Match {
   myTeamScore     Int?
   adversaryScore  Int?
   
-  playerPosition  PlayerPosition
+  playerPosition  PlayerPosition?  // Titular ou reserva (pode ser definido ao finalizar)
   observations    String?
   
   matchDuration   Int?           // duração total da partida em minutos
   approximateTime Int?           // tempo em minutos que o atleta jogou
   photoUrl        String?
   videoUrl        String?
+  youtubeUrl      String?        // link do YouTube da partida
   performanceRating Int?         // nota de 1 a 5
   
   plays           Play[]

@@ -14,6 +14,7 @@ export type UpdateAthleteProfileData = {
   birthDate?: string // Data de nascimento editável
   instagramUrl?: string
   twitterUrl?: string
+  youtubeUrl?: string
   height?: number
   weight?: number
   dominantFoot?: 'RIGHT' | 'LEFT'

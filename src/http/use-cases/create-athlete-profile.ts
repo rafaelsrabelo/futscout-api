@@ -16,6 +16,7 @@ interface CreateAthleteProfileUseCaseRequest {
   birthDate: string // ISO string
   instagramUrl?: string | undefined
   twitterUrl?: string | undefined
+  youtubeUrl?: string | undefined
   height: number
   weight: number
   dominantFoot: 'RIGHT' | 'LEFT'
@@ -118,6 +119,7 @@ export class CreateAthleteProfileUseCase {
       birthDate: data.birthDate,
       instagramUrl: data.instagramUrl ?? null,
       twitterUrl: data.twitterUrl ?? null,
+      youtubeUrl: data.youtubeUrl ?? null,
       height: data.height,
       weight: data.weight,
       dominantFoot: data.dominantFoot,

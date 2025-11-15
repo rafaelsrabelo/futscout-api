@@ -56,6 +56,7 @@ export async function updateMatch(
     approximateTime: z.number().int().min(0).max(240).optional(), // tempo jogado pelo atleta
     photoUrl: z.string().url().optional(),
     videoUrl: z.string().url().optional(),
+    youtubeUrl: z.string().url().optional(), // link do YouTube
     performanceRating: z.number().int().min(1).max(5).optional(),
   })
 
