@@ -15,7 +15,6 @@ interface AddPlayToMatchRequest {
   videoUrl?: string | null
   photoUrl?: string | null
   rating?: number | null
-  approximateTime?: number | null
   observations?: string | null
   classifications?: PlayClassification[]
 }
@@ -84,7 +83,6 @@ export class AddPlayToMatchUseCase {
           videoUrl: request.videoUrl ?? null,
           photoUrl: request.photoUrl ?? null,
           rating: request.rating ?? null,
-          approximateTime: request.approximateTime ?? null,
           observations: request.observations ?? null,
         },
       })

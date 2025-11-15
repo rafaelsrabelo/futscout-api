@@ -397,7 +397,6 @@ model Play {
   videoUrl        String?
   photoUrl        String?
   rating          Int?     // nota de 1 a 5
-  approximateTime Int?     // tempo aproximado do lance (em minutos)
   observations    String?
   
   // Relacionamento com classificações

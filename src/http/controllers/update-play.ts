@@ -15,7 +15,6 @@ export async function updatePlay(request: FastifyRequest, reply: FastifyReply) {
   const updatePlayBodySchema = z.object({
     play_type: z.string().optional(),
     rating: z.number().min(1).max(5).optional(),
-    approximate_time: z.number().min(0).optional(),
     observations: z.string().optional(),
     classifications: z
       .array(z.enum(['PHYSICAL', 'TACTICAL', 'MENTAL', 'TECHNICAL']))
@@ -26,7 +25,6 @@ export async function updatePlay(request: FastifyRequest, reply: FastifyReply) {
   const {
     play_type: playType,
     rating,
-    approximate_time: approximateTime,
     observations,
     classifications,
   } = updatePlayBodySchema.parse(request.body)
@@ -39,7 +37,6 @@ export async function updatePlay(request: FastifyRequest, reply: FastifyReply) {
       playId,
       ...(playType && { playType: playType as PlayType }),
       ...(rating !== undefined && { rating }),
-      ...(approximateTime !== undefined && { approximateTime }),
       ...(observations && { observations }),
       ...(classifications && {
         classifications: classifications as PlayClassification[],

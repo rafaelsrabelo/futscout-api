@@ -10,7 +10,6 @@ interface UpdatePlayRequest {
   playId: string
   playType?: PlayType
   rating?: number
-  approximateTime?: number
   observations?: string
   classifications?: PlayClassification[]
 }
@@ -26,7 +25,6 @@ export class UpdatePlayUseCase {
     playId,
     playType,
     rating,
-    approximateTime,
     observations,
     classifications,
   }: UpdatePlayRequest): Promise<UpdatePlayResponse> {
@@ -45,7 +43,6 @@ export class UpdatePlayUseCase {
           data: {
             ...(playType && { playType }),
             ...(rating && { rating }),
-            ...(approximateTime && { approximateTime }),
             ...(observations && { observations }),
           },
         })
@@ -82,7 +79,6 @@ export class UpdatePlayUseCase {
       await this.playRepository.update(playId, {
         ...(playType && { playType }),
         ...(rating && { rating }),
-        ...(approximateTime && { approximateTime }),
         ...(observations && { observations }),
       })
 
