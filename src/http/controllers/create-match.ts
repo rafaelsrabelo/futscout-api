@@ -41,7 +41,8 @@ export async function createMatch(
     adversaryScore: z.number().int().min(0).optional(),
     playerPosition: z.enum(['STARTER', 'SUBSTITUTE']),
     observations: z.string().optional(),
-    approximateTime: z.number().int().min(0).max(120).optional(),
+    matchDuration: z.number().int().min(0).max(240).optional(), // duração total da partida
+    approximateTime: z.number().int().min(0).max(240).optional(), // tempo jogado pelo atleta
     photoUrl: z.string().url().optional(),
     videoUrl: z.string().url().optional(),
     performanceRating: z.number().int().min(1).max(5).optional(),
@@ -61,6 +62,7 @@ export async function createMatch(
     adversaryScore,
     playerPosition,
     observations,
+    matchDuration,
     approximateTime,
     photoUrl,
     videoUrl,
@@ -108,6 +110,7 @@ export async function createMatch(
     adversaryScore: adversaryScore || null,
     playerPosition,
     observations: observations || null,
+    matchDuration: matchDuration || null,
     approximateTime: approximateTime || null,
     photoUrl: photoUrl || null,
     videoUrl: videoUrl || null,

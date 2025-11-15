@@ -373,7 +373,8 @@ model Match {
   playerPosition  PlayerPosition
   observations    String?
   
-  approximateTime Int?           // tempo em minutos em campo
+  matchDuration   Int?           // duração total da partida em minutos
+  approximateTime Int?           // tempo em minutos que o atleta jogou
   photoUrl        String?
   videoUrl        String?
   performanceRating Int?         // nota de 1 a 5

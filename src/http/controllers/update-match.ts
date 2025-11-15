@@ -52,7 +52,8 @@ export async function updateMatch(
     adversaryScore: z.number().int().min(0).optional(),
     playerPosition: z.enum(['STARTER', 'SUBSTITUTE']).optional(),
     observations: z.string().optional(),
-    approximateTime: z.number().int().min(0).max(120).optional(),
+    matchDuration: z.number().int().min(0).max(240).optional(), // duração total da partida
+    approximateTime: z.number().int().min(0).max(240).optional(), // tempo jogado pelo atleta
     photoUrl: z.string().url().optional(),
     videoUrl: z.string().url().optional(),
     performanceRating: z.number().int().min(1).max(5).optional(),
