@@ -397,6 +397,7 @@ model Play {
   
   playType        PlayType
   videoUrl        String?
+  thumbnailUrl    String?  // Thumbnail gerado automaticamente do vídeo
   photoUrl        String?
   rating          Int?     // nota de 1 a 5
   observations    String?

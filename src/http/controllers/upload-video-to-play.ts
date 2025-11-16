@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { CloudflareR2Service } from '../../lib/cloudflare-r2.js'
 import { prisma } from '../../lib/prisma.js'
 import { verifyJwt } from '../middlewares/verify-jwt.js'
+import { VideoThumbnailService } from '@/lib/video-thumbnail.js'
 
 const uploadVideoToPlaySchema = z.object({
   playId: z.string().uuid(),
@@ -77,6 +78,24 @@ export async function uploadVideoToPlay(
     // Upload para R2
     const uploadResult = await r2Service.uploadVideo(buffer, filename)
 
+    // Gerar thumbnail do vídeo
+    let thumbnailUrl: string | null = null
+    try {
+      const thumbnailService = new VideoThumbnailService()
+      const thumbnailBuffer = await thumbnailService.generateThumbnail(
+        buffer,
+        1,
+      )
+      const thumbnailResult = await r2Service.uploadThumbnail(
+        thumbnailBuffer,
+        filename,
+      )
+      thumbnailUrl = thumbnailResult.url
+    } catch (error) {
+      console.warn('Erro ao gerar thumbnail:', error)
+      // Não falhar o upload se não conseguir gerar o thumbnail
+    }
+
     // Remover vídeo antigo se existir
     if (play.videoUrl) {
       try {
@@ -97,6 +116,7 @@ export async function uploadVideoToPlay(
       },
       data: {
         videoUrl: uploadResult.url,
+        thumbnailUrl,
       },
       include: {
         match: {

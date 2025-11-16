@@ -179,6 +179,47 @@ export class CloudflareR2Service {
   }
 
   /**
+   * Upload thumbnail to Cloudflare R2
+   */
+  async uploadThumbnail(
+    buffer: Buffer,
+    originalVideoFilename: string,
+  ): Promise<{ url: string }> {
+    // Gerar nome único para o thumbnail baseado no vídeo
+    const timestamp = Date.now()
+    const baseFilename = originalVideoFilename.replace(/\.[^/.]+$/, '') // Remove extensão
+    const uniqueFilename = `thumbnails/${timestamp}_${baseFilename}.jpg`
+
+    try {
+      const response = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/r2/buckets/${this.bucketName}/objects/${uniqueFilename}`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${this.apiToken}`,
+            'Content-Type': 'image/jpeg',
+          },
+          body: buffer as unknown as BodyInit,
+        },
+      )
+
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`)
+      }
+
+      // Retornar URL pública do thumbnail
+      return {
+        url: `${this.publicBaseUrl}/${uniqueFilename}`,
+      }
+    } catch (error) {
+      console.error('Error uploading thumbnail to R2:', error)
+      throw new Error(
+        `Failed to upload thumbnail: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      )
+    }
+  }
+
+  /**
    * Validate video file
    */
   validateVideo(buffer: Buffer, filename: string): void {
