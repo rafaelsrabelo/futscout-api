@@ -55,6 +55,15 @@ export async function createAthleteProfile(
     city: z.string().max(100).optional(),
     state: z.string().max(100).optional(),
     country: z.string().max(100).optional(),
+
+    // Campos de time (opcionais)
+    team: z.object({
+      name: z.string().min(1).max(100),
+      nickname: z.string().min(1).max(50).optional(),
+      acronym: z.string().min(1).max(10),
+      shieldPhoto: z.string().url().optional(),
+      isPrincipal: z.boolean().optional().default(false),
+    }).optional(),
   })
 
   const userId = request.user.sub
@@ -64,18 +73,21 @@ export async function createAthleteProfile(
     const prismaUsersRepository = new PrismaUsersRepository()
     const prismaAthleteProfileRepository = new PrismaAthleteProfileRepository()
     const prismaAddressRepository = new PrismaAddressRepository()
+    const prismaTeamRepository = new (await import('../repositories/prisma/prisma-team-repository.js')).PrismaTeamRepository()
     const createAthleteProfileUseCase = new CreateAthleteProfileUseCase(
       prismaAthleteProfileRepository,
       prismaUsersRepository,
       prismaAddressRepository,
+      prismaTeamRepository,
     )
 
-    const { athleteProfile } = await createAthleteProfileUseCase.execute({
+
+    const { athleteProfile, team } = await createAthleteProfileUseCase.execute({
       userId,
       ...data,
     })
 
-    return reply.status(201).send({ athleteProfile })
+    return reply.status(201).send({ athleteProfile, team })
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === 'User not found') {

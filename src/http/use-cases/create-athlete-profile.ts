@@ -68,6 +68,7 @@ export class CreateAthleteProfileUseCase {
     private athleteProfileRepository: AthleteProfileRepository,
     private usersRepository: UsersRepository,
     private addressRepository: AddressRepository,
+    private teamRepository?: any,
   ) {}
 
   async execute(
@@ -137,6 +138,27 @@ export class CreateAthleteProfileUseCase {
     }
 
     try {
+      let team = null
+      // Se veio dados de time, criar o time igual ao endpoint dedicado
+      if (data.team && this.teamRepository) {
+        // Se for principal, desmarcar outros
+        if (data.team.isPrincipal) {
+          await this.teamRepository.unsetPrincipalTeams(data.userId)
+        }
+        team = await this.teamRepository.create({
+          name: data.team.name,
+          nickname: data.team.nickname || null,
+          acronym: data.team.acronym,
+          shieldPhoto: data.team.shieldPhoto || null,
+          isPrincipal: data.team.isPrincipal,
+          userId: data.userId,
+        })
+        // Se principal, atualizar currentClub do perfil
+        if (data.team.isPrincipal) {
+          athleteData.currentClub = team.name
+        }
+      }
+
       const athleteProfile =
         await this.athleteProfileRepository.create(athleteData)
 
@@ -195,6 +217,7 @@ export class CreateAthleteProfileUseCase {
           currentClub: athleteProfile.currentClub,
           createdAt: athleteProfile.createdAt,
         },
+        team,
       }
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
