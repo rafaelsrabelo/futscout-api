@@ -10,7 +10,7 @@ export async function register(request: FastifyRequest, reply: FastifyReply) {
     name: z.string(),
     email: z.string().email(),
     password: z.string().min(6),
-    role: z.enum(['ATHLETE', 'OBSERVER', 'ADMIN']),
+    role: z.enum(['ATHLETE', 'OBSERVER', 'ADMIN']).optional(), // Opcional para login social
   })
   const { name, email, password, role } = registerBodySchema.parse(request.body)
 
@@ -25,7 +25,7 @@ export async function register(request: FastifyRequest, reply: FastifyReply) {
       name,
       email,
       password,
-      role,
+      ...(role && { role }),
     })
 
     return reply.status(201).send({

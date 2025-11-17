@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma.js'
+import type { User } from 'generated/prisma/client.js'
 import type { UserCreateInput } from 'generated/prisma/models.js'
 import type { UsersRepository } from '../users-repository.js'
 
@@ -22,6 +23,15 @@ export class PrismaUsersRepository implements UsersRepository {
   async findById(userId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
+    })
+
+    return user
+  }
+
+  async update(userId: string, data: Partial<User>) {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data,
     })
 
     return user

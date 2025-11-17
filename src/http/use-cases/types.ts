@@ -6,7 +6,7 @@ export interface RegisterUseCaseRequest {
   name: string
   email: string
   password: string
-  role: UserRole
+  role?: UserRole // Opcional para login social
 }
 
 export interface RegisterUseCaseResponse {

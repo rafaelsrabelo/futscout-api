@@ -146,7 +146,7 @@ model User {
   email     String   @unique
   name      String
   password  String
-  role      UserRole @default(ATHLETE)
+  role      UserRole? // Opcional - será definido após login social
   isActive  Boolean  @default(false)
   isProfile Boolean  @default(false)
   createdAt DateTime @default(now())

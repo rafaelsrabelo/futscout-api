@@ -44,6 +44,7 @@ import { listSavedSearches } from './controllers/list-saved-searches.js'
 import { executeSavedSearch } from './controllers/execute-saved-search.js'
 import { updateSavedSearch } from './controllers/update-saved-search.js'
 import { deleteSavedSearch } from './controllers/delete-saved-search.js'
+import { updateUserRole } from './controllers/update-user-role.js'
 
 import { verifyJwt } from './middlewares/verify-jwt.js'
 
@@ -58,6 +59,9 @@ export async function appRoutes(app: FastifyInstance) {
   app.get('/auth/me', { onRequest: [verifyJwt] }, getProfile)
   app.delete('/auth/sessions', { onRequest: [verifyJwt] }, logout)
   app.delete('/auth/sessions/all', { onRequest: [verifyJwt] }, logoutAll)
+
+  // User routes
+  app.patch('/users/me/role', { onRequest: [verifyJwt] }, updateUserRole)
 
   // Protected athlete routes
   app.post(
