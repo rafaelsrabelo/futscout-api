@@ -60,6 +60,7 @@ export class PrismaMatchRepository implements MatchRepository {
     return prisma.match.findUnique({
       where: { id },
       include: {
+        myTeam: true,
         plays: {
           include: {
             classifications: true,
