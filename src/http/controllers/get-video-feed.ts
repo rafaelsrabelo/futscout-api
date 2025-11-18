@@ -35,12 +35,15 @@ export async function getVideoFeed(
     // Buscar todos os lances com vídeo do atleta, ordenado por data mais recente
     const videoPlays = await prisma.play.findMany({
       where: {
-        videoUrl: { not: null }, // Apenas lances com vídeo
+        videoUrl: { not: null },
         match: {
-          athleteId: athleteProfile.id, // Apenas do atleta atual
+          athleteId: athleteProfile.id,
         },
       },
-      include: {
+      select: {
+        id: true,
+        videoUrl: true,
+        thumbnailUrl: true,
         classifications: true,
         match: {
           select: {
@@ -56,7 +59,7 @@ export async function getVideoFeed(
         },
       },
       orderBy: {
-        createdAt: 'desc', // Mais recentes primeiro (quando o vídeo foi adicionado)
+        createdAt: 'desc',
       },
       skip,
       take: limit,

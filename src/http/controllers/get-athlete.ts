@@ -28,6 +28,7 @@ type PlayData = {
   id: string
   playType: string
   videoUrl?: string | null
+  thumbnailUrl?: string | null
   createdAt: Date
   match?: {
     id: string
@@ -99,6 +100,7 @@ export async function getAthlete(request: FastifyRequest, reply: FastifyReply) {
           id: play.id,
           type: play.playType,
           videoUrl: play.videoUrl,
+          thumbnailUrl: play.thumbnailUrl,
           match: play.match
             ? {
                 id: play.match.id,
