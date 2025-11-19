@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma.js'
-import type { User } from 'generated/prisma/client.js'
+import type { AuthProvider, User } from 'generated/prisma/client.js'
 import type { UserCreateInput } from 'generated/prisma/models.js'
 import type { UsersRepository } from '../users-repository.js'
 
@@ -15,6 +15,17 @@ export class PrismaUsersRepository implements UsersRepository {
   async findByEmail(email: string) {
     const user = await prisma.user.findUnique({
       where: { email },
+    })
+
+    return user
+  }
+
+  async findByProvider(provider: AuthProvider, providerId: string) {
+    const user = await prisma.user.findFirst({
+      where: {
+        provider,
+        providerId,
+      },
     })
 
     return user

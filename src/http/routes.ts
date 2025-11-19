@@ -40,6 +40,7 @@ import { listTeamHistory } from './controllers/list-team-history.js'
 import { logout, logoutAll } from './controllers/logout.js'
 import { refreshToken } from './controllers/refresh-token.js'
 import { register } from './controllers/register.js'
+import { socialLogin } from './controllers/social-login.js'
 import { syncCurrentClub } from './controllers/sync-current-club.js'
 import { toggleFavorite } from './controllers/toggle-favorite.js'
 import { updateCompetition } from './controllers/update-competition.js'
@@ -60,6 +61,7 @@ export async function appRoutes(app: FastifyInstance) {
   app.post('/auth/users', register)
   app.post('/auth/verify-email', verifyEmail)
   app.post('/auth/sessions', authenticate)
+  app.post('/auth/social-login', socialLogin)
   app.post('/auth/refresh', refreshToken)
 
   // Protected routes

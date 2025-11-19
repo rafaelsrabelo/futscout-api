@@ -29,6 +29,10 @@ const envSchema = z.object({
   CLOUDFLARE_API_TOKEN: z.string().optional(),
   CLOUDFLARE_R2_BUCKET: z.string().optional(),
   CLOUDFLARE_R2_PUBLIC_URL: z.string().optional(),
+
+  // Social login providers
+  GOOGLE_CLIENT_IDS: z.string().optional(),
+  APPLE_CLIENT_IDS: z.string().optional(),
 })
 
 const _env = envSchema.safeParse(process.env)
@@ -49,7 +53,6 @@ export function getDatabaseUrl(): string {
       return DATABASE_URL_TEST || DATABASE_URL
     case 'production':
       return DATABASE_URL_PROD || DATABASE_URL
-    case 'dev':
     default:
       return DATABASE_URL
   }

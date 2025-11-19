@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import { PrismaClient } from '../generated/prisma/client.js'
 import {
+  AuthProvider,
   Category,
   DominantFoot,
   Gender,
@@ -216,6 +217,9 @@ async function main() {
         password: 'senha123', // Senha padrão para todos
         role: 'ATHLETE',
         isActive: true, // Ativamos todos para teste
+        provider: AuthProvider.CREDENTIALS,
+        providerId: null,
+        emailVerified: true,
         athleteProfile: {
           create: {
             cpf: generateFakeCPF(),
