@@ -63,10 +63,13 @@ export class CreateObserverProfileUseCase {
       ...(profilePhoto && { profilePhoto }),
     })
 
-    // Atualizar o campo isProfile para true no usuário
+    // Atualizar o campo isProfile para true e sincronizar o nome no usuário
     await prisma.user.update({
       where: { id: userId },
-      data: { isProfile: true },
+      data: {
+        isProfile: true,
+        name, // Sincroniza o nome do perfil com o nome do usuário
+      },
     })
 
     return {

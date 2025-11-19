@@ -1,15 +1,16 @@
-import type { UsersRepository } from '../repositories/users-repository.js'
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library'
+import { normalizeCpf, validateCpf } from '../../utils/validateCpf.js'
+import type { AddressRepository } from '../repositories/address-repository.js'
 import type {
   AthleteProfileRepository,
   CreateAthleteProfileData,
 } from '../repositories/athlete-profile-repository.js'
-import type { AddressRepository } from '../repositories/address-repository.js'
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library'
-import { validateCpf, normalizeCpf } from '../../utils/validateCpf.js'
+import type { UsersRepository } from '../repositories/users-repository.js'
 
 interface CreateAthleteProfileUseCaseRequest {
   userId: string
   cpf: string
+  name: string
   gender: 'MALE' | 'FEMALE' | 'OTHER'
   nickname?: string | undefined
   profilePhoto?: string | undefined
@@ -45,6 +46,16 @@ interface CreateAthleteProfileUseCaseRequest {
   city?: string | undefined
   state?: string | undefined
   country?: string | undefined
+  // Campos de time (opcionais)
+  team?:
+    | {
+        name: string
+        nickname?: string | undefined
+        acronym: string
+        shieldPhoto?: string | undefined
+        isPrincipal?: boolean | undefined
+      }
+    | undefined
 }
 
 interface CreateAthleteProfileUseCaseResponse {
@@ -61,6 +72,16 @@ interface CreateAthleteProfileUseCaseResponse {
     currentClub?: string | null
     createdAt: Date
   }
+  team?: {
+    id: string
+    name: string
+    nickname?: string | null
+    acronym: string
+    shieldPhoto?: string | null
+    isPrincipal: boolean
+    createdAt: Date
+    updatedAt: Date
+  } | null
 }
 
 export class CreateAthleteProfileUseCase {
@@ -200,8 +221,11 @@ export class CreateAthleteProfileUseCase {
         await this.addressRepository.create(addressData)
       }
 
-      // Atualizar o usuário para marcar que tem perfil
+      // Atualizar o usuário para marcar que tem perfil e sincronizar o nome
       await this.usersRepository.updateProfile(data.userId, true)
+      await this.usersRepository.update(data.userId, {
+        name: data.name, // Sincroniza o nome do perfil com o nome do usuário
+      })
 
       return {
         athleteProfile: {

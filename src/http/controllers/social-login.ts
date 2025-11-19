@@ -54,7 +54,6 @@ export async function socialLogin(
     const resolvedName =
       fullName ??
       providerProfile.name ??
-      resolvedEmail ??
       (provider === 'GOOGLE' ? 'Usuário Google' : 'Usuário Apple');
 
     const usersRepository = new PrismaUsersRepository();

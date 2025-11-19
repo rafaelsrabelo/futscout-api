@@ -18,6 +18,7 @@ export async function createAthleteProfile(
       .refine((cpf) => validateCpf(cpf), {
         message: 'Invalid CPF format',
       }),
+    name: z.string().min(2).max(100),
     gender: z.enum(['MALE', 'FEMALE', 'OTHER']),
     nickname: z.string().min(3).max(30).optional(),
     profilePhoto: z.string().url().optional(),

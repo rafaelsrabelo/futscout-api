@@ -37,9 +37,17 @@ export class SocialLoginUseCase {
 
       const passwordHash = await hash(randomUUID(), 6);
 
+      const defaultName =
+        name ??
+        (provider === 'GOOGLE'
+          ? 'Usuário Google'
+          : provider === 'APPLE'
+            ? 'Usuário Apple'
+            : 'Usuário');
+
       user = await this.usersRepository.create({
         email,
-        name: name ?? email.split('@')[0],
+        name: defaultName,
         password: passwordHash,
         role: null,
         isActive: true,
@@ -63,8 +71,26 @@ export class SocialLoginUseCase {
         updates.isActive = true;
       }
 
-      if (name && user.name !== name) {
-        updates.name = name;
+      // Garantir que o usuário sempre tenha um nome válido
+      const defaultName =
+        name ??
+        (provider === 'GOOGLE'
+          ? 'Usuário Google'
+          : provider === 'APPLE'
+            ? 'Usuário Apple'
+            : 'Usuário');
+
+      // Atualiza o nome se:
+      // 1. O usuário não tem nome válido (vazio ou genérico)
+      // 2. O nome fornecido é diferente e mais específico
+      const isGenericName =
+        !user.name ||
+        user.name === 'Usuário' ||
+        user.name === 'Usuário Google' ||
+        user.name === 'Usuário Apple';
+
+      if (isGenericName || (name && user.name !== name)) {
+        updates.name = defaultName;
       }
 
       if (Object.keys(updates).length > 0) {
