@@ -1,12 +1,16 @@
 import { fastify } from 'fastify'
-import { appRoutes } from './http/routes.js'
 import { ZodError } from 'zod'
 import { env } from './env/index.js'
+import { appRoutes } from './http/routes.js'
 import { AthleteProfileNotFoundError } from './http/use-cases/create-match.js'
 import {
-  MatchNotFoundError,
   MatchNotBelongsToAthleteError,
+  MatchNotFoundError,
 } from './http/use-cases/get-match.js'
+import {
+  CompetitionNotBelongsToAthleteError,
+  CompetitionNotFoundError,
+} from './http/use-cases/update-competition.js'
 
 export const app = fastify()
 
@@ -48,6 +52,18 @@ app.setErrorHandler((error, request, reply) => {
   }
 
   if (error instanceof MatchNotBelongsToAthleteError) {
+    return reply.status(403).send({
+      message: 'Access denied',
+    })
+  }
+
+  if (error instanceof CompetitionNotFoundError) {
+    return reply.status(404).send({
+      message: 'Competition not found',
+    })
+  }
+
+  if (error instanceof CompetitionNotBelongsToAthleteError) {
     return reply.status(403).send({
       message: 'Access denied',
     })

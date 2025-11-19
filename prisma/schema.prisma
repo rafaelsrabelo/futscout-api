@@ -243,6 +243,7 @@ model AthleteProfile {
   favorites         Favorite[]
   matches           Match[]
   plays             Play[]       // Lances sem partida
+  competitions      Competition[] // Competições criadas pelo atleta
   
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
@@ -327,6 +328,29 @@ model Team {
   @@map("teams")
 }
 
+model Competition {
+  id          String         @id @default(uuid())
+  name        String         // Nome da competição (ex: "Campeonato Cearense 2024")
+  description String?        // Descrição opcional
+  startDate   DateTime?      // Data de início
+  endDate     DateTime?      // Data de término
+  location    String?        // Local da competição
+  modality    Modality?      // Modalidade da competição
+  category    Category?      // Categoria da competição
+  
+  // Relacionamento com o atleta que criou a competição
+  athleteId   String
+  athlete     AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  
+  // Relacionamentos
+  matches     Match[]        // Partidas da competição
+  
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("competitions")
+}
+
 model AthleteTeam {
   id        String         @id @default(uuid())
   athleteId String
@@ -369,6 +393,10 @@ model Match {
   category        Category
   location        String
   streamUrl       String?
+  
+  // Relacionamento com competição (opcional - se null, é amistoso)
+  competitionId  String?
+  competition    Competition?   @relation(fields: [competitionId], references: [id], onDelete: SetNull)
   
   status          MatchStatus    @default(SCHEDULED)
   result          MatchResult    @default(NOT_FINISHED)

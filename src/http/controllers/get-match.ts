@@ -1,8 +1,8 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
-import { GetMatchUseCase } from '../use-cases/get-match.js'
-import { PrismaMatchRepository } from '../repositories/prisma/prisma-match-repository.js'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
+import { PrismaMatchRepository } from '../repositories/prisma/prisma-match-repository.js'
+import { GetMatchUseCase } from '../use-cases/get-match.js'
 
 export async function getMatch(request: FastifyRequest, reply: FastifyReply) {
   const getMatchParamsSchema = z.object({
@@ -32,5 +32,23 @@ export async function getMatch(request: FastifyRequest, reply: FastifyReply) {
     includePlays,
   })
 
-  return reply.send({ match })
+  // Adicionar informações de competição/amistoso
+  const matchWithCompetition = match as typeof match & {
+    competitionId?: string | null
+    competition?: {
+      id: string
+      name: string
+      description: string | null
+      startDate: Date | null
+      endDate: Date | null
+    } | null
+  }
+
+  const enrichedMatch = {
+    ...matchWithCompetition,
+    isFriendly: !matchWithCompetition.competitionId,
+    competitionName: matchWithCompetition.competition?.name || null,
+  }
+
+  return reply.send({ match: enrichedMatch })
 }

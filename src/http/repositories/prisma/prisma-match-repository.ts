@@ -14,6 +14,15 @@ export class PrismaMatchRepository implements MatchRepository {
       where: { id },
       include: {
         myTeam: true,
+        competition: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
       },
     })
   }
@@ -23,6 +32,15 @@ export class PrismaMatchRepository implements MatchRepository {
       where: { athleteId },
       include: {
         myTeam: true,
+        competition: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
       },
       orderBy: { date: 'desc' }, // Mais recentes primeiro
     }) as unknown as Match[]
@@ -45,6 +63,16 @@ export class PrismaMatchRepository implements MatchRepository {
     return prisma.match.findMany({
       where: { athleteId },
       include: {
+        myTeam: true,
+        competition: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
         plays: {
           include: {
             classifications: true,
@@ -61,6 +89,15 @@ export class PrismaMatchRepository implements MatchRepository {
       where: { id },
       include: {
         myTeam: true,
+        competition: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
         plays: {
           include: {
             classifications: true,
@@ -83,6 +120,15 @@ export class PrismaMatchRepository implements MatchRepository {
       },
       include: {
         myTeam: true,
+        competition: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
       },
       orderBy: { date: 'desc' },
     }) as unknown as Match[]

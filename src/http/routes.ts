@@ -3,11 +3,13 @@ import { addPlay } from './controllers/add-play.js'
 import { addTeamHistory } from './controllers/add-team-history.js'
 import { authenticate } from './controllers/authenticate.js'
 import { createAthleteProfile } from './controllers/create-athlete-profile.js'
+import { createCompetition } from './controllers/create-competition.js'
 import { createMatch } from './controllers/create-match.js'
 import { createObserverProfile } from './controllers/create-observer-profile.js'
 import { createSavedSearch } from './controllers/create-saved-search.js'
 import { createStandalonePlay } from './controllers/create-standalone-play.js'
 import { createTeam } from './controllers/create-team.js'
+import { deleteCompetition } from './controllers/delete-competition.js'
 import { deleteMatch } from './controllers/delete-match.js'
 import { deletePlay } from './controllers/delete-play.js'
 import { deleteSavedSearch } from './controllers/delete-saved-search.js'
@@ -20,6 +22,7 @@ import { generateAIScout } from './controllers/generate-ai-scout.js'
 import { generateScoutByPosition } from './controllers/generate-scout-by-position.js'
 import { generateScout } from './controllers/generate-scout.js'
 import { getAthlete } from './controllers/get-athlete.js'
+import { getCompetition } from './controllers/get-competition.js'
 import { getGeneralStats } from './controllers/get-general-stats.js'
 import { getMatch } from './controllers/get-match.js'
 import { getMyAthleteProfile } from './controllers/get-my-athlete-profile.js'
@@ -29,6 +32,7 @@ import { getScout } from './controllers/get-scout.js'
 import { getVideoFeed } from './controllers/get-video-feed.js'
 import { listAthletes } from './controllers/list-athletes.js'
 import { listFavorites } from './controllers/list-favorites.js'
+import { listMyCompetitions } from './controllers/list-my-competitions.js'
 import { listMyMatches } from './controllers/list-my-matches.js'
 import { listMyTeams } from './controllers/list-my-teams.js'
 import { listSavedSearches } from './controllers/list-saved-searches.js'
@@ -38,6 +42,7 @@ import { refreshToken } from './controllers/refresh-token.js'
 import { register } from './controllers/register.js'
 import { syncCurrentClub } from './controllers/sync-current-club.js'
 import { toggleFavorite } from './controllers/toggle-favorite.js'
+import { updateCompetition } from './controllers/update-competition.js'
 import { updateMatch } from './controllers/update-match.js'
 import { updateObserverProfile } from './controllers/update-observer-profile.js'
 import { updatePlay } from './controllers/update-play.js'
@@ -85,6 +90,13 @@ export async function appRoutes(app: FastifyInstance) {
   // Favorite routes
   app.post('/athletes/:id/favorite', { onRequest: [verifyJwt] }, toggleFavorite)
   app.get('/athletes/favorites', { onRequest: [verifyJwt] }, listFavorites)
+
+  // Competition routes
+  app.post('/competitions', { onRequest: [verifyJwt] }, createCompetition)
+  app.get('/competitions', { onRequest: [verifyJwt] }, listMyCompetitions)
+  app.get('/competitions/:id', { onRequest: [verifyJwt] }, getCompetition)
+  app.put('/competitions/:id', { onRequest: [verifyJwt] }, updateCompetition)
+  app.delete('/competitions/:id', { onRequest: [verifyJwt] }, deleteCompetition)
 
   // Match routes
   app.post('/matches', { onRequest: [verifyJwt] }, createMatch)

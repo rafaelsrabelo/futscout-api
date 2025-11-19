@@ -16,6 +16,14 @@ type MatchData = {
   myTeamScore: number | null
   adversaryScore: number | null
   performanceRating: number | null
+  competitionId?: string | null
+  competition?: {
+    id: string
+    name: string
+    description: string | null
+    startDate: Date | null
+    endDate: Date | null
+  } | null
   myTeam?: {
     id: string
     name: string
@@ -101,6 +109,17 @@ export async function getAthlete(request: FastifyRequest, reply: FastifyReply) {
           myTeamScore: match.myTeamScore,
           adversaryScore: match.adversaryScore,
           performanceRating: match.performanceRating,
+          isFriendly: !match.competitionId,
+          competitionName: match.competition?.name || null,
+          competition: match.competition
+            ? {
+                id: match.competition.id,
+                name: match.competition.name,
+                description: match.competition.description,
+                startDate: match.competition.startDate,
+                endDate: match.competition.endDate,
+              }
+            : null,
         })),
         videoFeed: videoFeed.map((play: PlayData) => ({
           id: play.id,

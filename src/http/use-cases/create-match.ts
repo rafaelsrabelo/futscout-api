@@ -1,23 +1,25 @@
 import type {
-  Match,
-  Modality,
   Category,
+  Match,
   MatchResult,
   MatchStatus,
+  Modality,
   PlayerPosition,
 } from '../../../generated/prisma/client.js'
-import type { MatchRepository } from '../repositories/match-repository.js'
 import type { AthleteProfileRepository } from '../repositories/athlete-profile-repository.js'
+import type { CompetitionRepository } from '../repositories/competition-repository.js'
+import type { MatchRepository } from '../repositories/match-repository.js'
 
 interface CreateMatchRequest {
   athleteId: string
   myTeamId: string
   adversaryTeam: string
   date: Date
-  modality: Modality
-  category: Category
-  location: string
+  modality?: Modality // Opcional se competitionId for fornecido
+  category?: Category // Opcional se competitionId for fornecido
+  location?: string // Opcional se competitionId for fornecido
   streamUrl?: string | null
+  competitionId?: string | null // Se null, é amistoso
   status?: MatchStatus
   result?: MatchResult
   myTeamScore?: number | null
@@ -45,6 +47,7 @@ export class CreateMatchUseCase {
   constructor(
     private matchRepository: MatchRepository,
     private athleteProfileRepository: AthleteProfileRepository,
+    private competitionRepository?: CompetitionRepository,
   ) {}
 
   async execute(request: CreateMatchRequest): Promise<Match> {
@@ -55,6 +58,47 @@ export class CreateMatchUseCase {
 
     if (!athleteProfile) {
       throw new AthleteProfileNotFoundError()
+    }
+
+    // Se competitionId for fornecido, buscar a competição para preencher campos faltantes
+    let finalModality: Modality | undefined = request.modality
+    let finalCategory: Category | undefined = request.category
+    let finalLocation: string | undefined = request.location
+
+    if (request.competitionId && this.competitionRepository) {
+      const competition = await this.competitionRepository.findById(
+        request.competitionId,
+      )
+
+      if (competition) {
+        // Preencher com valores da competição se não foram fornecidos
+        if (!finalModality && competition.modality) {
+          finalModality = competition.modality
+        }
+        if (!finalCategory && competition.category) {
+          finalCategory = competition.category
+        }
+        if (!finalLocation && competition.location) {
+          finalLocation = competition.location
+        }
+      }
+    }
+
+    // Validar que os campos obrigatórios estão preenchidos
+    if (!finalModality) {
+      throw new Error(
+        'modality is required. Provide it in the request or ensure the competition has a modality.',
+      )
+    }
+    if (!finalCategory) {
+      throw new Error(
+        'category is required. Provide it in the request or ensure the competition has a category.',
+      )
+    }
+    if (!finalLocation) {
+      throw new Error(
+        'location is required. Provide it in the request or ensure the competition has a location.',
+      )
     }
 
     // Calcular o resultado automaticamente baseado no placar
@@ -84,10 +128,15 @@ export class CreateMatchUseCase {
       },
       adversaryTeam: request.adversaryTeam,
       date: request.date,
-      modality: request.modality,
-      category: request.category,
-      location: request.location,
+      modality: finalModality,
+      category: finalCategory,
+      location: finalLocation,
       streamUrl: request.streamUrl ?? null,
+      competition: request.competitionId
+        ? {
+            connect: { id: request.competitionId },
+          }
+        : undefined,
       status: request.status || 'SCHEDULED',
       result: calculatedResult,
       myTeamScore: request.myTeamScore ?? null,

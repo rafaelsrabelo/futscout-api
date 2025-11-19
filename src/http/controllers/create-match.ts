@@ -1,8 +1,9 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
-import { CreateMatchUseCase } from '../use-cases/create-match.js'
-import { PrismaMatchRepository } from '../repositories/prisma/prisma-match-repository.js'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
+import { PrismaCompetitionRepository } from '../repositories/prisma/prisma-competition-repository.js'
+import { PrismaMatchRepository } from '../repositories/prisma/prisma-match-repository.js'
+import { CreateMatchUseCase } from '../use-cases/create-match.js'
 
 export async function createMatch(
   request: FastifyRequest,
@@ -12,7 +13,7 @@ export async function createMatch(
     myTeamId: z.string().uuid(),
     adversaryTeam: z.string(),
     date: z.string().transform((val) => new Date(val)),
-    modality: z.enum(['FUT_11', 'FUT_7', 'FUTSAL']),
+    modality: z.enum(['FUT_11', 'FUT_7', 'FUTSAL']).optional(),
     category: z.enum([
       'U5',
       'U6',
@@ -32,9 +33,10 @@ export async function createMatch(
       'U20',
       'AMATEUR',
       'PROFESSIONAL',
-    ]),
-    location: z.string(),
+    ]).optional(),
+    location: z.string().optional(),
     streamUrl: z.string().optional(),
+    competition_id: z.string().uuid().optional(), // Se não fornecido, é amistoso
     status: z.enum(['SCHEDULED', 'LIVE', 'FINISHED', 'CANCELLED']).optional(),
     result: z.enum(['WIN', 'LOSS', 'DRAW', 'NOT_FINISHED']).optional(),
     myTeamScore: z.number().int().min(0).optional(),
@@ -49,6 +51,7 @@ export async function createMatch(
     performanceRating: z.number().int().min(1).max(5).optional(),
   })
 
+  const parsed = createMatchBodySchema.parse(request.body)
   const {
     myTeamId,
     adversaryTeam,
@@ -57,6 +60,7 @@ export async function createMatch(
     category,
     location,
     streamUrl,
+    competition_id: competitionId,
     status,
     result,
     myTeamScore,
@@ -69,13 +73,34 @@ export async function createMatch(
     videoUrl,
     youtubeUrl,
     performanceRating,
-  } = createMatchBodySchema.parse(request.body)
+  } = parsed
+
+  // Se não houver competition_id, modality, category e location são obrigatórios
+  if (!competitionId) {
+    if (!modality) {
+      return reply.status(400).send({
+        message: 'modality is required when competition_id is not provided',
+      })
+    }
+    if (!category) {
+      return reply.status(400).send({
+        message: 'category is required when competition_id is not provided',
+      })
+    }
+    if (!location) {
+      return reply.status(400).send({
+        message: 'location is required when competition_id is not provided',
+      })
+    }
+  }
 
   const matchRepository = new PrismaMatchRepository()
   const athleteProfileRepository = new PrismaAthleteProfileRepository()
+  const competitionRepository = new PrismaCompetitionRepository()
   const createMatchUseCase = new CreateMatchUseCase(
     matchRepository,
     athleteProfileRepository,
+    competitionRepository,
   )
 
   // Lógica inteligente para status baseado na data
@@ -102,10 +127,11 @@ export async function createMatch(
     myTeamId,
     adversaryTeam,
     date,
-    modality,
-    category,
-    location,
+    modality: modality || undefined,
+    category: category || undefined,
+    location: location || undefined,
     streamUrl: streamUrl || null,
+    competitionId: competitionId || null,
     status: intelligentStatus,
     result: intelligentResult,
     myTeamScore: myTeamScore || null,
