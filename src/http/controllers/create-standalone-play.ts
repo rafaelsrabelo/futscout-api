@@ -174,6 +174,7 @@ export async function createStandalonePlay(
           'MISSED_SHOT',
           'SHOT_ON_TARGET',
           'SHOT_OFF_TARGET',
+          'BEST_MOMENTS',
         ]),
         video_url: z.string().url().optional(),
         photo_url: z.string().url().optional(),
@@ -241,6 +242,7 @@ export async function createStandalonePlay(
       'MISSED_SHOT',
       'SHOT_ON_TARGET',
       'SHOT_OFF_TARGET',
+      'BEST_MOMENTS',
     ]
 
     if (!playType || !validPlayTypes.includes(playType)) {

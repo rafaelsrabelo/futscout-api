@@ -1,9 +1,9 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
-import { AddPlayToMatchUseCase } from '../use-cases/add-play-to-match.js'
-import { PrismaPlayRepository } from '../repositories/prisma/prisma-play-repository.js'
-import { PrismaMatchRepository } from '../repositories/prisma/prisma-match-repository.js'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
+import { PrismaMatchRepository } from '../repositories/prisma/prisma-match-repository.js'
+import { PrismaPlayRepository } from '../repositories/prisma/prisma-play-repository.js'
+import { AddPlayToMatchUseCase } from '../use-cases/add-play-to-match.js'
 
 export async function addPlay(request: FastifyRequest, reply: FastifyReply) {
   const addPlayParamsSchema = z.object({
@@ -34,6 +34,29 @@ export async function addPlay(request: FastifyRequest, reply: FastifyReply) {
       'PENALTY',
       'PASS',
       'KEY_PASS',
+      'PENALTY_SAVE',
+      'ONE_ON_ONE_SAVE',
+      'REFLEX_SAVE',
+      'DIVING_SAVE',
+      'CATCH',
+      'PUNCH',
+      'DISTRIBUTION',
+      'GOAL_KICK',
+      'THROW_OUT',
+      'SHOT_BLOCKED',
+      'CLEARANCE',
+      'OFFENSIVE_FOUL',
+      'DEFENSIVE_FOUL',
+      'BALL_RECOVERY',
+      'THROUGH_PASS',
+      'BACKHEEL',
+      'VOLLLEY',
+      'BICYCLE_KICK',
+      'OFFSIDE',
+      'MISSED_SHOT',
+      'SHOT_ON_TARGET',
+      'SHOT_OFF_TARGET',
+      'BEST_MOMENTS',
     ]),
     video_url: z.string().url().optional(),
     photo_url: z.string().url().optional(),

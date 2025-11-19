@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "PlayType" ADD VALUE 'BEST_MOMENTS';

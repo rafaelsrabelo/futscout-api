@@ -132,6 +132,9 @@ enum PlayType {
   MISSED_SHOT
   SHOT_ON_TARGET
   SHOT_OFF_TARGET
+  
+  // Compilações
+  BEST_MOMENTS  // Melhores momentos
 }
 
 enum PlayClassification {
