@@ -239,6 +239,7 @@ model AthleteProfile {
   teamHistory       TeamHistory[]
   favorites         Favorite[]
   matches           Match[]
+  plays             Play[]       // Lances sem partida
   
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
@@ -392,8 +393,12 @@ model Match {
 
 model Play {
   id              String   @id @default(uuid())
-  matchId         String
-  match           Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchId         String?
+  match           Match?   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  
+  // Relacionamento com atleta (para lances sem partida)
+  athleteId       String?
+  athlete         AthleteProfile? @relation(fields: [athleteId], references: [id], onDelete: Cascade)
   
   playType        PlayType
   videoUrl        String?

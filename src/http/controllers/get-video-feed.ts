@@ -11,11 +11,11 @@ export async function getVideoFeed(
       page: z
         .string()
         .optional()
-        .transform((val) => (val ? parseInt(val) : 1)),
+        .transform((val) => (val ? Number.parseInt(val, 10) : 1)),
       limit: z
         .string()
         .optional()
-        .transform((val) => (val ? parseInt(val) : 20)),
+        .transform((val) => (val ? Number.parseInt(val, 10) : 20)),
     })
 
     const { page, limit } = videoFeedQuerySchema.parse(request.query)
@@ -32,13 +32,21 @@ export async function getVideoFeed(
       })
     }
 
-    // Buscar todos os lances com vídeo do atleta, ordenado por data mais recente
+    // Buscar todos os lances com vídeo do atleta (com ou sem partida), ordenado por data mais recente
     const videoPlays = await prisma.play.findMany({
       where: {
         videoUrl: { not: null },
-        match: {
-          athleteId: athleteProfile.id,
-        },
+        OR: [
+          {
+            match: {
+              athleteId: athleteProfile.id,
+            },
+          },
+          {
+            athleteId: athleteProfile.id,
+            matchId: null, // Lances sem partida
+          },
+        ],
       },
       select: {
         id: true,
@@ -57,6 +65,13 @@ export async function getVideoFeed(
             status: true,
           },
         },
+        athlete: {
+          select: {
+            id: true,
+            nickname: true,
+            profilePhoto: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -69,9 +84,17 @@ export async function getVideoFeed(
     const totalVideos = await prisma.play.count({
       where: {
         videoUrl: { not: null },
-        match: {
-          athleteId: athleteProfile.id,
-        },
+        OR: [
+          {
+            match: {
+              athleteId: athleteProfile.id,
+            },
+          },
+          {
+            athleteId: athleteProfile.id,
+            matchId: null, // Lances sem partida
+          },
+        ],
       },
     })
 

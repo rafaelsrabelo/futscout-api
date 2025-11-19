@@ -14,6 +14,17 @@ export class PrismaPlayRepository implements PlayRepository {
       where: { id },
       include: {
         classifications: true,
+        match: {
+          select: {
+            id: true,
+            athleteId: true,
+          },
+        },
+        athlete: {
+          select: {
+            id: true,
+          },
+        },
       },
     })
   }
@@ -54,12 +65,20 @@ export class PrismaPlayRepository implements PlayRepository {
   async findVideosByAthleteId(athleteId: string): Promise<Play[]> {
     return prisma.play.findMany({
       where: {
-        match: {
-          athleteId,
-        },
         videoUrl: {
           not: null,
         },
+        OR: [
+          {
+            match: {
+              athleteId,
+            },
+          },
+          {
+            athleteId,
+            matchId: null, // Lances sem partida
+          },
+        ],
       },
       include: {
         classifications: true,
@@ -69,6 +88,13 @@ export class PrismaPlayRepository implements PlayRepository {
             adversaryTeam: true,
             date: true,
             category: true,
+          },
+        },
+        athlete: {
+          select: {
+            id: true,
+            nickname: true,
+            profilePhoto: true,
           },
         },
       },
