@@ -29,8 +29,14 @@ export async function createStandalonePlay(
     let classifications: string[] = []
 
     if (isMultipart) {
-      // Processar multipart/form-data
-      const parts = request.parts()
+      // Processar multipart/form-data usando STREAM verdadeiro
+      // request.file() carrega tudo na memória ANTES de entregar o stream!
+      // request.parts() com limites evita isso completamente
+      const parts = request.parts({
+        limits: {
+          fileSize: 120 * 1024 * 1024, // 120MB limite real no servidor
+        },
+      })
       const formData: Record<string, string | number | null> = {}
 
       for await (const part of parts) {
@@ -116,22 +122,19 @@ export async function createStandalonePlay(
               )
             }
 
-            // Gerar thumbnail ANTES de fazer upload (precisa do arquivo)
+            // Gerar thumbnail ANTES de fazer upload (usa arquivo diretamente, sem buffer!)
             let thumbnailUrl: string | null = null
             try {
               console.log('🖼️ Gerando thumbnail...')
               const thumbnailService = new VideoThumbnailService()
-              const thumbnailReadStream = createReadStream(finalVideoPath)
-              // Para thumbnail, precisamos ler em buffer (mas é pequeno)
-              const chunks: Buffer[] = []
-              for await (const chunk of thumbnailReadStream) {
-                chunks.push(chunk)
-              }
-              const thumbnailBuffer = Buffer.concat(chunks)
-              const thumbnailBufferResult =
-                await thumbnailService.generateThumbnail(thumbnailBuffer, 1)
+              // Usar caminho do arquivo diretamente - NÃO carrega vídeo na memória!
+              const thumbnailBuffer =
+                await thumbnailService.generateThumbnailFromFile(
+                  finalVideoPath,
+                  1,
+                )
               const thumbnailResult = await r2Service.uploadThumbnail(
-                thumbnailBufferResult,
+                thumbnailBuffer,
                 filename,
               )
               thumbnailUrl = thumbnailResult.url

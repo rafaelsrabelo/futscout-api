@@ -7,10 +7,44 @@ import ffmpeg from 'fluent-ffmpeg'
 
 export class VideoThumbnailService {
   /**
+   * Gera um thumbnail de um vídeo a partir de um caminho de arquivo
+   * @param videoPath - Caminho do arquivo de vídeo
+   * @param timeInSeconds - Tempo em segundos para capturar o frame (padrão: 1 segundo)
+   * @returns Buffer da imagem thumbnail (JPEG)
+   */
+  async generateThumbnailFromFile(
+    videoPath: string,
+    timeInSeconds = 1,
+  ): Promise<Buffer> {
+    const videoId = randomUUID()
+    const thumbnailPath = join(tmpdir(), `${videoId}-thumb.jpg`)
+
+    try {
+      // Gerar thumbnail usando FFmpeg diretamente do arquivo
+      await this.extractFrame(videoPath, thumbnailPath, timeInSeconds)
+
+      // Ler thumbnail gerado
+      const { readFile } = await import('node:fs/promises')
+      const thumbnailBuffer = await readFile(thumbnailPath)
+
+      return thumbnailBuffer
+    } finally {
+      // Limpar apenas o thumbnail temporário (o vídeo já existe no disco)
+      try {
+        await access(thumbnailPath, constants.F_OK)
+        await unlink(thumbnailPath)
+      } catch (error) {
+        // Arquivo não existe ou erro ao deletar - ignorar
+      }
+    }
+  }
+
+  /**
    * Gera um thumbnail de um vídeo a partir de um buffer
    * @param videoBuffer - Buffer do vídeo
    * @param timeInSeconds - Tempo em segundos para capturar o frame (padrão: 1 segundo)
    * @returns Buffer da imagem thumbnail (JPEG)
+   * @deprecated Use generateThumbnailFromFile para evitar carregar vídeo na memória
    */
   async generateThumbnail(
     videoBuffer: Buffer,

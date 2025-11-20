@@ -47,10 +47,31 @@ export async function uploadVideoToPlay(
       })
     }
 
-    // Processar upload do arquivo
-    const data = await request.file()
+    // Processar upload do arquivo usando STREAM verdadeiro
+    // request.file() carrega tudo na memória ANTES de entregar o stream!
+    // request.parts() com limites evita isso completamente
+    const parts = request.parts({
+      limits: {
+        fileSize: 120 * 1024 * 1024, // 120MB limite real no servidor
+      },
+    })
+    let videoPart: {
+      file: NodeJS.ReadableStream
+      filename?: string
+    } | null = null
 
-    if (!data) {
+    // Buscar apenas a parte do vídeo
+    for await (const part of parts) {
+      if (part.type === 'file') {
+        videoPart = {
+          file: part.file,
+          filename: part.filename,
+        }
+        break // Só processa o primeiro arquivo
+      }
+    }
+
+    if (!videoPart) {
       return reply.status(400).send({
         message: 'Nenhum arquivo foi enviado.',
       })
@@ -65,18 +86,18 @@ export async function uploadVideoToPlay(
 
     const videoId = randomUUID()
     const tempInputPath = join(tmpdir(), `${videoId}-input.mp4`)
-    const filename = data.filename || 'video.mp4'
+    const filename = videoPart.filename || 'video.mp4'
     const r2Service = new CloudflareR2Service()
 
     // Salvar stream em arquivo temporário (não carrega na memória!)
     // Com proteção contra fechamento prematuro do stream
     const writeStream = createWriteStream(tempInputPath)
-    data.file.pipe(writeStream, { end: true })
+    videoPart.file.pipe(writeStream, { end: true })
 
     await new Promise<void>((resolve, reject) => {
       writeStream.on('finish', () => resolve())
       writeStream.on('error', reject)
-      data.file.on('error', reject)
+      videoPart.file.on('error', reject)
     })
 
     // Validar tamanho do arquivo
@@ -129,22 +150,17 @@ export async function uploadVideoToPlay(
       )
     }
 
-    // Gerar thumbnail ANTES de fazer upload (precisa do arquivo)
+    // Gerar thumbnail ANTES de fazer upload (usa arquivo diretamente, sem buffer!)
     let thumbnailUrl: string | null = null
     try {
       const thumbnailService = new VideoThumbnailService()
-      const thumbnailReadStream = createReadStream(finalVideoPath)
-      const chunks: Buffer[] = []
-      for await (const chunk of thumbnailReadStream) {
-        chunks.push(chunk)
-      }
-      const thumbnailBuffer = Buffer.concat(chunks)
-      const thumbnailBufferResult = await thumbnailService.generateThumbnail(
-        thumbnailBuffer,
+      // Usar caminho do arquivo diretamente - NÃO carrega vídeo na memória!
+      const thumbnailBuffer = await thumbnailService.generateThumbnailFromFile(
+        finalVideoPath,
         1,
       )
       const thumbnailResult = await r2Service.uploadThumbnail(
-        thumbnailBufferResult,
+        thumbnailBuffer,
         filename,
       )
       thumbnailUrl = thumbnailResult.url
