@@ -105,6 +105,11 @@ export async function listMyMatches(
         ...matchWithInfo,
         isFriendly: !competitionId,
         competitionName: competition?.name || null,
+        // Flag de resultado para facilitar uso no frontend
+        resultFlag: matchWithInfo.result === 'WIN' ? 'win' : 
+                    matchWithInfo.result === 'LOSS' ? 'loss' : 
+                    matchWithInfo.result === 'DRAW' ? 'draw' : 
+                    'not_finished',
       }
 
       groupedMatches[key].matches.push(enrichedMatch)

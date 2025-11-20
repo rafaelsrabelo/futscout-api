@@ -40,19 +40,32 @@ export class VideoCompressionService {
       minSizeToCompress = 20 * 1024 * 1024, // 20MB
     } = options || {}
 
+    // Limite máximo para compressão (vídeos muito grandes podem estourar memória)
+    const MAX_SIZE_TO_COMPRESS = 100 * 1024 * 1024 // 100MB
+
     try {
       // Salvar stream em arquivo usando pipe (não carrega na memória)
       await this.saveStreamToFile(inputStream, inputPath)
 
       // Verificar tamanho do arquivo
       const stats = await stat(inputPath)
+
+      // Vídeos muito pequenos não precisam de compressão
       if (stats.size < minSizeToCompress) {
         console.log(
           `ℹ️ Vídeo pequeno (${(stats.size / 1024 / 1024).toFixed(2)}MB), pulando compressão`,
         )
-        // Limpar arquivo de input já que não vamos usar
         await unlink(inputPath).catch(() => {})
-        return null // Retorna null para indicar que não precisa comprimir
+        return null
+      }
+
+      // Vídeos muito grandes podem estourar memória - pular compressão
+      if (stats.size > MAX_SIZE_TO_COMPRESS) {
+        console.log(
+          `⚠️ Vídeo muito grande (${(stats.size / 1024 / 1024).toFixed(2)}MB > ${MAX_SIZE_TO_COMPRESS / 1024 / 1024}MB), pulando compressão para evitar estouro de memória`,
+        )
+        await unlink(inputPath).catch(() => {})
+        return null
       }
 
       // Obter metadados do vídeo

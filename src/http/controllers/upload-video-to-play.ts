@@ -89,34 +89,43 @@ export async function uploadVideoToPlay(
     }
 
     // Comprimir vídeo usando streams
+    // IMPORTANTE: Só comprime vídeos entre 20MB e 100MB para evitar estouro de memória
     let finalVideoPath = tempInputPath
-    try {
-      console.log('🗜️ Verificando necessidade de compressão...')
-      const compressionService = new VideoCompressionService()
-      const inputStream = createReadStream(tempInputPath)
-      const compressedPath = await compressionService.compressVideoStream(
-        inputStream,
-        tempInputPath,
-        {
-          maxWidth: 720,
-          maxHeight: 720,
-          videoBitrate: '1M',
-          audioBitrate: '64k',
-          maxFramerate: 30,
-          quality: 28,
-          minSizeToCompress: 20 * 1024 * 1024,
-        },
-      )
+    const fileSizeMB = fileStats.size / (1024 * 1024)
 
-      if (compressedPath) {
-        await unlink(tempInputPath).catch(() => {})
-        finalVideoPath = compressedPath
-        console.log('✅ Vídeo comprimido com sucesso!')
+    if (fileSizeMB >= 20 && fileSizeMB <= 100) {
+      try {
+        console.log(`🗜️ Comprimindo vídeo (${fileSizeMB.toFixed(2)}MB)...`)
+        const compressionService = new VideoCompressionService()
+        const inputStream = createReadStream(tempInputPath)
+        const compressedPath = await compressionService.compressVideoStream(
+          inputStream,
+          tempInputPath,
+          {
+            maxWidth: 720,
+            maxHeight: 720,
+            videoBitrate: '1M',
+            audioBitrate: '64k',
+            maxFramerate: 30,
+            quality: 28,
+            minSizeToCompress: 20 * 1024 * 1024,
+          },
+        )
+
+        if (compressedPath) {
+          await unlink(tempInputPath).catch(() => {})
+          finalVideoPath = compressedPath
+          console.log('✅ Vídeo comprimido com sucesso!')
+        }
+      } catch (error) {
+        console.warn(
+          '⚠️ Erro ao comprimir vídeo, usando original:',
+          error instanceof Error ? error.message : error,
+        )
       }
-    } catch (error) {
-      console.warn(
-        '⚠️ Erro ao comprimir vídeo, usando original:',
-        error instanceof Error ? error.message : error,
+    } else {
+      console.log(
+        `ℹ️ Vídeo ${fileSizeMB.toFixed(2)}MB fora do range de compressão (20-100MB), usando original`,
       )
     }
 

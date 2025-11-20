@@ -5,33 +5,6 @@ import { PrismaFavoriteRepository } from '../repositories/prisma/prisma-favorite
 import { PrismaMatchRepository } from '../repositories/prisma/prisma-match-repository.js'
 import { PrismaPlayRepository } from '../repositories/prisma/prisma-play-repository.js'
 
-type MatchData = {
-  id: string
-  adversaryTeam: string
-  date: Date
-  location: string
-  category: string
-  modality: string
-  result: string
-  myTeamScore: number | null
-  adversaryScore: number | null
-  performanceRating: number | null
-  competitionId?: string | null
-  competition?: {
-    id: string
-    name: string
-    description: string | null
-    startDate: Date | null
-    endDate: Date | null
-  } | null
-  myTeam?: {
-    id: string
-    name: string
-    nickname: string | null
-    acronym: string
-  } | null
-}
-
 type PlayData = {
   id: string
   playType: string
@@ -112,6 +85,7 @@ export async function getAthlete(request: FastifyRequest, reply: FastifyReply) {
           category: string
           modality: string
           result: string
+          resultFlag: 'win' | 'loss' | 'draw' | 'not_finished'
           myTeamScore: number | null
           adversaryScore: number | null
           performanceRating: number | null
@@ -130,8 +104,23 @@ export async function getAthlete(request: FastifyRequest, reply: FastifyReply) {
 
     // Separar partidas por competição ou amistoso
     for (const match of allMatches) {
+      const matchWithRelations = match as typeof match & {
+        myTeam?: {
+          id: string
+          name: string
+          nickname: string | null
+          acronym: string
+        } | null
+        competition?: {
+          id: string
+          name: string
+          description: string | null
+          startDate: Date | null
+          endDate: Date | null
+        } | null
+      }
       const competitionId = match.competitionId || null
-      const competition = match.competition || null
+      const competition = matchWithRelations.competition || null
       const key = competitionId || 'friendly'
 
       if (!groupedMatches[key]) {
@@ -154,18 +143,27 @@ export async function getAthlete(request: FastifyRequest, reply: FastifyReply) {
         id: match.id,
         adversaryTeam: match.adversaryTeam,
         date: match.date,
-        myTeam: match.myTeam
+        myTeam: matchWithRelations.myTeam
           ? {
-              id: match.myTeam.id,
-              name: match.myTeam.name,
-              nickname: match.myTeam.nickname,
-              acronym: match.myTeam.acronym,
+              id: match.myTeamId,
+              name: matchWithRelations.myTeam.name,
+              nickname: matchWithRelations.myTeam.nickname,
+              acronym: matchWithRelations.myTeam.acronym,
             }
           : null,
         location: match.location,
         category: match.category,
         modality: match.modality,
         result: match.result,
+        // Flag de resultado para facilitar uso no frontend
+        resultFlag:
+          match.result === 'WIN'
+            ? 'win'
+            : match.result === 'LOSS'
+              ? 'loss'
+              : match.result === 'DRAW'
+                ? 'draw'
+                : 'not_finished',
         myTeamScore: match.myTeamScore,
         adversaryScore: match.adversaryScore,
         performanceRating: match.performanceRating,
@@ -185,9 +183,12 @@ export async function getAthlete(request: FastifyRequest, reply: FastifyReply) {
 
     // Ordenar partidas dentro de cada grupo por data (mais recente primeiro)
     for (const key in groupedMatches) {
-      groupedMatches[key].matches.sort((a, b) => {
-        return b.date.getTime() - a.date.getTime()
-      })
+      const group = groupedMatches[key]
+      if (group) {
+        group.matches.sort((a, b) => {
+          return b.date.getTime() - a.date.getTime()
+        })
+      }
     }
 
     // Converter para array e ordenar: primeiro competições (por nome), depois amistosos

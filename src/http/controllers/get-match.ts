@@ -48,6 +48,11 @@ export async function getMatch(request: FastifyRequest, reply: FastifyReply) {
     ...matchWithCompetition,
     isFriendly: !matchWithCompetition.competitionId,
     competitionName: matchWithCompetition.competition?.name || null,
+    // Flag de resultado para facilitar uso no frontend
+    resultFlag: matchWithCompetition.result === 'WIN' ? 'win' : 
+                matchWithCompetition.result === 'LOSS' ? 'loss' : 
+                matchWithCompetition.result === 'DRAW' ? 'draw' : 
+                'not_finished',
   }
 
   return reply.send({ match: enrichedMatch })
