@@ -409,6 +409,47 @@ export async function createStandalonePlay(
       thumbnailUrl: play.thumbnailUrl,
     })
 
+    // Gerar thumbnail automaticamente se vídeo foi enviado via JSON (upload direto) e não tem thumbnail
+    if (videoUrl && !thumbnailUrl && !isMultipart) {
+      console.log(
+        '🔄 [THUMBNAIL] Vídeo enviado via JSON (upload direto), gerando thumbnail em background...',
+      )
+      console.log('🔄 [THUMBNAIL] Play ID:', play.id)
+      console.log('🔄 [THUMBNAIL] Video URL:', videoUrl)
+
+      // Importar função de geração de thumbnail
+      const { generateThumbnailAsync } = await import(
+        './create-play-with-video-url.js'
+      )
+
+      // Executar em background
+      setTimeout(async () => {
+        try {
+          console.log(
+            '🚀 [THUMBNAIL] setTimeout executado, iniciando generateThumbnailAsync...',
+          )
+          await generateThumbnailAsync(play.id, videoUrl)
+          console.log(
+            '✅ [THUMBNAIL] generateThumbnailAsync completou com sucesso',
+          )
+        } catch (error) {
+          console.error(
+            '❌ [CRITICAL] Erro ao gerar thumbnail em background:',
+            {
+              playId: play.id,
+              videoUrl: videoUrl.substring(0, 100),
+              error: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : undefined,
+            },
+          )
+        }
+      }, 0)
+
+      console.log(
+        '📅 [THUMBNAIL] Geração de thumbnail agendada para background',
+      )
+    }
+
     return reply.status(201).send({ play })
   } catch (error) {
     if (

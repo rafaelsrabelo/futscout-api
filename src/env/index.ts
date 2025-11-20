@@ -29,6 +29,10 @@ const envSchema = z.object({
   CLOUDFLARE_API_TOKEN: z.string().optional(),
   CLOUDFLARE_R2_BUCKET: z.string().optional(),
   CLOUDFLARE_R2_PUBLIC_URL: z.string().optional(),
+  // R2 S3-compatible credentials (for presigned URLs)
+  CLOUDFLARE_R2_ACCESS_KEY_ID: z.string().optional(),
+  CLOUDFLARE_R2_SECRET_ACCESS_KEY: z.string().optional(),
+  CLOUDFLARE_R2_ENDPOINT: z.string().optional(),
 
   // Social login providers
   GOOGLE_CLIENT_IDS: z.string().optional(),

@@ -6,6 +6,7 @@ import { createAthleteProfile } from './controllers/create-athlete-profile.js'
 import { createCompetition } from './controllers/create-competition.js'
 import { createMatch } from './controllers/create-match.js'
 import { createObserverProfile } from './controllers/create-observer-profile.js'
+import { createPlayWithVideoUrl } from './controllers/create-play-with-video-url.js'
 import { createSavedSearch } from './controllers/create-saved-search.js'
 import { createStandalonePlay } from './controllers/create-standalone-play.js'
 import { createTeam } from './controllers/create-team.js'
@@ -22,6 +23,7 @@ import { generateAIScout } from './controllers/generate-ai-scout.js'
 import { generateScoutByPosition } from './controllers/generate-scout-by-position.js'
 import { generateScout } from './controllers/generate-scout.js'
 import { generateVideoUploadUrl } from './controllers/generate-video-upload-url.js'
+import { regenerateThumbnail } from './controllers/regenerate-thumbnail.js'
 import { getAthlete } from './controllers/get-athlete.js'
 import { getCompetition } from './controllers/get-competition.js'
 import { getGeneralStats } from './controllers/get-general-stats.js'
@@ -109,6 +111,17 @@ export async function appRoutes(app: FastifyInstance) {
   app.delete('/matches/:id', { onRequest: [verifyJwt] }, deleteMatch)
   app.post('/matches/:id/plays', { onRequest: [verifyJwt] }, addPlay)
   app.post('/plays', { onRequest: [verifyJwt] }, createStandalonePlay)
+  // Nova rota: Upload direto (backend não toca no vídeo)
+  app.post(
+    '/plays/with-url',
+    { onRequest: [verifyJwt] },
+    createPlayWithVideoUrl,
+  )
+  app.post(
+    '/plays/direct-upload',
+    { onRequest: [verifyJwt] },
+    createPlayWithVideoUrl,
+  )
   app.put('/plays/:playId', { onRequest: [verifyJwt] }, updatePlay)
   app.delete('/plays/:id', { onRequest: [verifyJwt] }, deletePlay)
   app.post(
@@ -123,6 +136,11 @@ export async function appRoutes(app: FastifyInstance) {
     '/videos/upload-url',
     { onRequest: [verifyJwt] },
     generateVideoUploadUrl,
+  )
+  app.post(
+    '/plays/:playId/regenerate-thumbnail',
+    { onRequest: [verifyJwt] },
+    regenerateThumbnail,
   )
 
   // Scout routes

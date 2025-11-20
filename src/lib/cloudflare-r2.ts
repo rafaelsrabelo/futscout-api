@@ -128,25 +128,76 @@ export class CloudflareR2Service {
   /**
    * Generate presigned URL for direct upload from frontend
    * This avoids loading the entire video in backend memory
+   * Uses AWS SDK S3-compatible API (R2 is S3-compatible)
    */
   async generatePresignedUploadUrl(
     filename: string,
+    expiresIn = 3600, // 1 hour default
   ): Promise<{ uploadUrl: string; publicUrl: string; key: string }> {
     const timestamp = Date.now()
     const uniqueFilename = `videos/${timestamp}_${filename}`
     const key = uniqueFilename
 
     try {
-      // R2 uses S3-compatible API, so we can use S3 presigned URL format
-      // But R2 doesn't have native presigned URLs, so we'll use a workaround:
-      // Generate a temporary upload token via API
+      // R2 uses S3-compatible API
+      // We need AWS SDK to generate presigned URLs
+      const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3')
+      const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner')
 
-      // Alternative: Use R2's direct upload with public access
-      // For now, return the upload endpoint that frontend can use
-      // with a temporary token
+      // Get R2 endpoint from environment or use default
+      const { env } = await import('../env/index.js')
 
-      const uploadUrl = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/r2/buckets/${this.bucketName}/objects/${key}`
+      // R2 precisa de credenciais S3-compatible específicas (não o API Token)
+      if (
+        !env.CLOUDFLARE_R2_ACCESS_KEY_ID ||
+        !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY
+      ) {
+        throw new Error(
+          'R2 S3-compatible credentials not configured. Please set CLOUDFLARE_R2_ACCESS_KEY_ID and CLOUDFLARE_R2_SECRET_ACCESS_KEY. ' +
+            'Get them from: Cloudflare Dashboard → R2 → Manage R2 API Tokens → Create API Token',
+        )
+      }
+
+      const r2Endpoint =
+        env.CLOUDFLARE_R2_ENDPOINT ||
+        `https://${this.accountId}.r2.cloudflarestorage.com`
+
+      // Create S3 client configured for R2
+      const s3Client = new S3Client({
+        region: 'auto', // R2 uses 'auto' region
+        endpoint: r2Endpoint,
+        credentials: {
+          accessKeyId: env.CLOUDFLARE_R2_ACCESS_KEY_ID,
+          secretAccessKey: env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+        },
+        forcePathStyle: true, // R2 requires path-style URLs
+      })
+
+      // Create PutObject command
+      const command = new PutObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+        ContentType: this.getVideoContentType(filename),
+        // Permitir CORS para upload direto do frontend
+        Metadata: {
+          'upload-source': 'direct-frontend',
+        },
+      })
+
+      // Generate presigned URL (valid for expiresIn seconds)
+      const uploadUrl = await getSignedUrl(s3Client, command, {
+        expiresIn,
+      })
+
       const publicUrl = `${this.publicBaseUrl}/${key}`
+
+      console.log('🔗 Presigned URL gerada:', {
+        uploadUrl: `${uploadUrl.substring(0, 100)}...`,
+        publicUrl,
+        key,
+        endpoint: r2Endpoint,
+        bucket: this.bucketName,
+      })
 
       return {
         uploadUrl,
@@ -252,7 +303,7 @@ export class CloudflareR2Service {
   /**
    * Get content type for video files
    */
-  private getVideoContentType(filename: string): string {
+  getVideoContentType(filename: string): string {
     const ext = filename.toLowerCase().split('.').pop()
 
     const mimeTypes: Record<string, string> = {
@@ -339,6 +390,66 @@ export class CloudflareR2Service {
       throw new Error(
         'Invalid video type. Allowed: MP4, AVI, MOV, WMV, FLV, WebM, MKV, 3GP, M4V.',
       )
+    }
+  }
+
+  /**
+   * Baixa um vídeo do R2 usando a API S3 (mais confiável que URL pública)
+   * Retorna um stream do vídeo
+   */
+  async downloadVideoStream(key: string): Promise<NodeJS.ReadableStream> {
+    const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3')
+
+    if (
+      !env.CLOUDFLARE_R2_ACCESS_KEY_ID ||
+      !env.CLOUDFLARE_R2_SECRET_ACCESS_KEY
+    ) {
+      throw new Error('R2 credentials not configured')
+    }
+
+    const r2Endpoint =
+      env.CLOUDFLARE_R2_ENDPOINT ||
+      `https://${this.accountId}.r2.cloudflarestorage.com`
+
+    const s3Client = new S3Client({
+      region: 'auto',
+      endpoint: r2Endpoint,
+      credentials: {
+        accessKeyId: env.CLOUDFLARE_R2_ACCESS_KEY_ID,
+        secretAccessKey: env.CLOUDFLARE_R2_SECRET_ACCESS_KEY,
+      },
+      forcePathStyle: true,
+    })
+
+    const command = new GetObjectCommand({
+      Bucket: this.bucketName,
+      Key: key,
+    })
+
+    const response = await s3Client.send(command)
+
+    if (!response.Body) {
+      throw new Error('Response body is null')
+    }
+
+    // Converter ReadableStream do AWS SDK para Node.js Readable
+    const { Readable } = await import('node:stream')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return Readable.from(response.Body as unknown as NodeJS.ReadableStream)
+  }
+
+  /**
+   * Extrai a key do R2 a partir de uma URL pública
+   * Exemplo: https://pub-xxx.r2.dev/videos/file.mp4 -> videos/file.mp4
+   */
+  extractKeyFromUrl(url: string): string | null {
+    try {
+      const urlObj = new URL(url)
+      // Remover o primeiro / do pathname
+      const key = urlObj.pathname.substring(1)
+      return key || null
+    } catch {
+      return null
     }
   }
 }

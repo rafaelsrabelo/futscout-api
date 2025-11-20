@@ -14,28 +14,38 @@ export async function generateVideoUploadUrl(
   try {
     const { filename, expiresIn } = generateUploadUrlSchema.parse(request.query)
 
+    console.log('📤 Gerando presigned URL para:', { filename, expiresIn })
+
     const r2Service = new CloudflareR2Service()
     const { uploadUrl, publicUrl, key } =
       await r2Service.generatePresignedUploadUrl(filename, expiresIn)
+
+    console.log('✅ Presigned URL gerada com sucesso')
 
     return reply.status(200).send({
       uploadUrl,
       publicUrl,
       key,
+      expiresIn,
       // Instructions for frontend
       instructions: {
         method: 'PUT',
         headers: {
-          'Content-Type': 'video/mp4', // Adjust based on file type
+          'Content-Type': r2Service.getVideoContentType(filename),
         },
-        // Frontend should upload directly to uploadUrl
+        // Frontend should upload directly to uploadUrl using PUT
         // After upload, call backend to confirm and save URL
+        // Example: fetch(uploadUrl, { method: 'PUT', body: videoFile, headers: {...} })
       },
     })
   } catch (error) {
-    console.error('Error generating upload URL:', error)
+    console.error('❌ Error generating upload URL:', error)
     return reply.status(500).send({
       message: 'Erro ao gerar URL de upload.',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Erro desconhecido ao gerar URL de upload',
     })
   }
 }

@@ -118,6 +118,115 @@ export class VideoThumbnailService {
   }
 
   /**
+   * Gera thumbnail de um vídeo a partir de uma URL (baixa temporariamente usando stream)
+   * Útil para gerar thumbnail de vídeos já no R2
+   */
+  async generateThumbnailFromUrl(
+    videoUrl: string,
+    timeInSeconds = 1,
+  ): Promise<Buffer> {
+    const videoId = randomUUID()
+    const videoPath = join(tmpdir(), `${videoId}-video.mp4`)
+
+    try {
+      // Tentar baixar via API do R2 primeiro (mais confiável)
+      const { CloudflareR2Service } = await import('./cloudflare-r2.js')
+      const r2Service = new CloudflareR2Service()
+      const key = r2Service.extractKeyFromUrl(videoUrl)
+
+      let videoStream: NodeJS.ReadableStream | null = null
+
+      if (key) {
+        try {
+          console.log('📥 Tentando baixar vídeo via API do R2 (key:', key, ')')
+          videoStream = await r2Service.downloadVideoStream(key)
+          console.log('✅ Vídeo baixado via API do R2')
+        } catch (error) {
+          console.log(
+            '⚠️ Erro ao baixar via API do R2, tentando via URL pública...',
+            error instanceof Error ? error.message : String(error),
+          )
+          videoStream = null
+        }
+      }
+
+      // Se falhar via API, tentar via URL pública
+      if (!videoStream) {
+        console.log(
+          '📥 Baixando vídeo via URL pública:',
+          videoUrl.substring(0, 80),
+        )
+
+        // Timeout de 2 minutos para download
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 120000)
+
+        const response = await fetch(videoUrl, {
+          signal: controller.signal,
+        }).finally(() => clearTimeout(timeoutId))
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Unknown error')
+          throw new Error(
+            `Failed to download video: ${response.status} ${response.statusText} - ${errorText.substring(0, 100)}`,
+          )
+        }
+
+        if (!response.body) {
+          throw new Error('Response body is null')
+        }
+
+        // Converter ReadableStream do fetch para Node.js Readable
+        const { Readable } = await import('node:stream')
+        const reader = response.body.getReader()
+        videoStream = new Readable({
+          async read() {
+            try {
+              const { done, value } = await reader.read()
+              if (done) {
+                this.push(null)
+              } else {
+                this.push(Buffer.from(value))
+              }
+            } catch (error) {
+              this.destroy(error as Error)
+            }
+          },
+        })
+      }
+
+      // Salvar vídeo em arquivo temporário
+      const { createWriteStream } = await import('node:fs')
+      const { pipeline } = await import('node:stream/promises')
+      const writeStream = createWriteStream(videoPath)
+      await pipeline(videoStream, writeStream)
+      console.log('✅ Vídeo baixado e salvo com sucesso')
+
+      // Gerar thumbnail
+      console.log('🖼️ Gerando thumbnail do vídeo...')
+      const thumbnail = await this.generateThumbnailFromFile(
+        videoPath,
+        timeInSeconds,
+      )
+      console.log('✅ Thumbnail gerado com sucesso')
+
+      return thumbnail
+    } catch (error) {
+      console.error('❌ Erro ao gerar thumbnail de URL:', error)
+      throw error
+    } finally {
+      // Limpar vídeo temporário
+      try {
+        await access(videoPath, constants.F_OK)
+        await unlink(videoPath)
+        console.log('🧹 Vídeo temporário removido')
+      } catch (error) {
+        // Arquivo não existe ou erro ao deletar - ignorar
+      }
+    }
+  }
+
+  /**
    * Obtém a duração do vídeo em segundos
    */
   async getVideoDuration(videoBuffer: Buffer): Promise<number> {
