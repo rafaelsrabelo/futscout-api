@@ -1,47 +1,59 @@
 import { randomUUID } from 'node:crypto'
-import { constants } from 'node:fs'
-import { access, readFile, unlink, writeFile } from 'node:fs/promises'
+import { constants, createWriteStream } from 'node:fs'
+import { access, stat, unlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { Readable } from 'node:stream'
 import ffmpeg from 'fluent-ffmpeg'
 
 export class VideoCompressionService {
   /**
-   * Comprime um vídeo para reduzir drasticamente o tamanho do arquivo
-   * Estratégia similar ao WhatsApp: reduz resolução, bitrate e otimiza codec
-   * @param videoBuffer - Buffer do vídeo original
+   * Comprime um vídeo usando streams (não carrega tudo na memória)
+   * @param inputStream - Stream do vídeo original
+   * @param inputPath - Caminho temporário onde o stream será salvo
    * @param options - Opções de compressão
-   * @returns Buffer do vídeo comprimido
+   * @returns Caminho do arquivo comprimido (não retorna buffer!)
    */
-  async compressVideo(
-    videoBuffer: Buffer,
+  async compressVideoStream(
+    inputStream: Readable,
+    inputPath: string,
     options?: {
-      maxWidth?: number // Largura máxima (padrão: 720)
-      maxHeight?: number // Altura máxima (padrão: 720)
-      videoBitrate?: string // Bitrate de vídeo (padrão: '1M' = 1 Mbps)
-      audioBitrate?: string // Bitrate de áudio (padrão: '64k')
-      maxFramerate?: number // Framerate máximo (padrão: 30)
-      quality?: number // Qualidade 0-51, menor = melhor (padrão: 28, bom equilíbrio)
+      maxWidth?: number
+      maxHeight?: number
+      videoBitrate?: string
+      audioBitrate?: string
+      maxFramerate?: number
+      quality?: number
+      minSizeToCompress?: number
     },
-  ): Promise<Buffer> {
+  ): Promise<string | null> {
     const videoId = randomUUID()
-    const inputPath = join(tmpdir(), `${videoId}-input.mp4`)
     const outputPath = join(tmpdir(), `${videoId}-compressed.mp4`)
 
     const {
       maxWidth = 720,
       maxHeight = 720,
-      videoBitrate = '1M', // 1 Mbps - similar ao WhatsApp
-      audioBitrate = '64k', // 64 kbps - suficiente para áudio
+      videoBitrate = '1M',
+      audioBitrate = '64k',
       maxFramerate = 30,
-      quality = 28, // CRF 28 - bom equilíbrio qualidade/tamanho
+      quality = 28,
+      minSizeToCompress = 20 * 1024 * 1024, // 20MB
     } = options || {}
 
     try {
-      // Salvar vídeo original temporariamente
-      await writeFile(inputPath, videoBuffer)
+      // Salvar stream em arquivo usando pipe (não carrega na memória)
+      await this.saveStreamToFile(inputStream, inputPath)
 
-      // Obter metadados do vídeo para decidir se precisa comprimir
+      // Verificar tamanho do arquivo
+      const stats = await stat(inputPath)
+      if (stats.size < minSizeToCompress) {
+        console.log(
+          `ℹ️ Vídeo pequeno (${(stats.size / 1024 / 1024).toFixed(2)}MB), pulando compressão`,
+        )
+        return null // Retorna null para indicar que não precisa comprimir
+      }
+
+      // Obter metadados do vídeo
       const metadata = await this.getVideoMetadata(inputPath)
 
       // Comprimir vídeo usando FFmpeg
@@ -57,43 +69,50 @@ export class VideoCompressionService {
         originalFramerate: metadata.framerate,
       })
 
-      // Ler vídeo comprimido
-      const compressedBuffer = await readFile(outputPath)
-
-      // Se o vídeo comprimido for maior que o original, retornar o original
-      // (pode acontecer com vídeos já muito comprimidos)
-      if (compressedBuffer.length >= videoBuffer.length) {
+      // Verificar tamanho do arquivo comprimido
+      const compressedStats = await stat(outputPath)
+      if (compressedStats.size >= stats.size) {
         console.log(
           '⚠️ Vídeo comprimido é maior que o original, mantendo original',
         )
-        return videoBuffer
+        await unlink(outputPath).catch(() => {})
+        return null
       }
 
       const compressionRatio =
-        ((videoBuffer.length - compressedBuffer.length) / videoBuffer.length) *
-        100
+        ((stats.size - compressedStats.size) / stats.size) * 100
 
       console.log(
-        `✅ Vídeo comprimido: ${(videoBuffer.length / 1024 / 1024).toFixed(2)}MB → ${(compressedBuffer.length / 1024 / 1024).toFixed(2)}MB (${compressionRatio.toFixed(1)}% redução)`,
+        `✅ Vídeo comprimido: ${(stats.size / 1024 / 1024).toFixed(2)}MB → ${(compressedStats.size / 1024 / 1024).toFixed(2)}MB (${compressionRatio.toFixed(1)}% redução)`,
       )
 
-      return compressedBuffer
-    } finally {
-      // Limpar arquivos temporários
-      try {
-        await access(inputPath, constants.F_OK)
-        await unlink(inputPath)
-      } catch (error) {
-        // Ignorar
-      }
-
+      return outputPath // Retorna path, não buffer!
+    } catch (error) {
+      // Limpar arquivo de saída se houver erro
       try {
         await access(outputPath, constants.F_OK)
         await unlink(outputPath)
-      } catch (error) {
+      } catch {
         // Ignorar
       }
+      throw error
     }
+  }
+
+  /**
+   * Salva um stream em arquivo usando pipe (sem carregar na memória)
+   */
+  private async saveStreamToFile(
+    stream: Readable,
+    filePath: string,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const writeStream = createWriteStream(filePath)
+      stream.pipe(writeStream)
+      writeStream.on('finish', resolve)
+      writeStream.on('error', reject)
+      stream.on('error', reject)
+    })
   }
 
   /**
@@ -101,14 +120,14 @@ export class VideoCompressionService {
    */
   private parseBitrateToNumber(bitrate: string): number {
     const match = bitrate.match(/^(\d+)([kKmM])?$/)
-    if (!match) return 1 // Default 1M se não conseguir parsear
-    
+    if (!match || !match[1]) return 1
+
     const value = Number.parseInt(match[1], 10)
     const unit = match[2]?.toLowerCase()
-    
+
     if (unit === 'm') return value
     if (unit === 'k') return value / 1000
-    return value // Se não tem unidade, assume M
+    return value
   }
 
   /**
@@ -138,16 +157,18 @@ export class VideoCompressionService {
 
         const width = videoStream.width || 720
         const height = videoStream.height || 720
-        
-        // Calcular framerate (formato pode ser "30/1" ou número)
+
+        // Calcular framerate
         let framerate = 30
         if (videoStream.r_frame_rate?.includes('/')) {
-          const [num, den] = videoStream.r_frame_rate.split('/').map(Number)
+          const parts = videoStream.r_frame_rate.split('/')
+          const num = parts[0] ? Number(parts[0]) : 30
+          const den = parts[1] ? Number(parts[1]) : 1
           framerate = den ? num / den : num
         } else if (videoStream.r_frame_rate) {
           framerate = Number(videoStream.r_frame_rate) || 30
         }
-        
+
         const duration = metadata.format?.duration || 0
 
         resolve({ width, height, framerate, duration })
@@ -216,28 +237,27 @@ export class VideoCompressionService {
         targetHeight = targetHeight % 2 === 0 ? targetHeight : targetHeight - 1
       }
 
-      // Determinar framerate (não aumentar, apenas reduzir se muito alto)
+      // Determinar framerate
       const targetFramerate = Math.min(originalFramerate, maxFramerate)
 
       const command = ffmpeg(inputPath)
-        .videoCodec('libx264') // Codec H.264
-        .audioCodec('aac') // Codec de áudio AAC
+        .videoCodec('libx264')
+        .audioCodec('aac')
         .outputOptions([
-          `-crf ${quality}`, // Constant Rate Factor (qualidade)
-          '-preset medium', // Balance entre velocidade e compressão
-          `-vf scale=${targetWidth}:${targetHeight}`, // Redimensionar
-          `-r ${targetFramerate}`, // Framerate
-          `-b:v ${videoBitrate}`, // Bitrate de vídeo
-          `-maxrate ${videoBitrate}`, // Bitrate máximo
-          `-bufsize ${this.parseBitrateToNumber(videoBitrate) * 2}M`, // Buffer size
-          `-b:a ${audioBitrate}`, // Bitrate de áudio
-          '-movflags +faststart', // Otimizar para streaming
-          '-pix_fmt yuv420p', // Formato de pixel compatível
+          `-crf ${quality}`,
+          '-preset veryfast', // Balance entre memória e qualidade (melhor que ultrafast)
+          `-vf scale=${targetWidth}:${targetHeight}`,
+          `-r ${targetFramerate}`,
+          `-b:v ${videoBitrate}`,
+          `-maxrate ${videoBitrate}`,
+          `-bufsize ${this.parseBitrateToNumber(videoBitrate) * 2}M`,
+          `-b:a ${audioBitrate}`,
+          '-movflags +faststart',
+          '-pix_fmt yuv420p',
         ])
         .output(outputPath)
-        .on('start', (commandLine) => {
+        .on('start', () => {
           console.log('🎬 Iniciando compressão de vídeo...')
-          console.log(`📝 Comando: ${commandLine}`)
         })
         .on('progress', (progress) => {
           if (progress.percent) {
@@ -263,4 +283,3 @@ export class VideoCompressionService {
     })
   }
 }
-

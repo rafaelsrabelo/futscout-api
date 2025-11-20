@@ -1,4 +1,5 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { PlayClassification, PlayType } from 'generated/prisma/client.js'
 import { z } from 'zod'
 import { CloudflareR2Service } from '../../lib/cloudflare-r2.js'
 import { VideoCompressionService } from '../../lib/video-compression.js'
@@ -30,74 +31,130 @@ export async function createStandalonePlay(
     if (isMultipart) {
       // Processar multipart/form-data
       const parts = request.parts()
-      const formData: Record<string, any> = {}
+      const formData: Record<string, string | number | null> = {}
 
       for await (const part of parts) {
         if (part.type === 'file') {
-          // Arquivo (vídeo ou foto)
-          const chunks: Buffer[] = []
-          for await (const chunk of part.file) {
-            chunks.push(chunk)
-          }
-          const buffer = Buffer.concat(chunks)
-
           if (part.fieldname === 'video') {
             console.log('🎥 Processando upload de vídeo...')
-            const r2Service = new CloudflareR2Service()
-            r2Service.validateVideo(buffer, part.filename || 'video.mp4')
+            const { randomUUID } = await import('node:crypto')
+            const { tmpdir } = await import('node:os')
+            const { join } = await import('node:path')
+            const { unlink, stat } = await import('node:fs/promises')
+            const { createWriteStream, createReadStream } = await import(
+              'node:fs'
+            )
 
-            // Comprimir vídeo antes do upload (similar ao WhatsApp)
-            let videoToUpload = buffer
-            try {
-              console.log('🗜️ Comprimindo vídeo...')
-              const compressionService = new VideoCompressionService()
-              videoToUpload = await compressionService.compressVideo(buffer, {
-                maxWidth: 720,
-                maxHeight: 720,
-                videoBitrate: '1M', // 1 Mbps - similar ao WhatsApp
-                audioBitrate: '64k',
-                maxFramerate: 30,
-                quality: 28, // Bom equilíbrio qualidade/tamanho
+            const videoId = randomUUID()
+            const tempInputPath = join(tmpdir(), `${videoId}-input.mp4`)
+            const r2Service = new CloudflareR2Service()
+
+            // Salvar stream em arquivo temporário (não carrega na memória!)
+            const writeStream = createWriteStream(tempInputPath)
+            part.file.pipe(writeStream)
+
+            await new Promise<void>((resolve, reject) => {
+              writeStream.on('finish', () => resolve())
+              writeStream.on('error', reject)
+              part.file.on('error', reject)
+            })
+
+            // Validar arquivo (lê apenas metadados, não o arquivo inteiro)
+            const fileStats = await stat(tempInputPath)
+            const filename = part.filename || 'video.mp4'
+            if (fileStats.size > 100 * 1024 * 1024) {
+              await unlink(tempInputPath).catch(() => {})
+              return reply.status(413).send({
+                message:
+                  'Arquivo muito grande. O tamanho máximo permitido é 100MB.',
               })
-              console.log('✅ Vídeo comprimido com sucesso!')
+            }
+
+            // Comprimir vídeo usando streams (não carrega na memória!)
+            let finalVideoPath = tempInputPath
+            try {
+              console.log('🗜️ Verificando necessidade de compressão...')
+              const compressionService = new VideoCompressionService()
+              const inputStream = createReadStream(tempInputPath)
+              const compressedPath =
+                await compressionService.compressVideoStream(
+                  inputStream,
+                  tempInputPath,
+                  {
+                    maxWidth: 720,
+                    maxHeight: 720,
+                    videoBitrate: '1M',
+                    audioBitrate: '64k',
+                    maxFramerate: 30,
+                    quality: 28,
+                    minSizeToCompress: 20 * 1024 * 1024,
+                  },
+                )
+
+              if (compressedPath) {
+                // Deletar arquivo original e usar o comprimido
+                await unlink(tempInputPath).catch(() => {})
+                finalVideoPath = compressedPath
+                console.log('✅ Vídeo comprimido com sucesso!')
+              } else {
+                console.log('ℹ️ Vídeo não precisa de compressão')
+              }
             } catch (error) {
               console.warn(
                 '⚠️ Erro ao comprimir vídeo, usando original:',
                 error instanceof Error ? error.message : error,
               )
-              // Continua com o vídeo original se a compressão falhar
+              // Continua com o vídeo original
             }
 
-            const uploadResult = await r2Service.uploadVideo(
-              videoToUpload,
-              part.filename || 'video.mp4',
-            )
-            videoUrl = uploadResult.url
-            console.log('✅ Vídeo enviado:', videoUrl)
-
-            // Gerar thumbnail do vídeo (opcional - não falha o upload se der erro)
-            // Usar vídeo comprimido para gerar thumbnail (mais rápido)
+            // Gerar thumbnail ANTES de fazer upload (precisa do arquivo)
+            let thumbnailUrl: string | null = null
             try {
               console.log('🖼️ Gerando thumbnail...')
               const thumbnailService = new VideoThumbnailService()
-              const thumbnailBuffer = await thumbnailService.generateThumbnail(
-                videoToUpload,
-                1,
-              )
+              const thumbnailReadStream = createReadStream(finalVideoPath)
+              // Para thumbnail, precisamos ler em buffer (mas é pequeno)
+              const chunks: Buffer[] = []
+              for await (const chunk of thumbnailReadStream) {
+                chunks.push(chunk)
+              }
+              const thumbnailBuffer = Buffer.concat(chunks)
+              const thumbnailBufferResult =
+                await thumbnailService.generateThumbnail(thumbnailBuffer, 1)
               const thumbnailResult = await r2Service.uploadThumbnail(
-                thumbnailBuffer,
-                part.filename || 'video.mp4',
+                thumbnailBufferResult,
+                filename,
               )
               thumbnailUrl = thumbnailResult.url
               console.log('✅ Thumbnail gerado:', thumbnailUrl)
             } catch (error) {
               console.warn(
-                '⚠️ Não foi possível gerar thumbnail (vídeo pode estar corrompido ou formato não suportado):',
+                '⚠️ Não foi possível gerar thumbnail:',
                 error instanceof Error ? error.message : error,
               )
-              // Continua sem thumbnail - não é crítico
+            }
+
+            // Upload usando stream (não carrega na memória!)
+            const uploadStream = createReadStream(finalVideoPath)
+            const uploadResult = await r2Service.uploadVideoFromStream(
+              uploadStream,
+              filename,
+            )
+            videoUrl = uploadResult.url
+            console.log('✅ Vídeo enviado:', videoUrl)
+
+            // Limpar arquivos temporários
+            await unlink(finalVideoPath).catch(() => {})
+            if (finalVideoPath !== tempInputPath) {
+              await unlink(tempInputPath).catch(() => {})
             }
           } else if (part.fieldname === 'photo') {
+            // Processar foto (similar ao vídeo, mas sem compressão)
+            const chunks: Buffer[] = []
+            for await (const chunk of part.file) {
+              chunks.push(chunk)
+            }
+            const buffer = Buffer.concat(chunks)
             const r2Service = new CloudflareR2Service()
             const { url } = await r2Service.uploadImage(
               buffer,
@@ -107,7 +164,7 @@ export async function createStandalonePlay(
           }
         } else {
           // Campo de formulário
-          formData[part.fieldname] = part.value
+          formData[part.fieldname] = part.value as string | number | null
         }
       }
 
@@ -124,7 +181,7 @@ export async function createStandalonePlay(
 
       if (formData.classifications) {
         try {
-          let parsed: string | string[] = formData.classifications
+          let parsed: string | string[] = String(formData.classifications)
 
           // Tentar parsear se for string JSON
           if (typeof formData.classifications === 'string') {
@@ -297,13 +354,13 @@ export async function createStandalonePlay(
 
     const play = await createStandalonePlayUseCase.execute({
       userId: request.user.sub,
-      playType: playType as any,
+      playType: playType as PlayType,
       videoUrl,
       photoUrl,
       thumbnailUrl,
       rating,
       observations,
-      classifications: classifications as any,
+      classifications: classifications as PlayClassification[],
     })
 
     console.log('✅ Lance criado com sucesso:', {
@@ -337,8 +394,7 @@ export async function createStandalonePlay(
         error.message.includes('request file too large'))
     ) {
       return reply.status(413).send({
-        message:
-          'Arquivo muito grande. O tamanho máximo permitido é 100MB.',
+        message: 'Arquivo muito grande. O tamanho máximo permitido é 100MB.',
       })
     }
 

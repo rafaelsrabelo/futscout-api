@@ -27,7 +27,63 @@ export class CloudflareR2Service {
   }
 
   /**
-   * Upload video to Cloudflare R2
+   * Upload video to Cloudflare R2 from file path (stream, não buffer!)
+   */
+  async uploadVideoFromFile(
+    filePath: string,
+    filename: string,
+  ): Promise<{ url: string }> {
+    const { createReadStream } = await import('node:fs')
+    const stream = createReadStream(filePath)
+    return this.uploadVideoFromStream(stream, filename)
+  }
+
+  /**
+   * Upload video to Cloudflare R2 from stream (não carrega na memória)
+   */
+  async uploadVideoFromStream(
+    stream: NodeJS.ReadableStream,
+    filename: string,
+  ): Promise<{ url: string }> {
+    // Gerar nome único para o arquivo
+    const timestamp = Date.now()
+    const uniqueFilename = `videos/${timestamp}_${filename}`
+
+    try {
+      const response = await fetch(
+        `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/r2/buckets/${this.bucketName}/objects/${uniqueFilename}`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${this.apiToken}`,
+            'Content-Type': this.getVideoContentType(filename),
+          },
+          body: stream as unknown as BodyInit,
+        },
+      )
+
+      if (!response.ok) {
+        const error = await response.text()
+        throw new Error(`Failed to upload video: ${error}`)
+      }
+
+      // URL público do arquivo no R2
+      const publicUrl = `${this.publicBaseUrl}/${uniqueFilename}`
+
+      return {
+        url: publicUrl,
+      }
+    } catch (error) {
+      console.error('Error uploading video to R2:', error)
+      throw new Error(
+        `Failed to upload video: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      )
+    }
+  }
+
+  /**
+   * Upload video to Cloudflare R2 (mantido para compatibilidade, mas usa buffer)
+   * @deprecated Use uploadVideoFromStream ou uploadVideoFromFile para melhor performance
    */
   async uploadVideo(
     buffer: Buffer,

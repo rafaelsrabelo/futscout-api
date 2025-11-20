@@ -41,7 +41,7 @@ export async function uploadVideoToPlay(
     }
 
     // Verificar se o usuário é dono do lance
-    if (play.match.athlete.userId !== request.user.sub) {
+    if (!play.match || play.match.athlete.userId !== request.user.sub) {
       return reply.status(403).send({
         message: 'Você não tem permissão para editar este lance.',
       })
@@ -56,68 +56,101 @@ export async function uploadVideoToPlay(
       })
     }
 
-    // Converter stream para buffer
-    const chunks: Buffer[] = []
-    for await (const chunk of data.file) {
-      chunks.push(chunk)
-    }
-    const buffer = Buffer.concat(chunks)
-    const filename = data.filename || 'video.mp4'
+    // Usar streams ao invés de buffer (não carrega tudo na memória!)
+    const { randomUUID } = await import('node:crypto')
+    const { tmpdir } = await import('node:os')
+    const { join } = await import('node:path')
+    const { unlink, stat } = await import('node:fs/promises')
+    const { createWriteStream, createReadStream } = await import('node:fs')
 
-    // Inicializar serviço R2
+    const videoId = randomUUID()
+    const tempInputPath = join(tmpdir(), `${videoId}-input.mp4`)
+    const filename = data.filename || 'video.mp4'
     const r2Service = new CloudflareR2Service()
 
-    // Validar arquivo
-    try {
-      r2Service.validateVideo(buffer, filename)
-    } catch (error) {
-      return reply.status(400).send({
-        message: error instanceof Error ? error.message : 'Arquivo inválido',
+    // Salvar stream em arquivo temporário (não carrega na memória!)
+    const writeStream = createWriteStream(tempInputPath)
+    data.file.pipe(writeStream)
+
+    await new Promise<void>((resolve, reject) => {
+      writeStream.on('finish', () => resolve())
+      writeStream.on('error', reject)
+      data.file.on('error', reject)
+    })
+
+    // Validar tamanho do arquivo
+    const fileStats = await stat(tempInputPath)
+    if (fileStats.size > 100 * 1024 * 1024) {
+      await unlink(tempInputPath).catch(() => {})
+      return reply.status(413).send({
+        message: 'Arquivo muito grande. O tamanho máximo permitido é 100MB.',
       })
     }
 
-    // Comprimir vídeo antes do upload (similar ao WhatsApp)
-    let videoToUpload = buffer
+    // Comprimir vídeo usando streams
+    let finalVideoPath = tempInputPath
     try {
-      console.log('🗜️ Comprimindo vídeo...')
+      console.log('🗜️ Verificando necessidade de compressão...')
       const compressionService = new VideoCompressionService()
-      videoToUpload = await compressionService.compressVideo(buffer, {
-        maxWidth: 720,
-        maxHeight: 720,
-        videoBitrate: '1M', // 1 Mbps - similar ao WhatsApp
-        audioBitrate: '64k',
-        maxFramerate: 30,
-        quality: 28, // Bom equilíbrio qualidade/tamanho
-      })
-      console.log('✅ Vídeo comprimido com sucesso!')
+      const inputStream = createReadStream(tempInputPath)
+      const compressedPath = await compressionService.compressVideoStream(
+        inputStream,
+        tempInputPath,
+        {
+          maxWidth: 720,
+          maxHeight: 720,
+          videoBitrate: '1M',
+          audioBitrate: '64k',
+          maxFramerate: 30,
+          quality: 28,
+          minSizeToCompress: 20 * 1024 * 1024,
+        },
+      )
+
+      if (compressedPath) {
+        await unlink(tempInputPath).catch(() => {})
+        finalVideoPath = compressedPath
+        console.log('✅ Vídeo comprimido com sucesso!')
+      }
     } catch (error) {
       console.warn(
         '⚠️ Erro ao comprimir vídeo, usando original:',
         error instanceof Error ? error.message : error,
       )
-      // Continua com o vídeo original se a compressão falhar
     }
 
-    // Upload para R2
-    const uploadResult = await r2Service.uploadVideo(videoToUpload, filename)
-
-    // Gerar thumbnail do vídeo (usar vídeo comprimido para ser mais rápido)
+    // Gerar thumbnail ANTES de fazer upload (precisa do arquivo)
     let thumbnailUrl: string | null = null
     try {
       const thumbnailService = new VideoThumbnailService()
-      const thumbnailBuffer = await thumbnailService.generateThumbnail(
-        videoToUpload,
+      const thumbnailReadStream = createReadStream(finalVideoPath)
+      const chunks: Buffer[] = []
+      for await (const chunk of thumbnailReadStream) {
+        chunks.push(chunk)
+      }
+      const thumbnailBuffer = Buffer.concat(chunks)
+      const thumbnailBufferResult = await thumbnailService.generateThumbnail(
+        thumbnailBuffer,
         1,
       )
       const thumbnailResult = await r2Service.uploadThumbnail(
-        thumbnailBuffer,
+        thumbnailBufferResult,
         filename,
       )
       thumbnailUrl = thumbnailResult.url
     } catch (error) {
       console.warn('Erro ao gerar thumbnail:', error)
-      // Não falhar o upload se não conseguir gerar o thumbnail
     }
+
+    // Upload usando stream (não carrega na memória!)
+    const uploadStream = createReadStream(finalVideoPath)
+    const uploadResult = await r2Service.uploadVideoFromStream(
+      uploadStream,
+      filename,
+    )
+
+    // Limpar arquivo temporário
+    await unlink(finalVideoPath).catch(() => {})
 
     // Remover vídeo antigo se existir
     if (play.videoUrl) {
