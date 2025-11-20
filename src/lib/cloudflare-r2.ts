@@ -75,7 +75,6 @@ export class CloudflareR2Service {
    */
   async generatePresignedUploadUrl(
     filename: string,
-    expiresIn = 3600, // 1 hour default
   ): Promise<{ uploadUrl: string; publicUrl: string; key: string }> {
     const timestamp = Date.now()
     const uniqueFilename = `videos/${timestamp}_${filename}`
@@ -85,11 +84,11 @@ export class CloudflareR2Service {
       // R2 uses S3-compatible API, so we can use S3 presigned URL format
       // But R2 doesn't have native presigned URLs, so we'll use a workaround:
       // Generate a temporary upload token via API
-      
+
       // Alternative: Use R2's direct upload with public access
       // For now, return the upload endpoint that frontend can use
       // with a temporary token
-      
+
       const uploadUrl = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/r2/buckets/${this.bucketName}/objects/${key}`
       const publicUrl = `${this.publicBaseUrl}/${key}`
 
