@@ -314,7 +314,7 @@ export async function createStandalonePlay(
     ) {
       return reply.status(413).send({
         message:
-          'Arquivo muito grande. O tamanho máximo permitido é 50MB.',
+          'Arquivo muito grande. O tamanho máximo permitido é 100MB.',
       })
     }
 

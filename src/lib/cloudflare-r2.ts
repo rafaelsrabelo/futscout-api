@@ -260,7 +260,7 @@ export class CloudflareR2Service {
    * Validate video file
    */
   validateVideo(buffer: Buffer, filename: string): void {
-    const maxSize = 50 * 1024 * 1024 // 50MB (reduzido para evitar esgotar memória)
+    const maxSize = 100 * 1024 * 1024 // 100MB
     const allowedTypes = [
       'mp4',
       'avi',
