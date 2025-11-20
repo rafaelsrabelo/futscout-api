@@ -78,31 +78,28 @@ export async function createStandalonePlay(
             }
 
             // Comprimir vídeo usando streams (não carrega na memória!)
-            // IMPORTANTE: Só comprime vídeos entre 20MB e 100MB para evitar estouro de memória
+            // IMPORTANTE: Comprime vídeos entre 30MB e 90MB (vídeos de celular de 1 minuto geralmente são 60-100MB)
+            // Usa configurações muito conservadoras para evitar estouro de memória
             let finalVideoPath = tempInputPath
             const fileSizeMB = fileStats.size / (1024 * 1024)
 
-            if (fileSizeMB >= 20 && fileSizeMB <= 100) {
+            if (fileSizeMB >= 30 && fileSizeMB <= 90) {
               try {
                 console.log(
                   `🗜️ Comprimindo vídeo (${fileSizeMB.toFixed(2)}MB)...`,
                 )
                 const compressionService = new VideoCompressionService()
-                const inputStream = createReadStream(tempInputPath)
+                // Usar arquivo diretamente (já está salvo em disco, não precisa de stream)
                 const compressedPath =
-                  await compressionService.compressVideoStream(
-                    inputStream,
-                    tempInputPath,
-                    {
-                      maxWidth: 720,
-                      maxHeight: 720,
-                      videoBitrate: '1M',
-                      audioBitrate: '64k',
-                      maxFramerate: 30,
-                      quality: 28,
-                      minSizeToCompress: 20 * 1024 * 1024,
-                    },
-                  )
+                  await compressionService.compressVideoFile(tempInputPath, {
+                    maxWidth: 720,
+                    maxHeight: 720,
+                    videoBitrate: '1M',
+                    audioBitrate: '64k',
+                    maxFramerate: 30,
+                    quality: 28,
+                    minSizeToCompress: 30 * 1024 * 1024,
+                  })
 
                 if (compressedPath) {
                   await unlink(tempInputPath).catch(() => {})
@@ -118,7 +115,7 @@ export async function createStandalonePlay(
               }
             } else {
               console.log(
-                `ℹ️ Vídeo ${fileSizeMB.toFixed(2)}MB fora do range de compressão (20-100MB), usando original`,
+                `ℹ️ Vídeo ${fileSizeMB.toFixed(2)}MB fora do range de compressão (30-90MB), usando original`,
               )
             }
 

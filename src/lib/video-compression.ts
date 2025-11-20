@@ -8,14 +8,12 @@ import ffmpeg from 'fluent-ffmpeg'
 
 export class VideoCompressionService {
   /**
-   * Comprime um vídeo usando streams (não carrega tudo na memória)
-   * @param inputStream - Stream do vídeo original
-   * @param inputPath - Caminho temporário onde o stream será salvo
+   * Comprime um vídeo a partir de um arquivo já salvo em disco
+   * @param inputPath - Caminho do arquivo de vídeo já salvo em disco
    * @param options - Opções de compressão
    * @returns Caminho do arquivo comprimido (não retorna buffer!)
    */
-  async compressVideoStream(
-    inputStream: Readable,
+  async compressVideoFile(
     inputPath: string,
     options?: {
       maxWidth?: number
@@ -37,17 +35,16 @@ export class VideoCompressionService {
       audioBitrate = '64k',
       maxFramerate = 30,
       quality = 28,
-      minSizeToCompress = 20 * 1024 * 1024, // 20MB
+      minSizeToCompress = 30 * 1024 * 1024, // 30MB (aumentado para evitar comprimir vídeos pequenos)
     } = options || {}
 
     // Limite máximo para compressão (vídeos muito grandes podem estourar memória)
-    const MAX_SIZE_TO_COMPRESS = 100 * 1024 * 1024 // 100MB
+    // AUMENTADO para 90MB - vídeos de celular de 1 minuto geralmente são 60-100MB
+    // Usaremos configurações muito conservadoras para evitar estouro
+    const MAX_SIZE_TO_COMPRESS = 90 * 1024 * 1024 // 90MB
 
     try {
-      // Salvar stream em arquivo usando pipe (não carrega na memória)
-      await this.saveStreamToFile(inputStream, inputPath)
-
-      // Verificar tamanho do arquivo
+      // Verificar tamanho do arquivo (já está salvo em disco)
       const stats = await stat(inputPath)
 
       // Vídeos muito pequenos não precisam de compressão
@@ -197,6 +194,7 @@ export class VideoCompressionService {
 
   /**
    * Comprime vídeo usando FFmpeg com configurações otimizadas
+   * Com timeout de 5 minutos para evitar processos travados
    */
   private async compressWithFFmpeg(
     inputPath: string,
@@ -214,6 +212,13 @@ export class VideoCompressionService {
     },
   ): Promise<void> {
     return new Promise((resolve, reject) => {
+      // Timeout de 5 minutos para evitar processos travados
+      const timeout = setTimeout(
+        () => {
+          reject(new Error('Timeout: Compressão demorou mais de 5 minutos'))
+        },
+        5 * 60 * 1000, // 5 minutos
+      )
       const {
         maxWidth,
         maxHeight,
@@ -264,10 +269,11 @@ export class VideoCompressionService {
         .audioCodec('aac')
         .outputOptions([
           `-crf ${quality}`,
-          '-preset veryfast', // Balance entre memória e qualidade
+          '-preset ultrafast', // Máxima velocidade, mínimo uso de memória
           '-threads 1', // Limita threads para reduzir uso de RAM (60-80% menos)
-          '-max_muxing_queue_size 1024', // Evita problemas com vídeos HEVC/4K
-          `-vf scale=${targetWidth}:${targetHeight}`,
+          '-max_muxing_queue_size 256', // Reduzido ainda mais para economizar memória
+          '-tune fastdecode', // Otimiza para decodificação rápida (menos memória)
+          `-vf scale=${targetWidth}:${targetHeight}`, // Reduz resolução
           `-r ${targetFramerate}`,
           `-b:v ${videoBitrate}`,
           `-maxrate ${videoBitrate}`,
@@ -275,6 +281,11 @@ export class VideoCompressionService {
           `-b:a ${audioBitrate}`,
           '-movflags +faststart',
           '-pix_fmt yuv420p',
+          '-profile:v baseline', // Perfil mais simples = menos memória
+          '-level 3.0', // Nível H.264 mais baixo = menos memória
+          '-x264-params threads=1:thread-input=1', // Força FFmpeg a usar apenas 1 thread
+          '-x264-params no-mbtree=1', // Desabilita macroblock tree (economiza memória)
+          '-x264-params ref=1', // Reduz referência de frames (menos memória)
         ])
         .output(outputPath)
         .on('start', () => {
@@ -288,10 +299,12 @@ export class VideoCompressionService {
           }
         })
         .on('end', () => {
+          clearTimeout(timeout)
           console.log('✅ Compressão concluída!')
           resolve()
         })
         .on('error', (error) => {
+          clearTimeout(timeout)
           console.error('❌ Erro na compressão:', error.message)
           reject(
             new Error(
