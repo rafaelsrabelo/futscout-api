@@ -274,7 +274,9 @@ export class CloudflareR2Service {
     ]
 
     if (buffer.length > maxSize) {
-      throw new Error('Video file too large. Maximum size is 100MB.')
+      throw new Error(
+        `Video file too large. Maximum size is ${maxSize / (1024 * 1024)}MB, but received ${(buffer.length / (1024 * 1024)).toFixed(2)}MB.`,
+      )
     }
 
     const ext = filename.toLowerCase().split('.').pop()

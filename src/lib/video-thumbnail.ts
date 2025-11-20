@@ -1,8 +1,9 @@
-import ffmpeg from 'fluent-ffmpeg'
-import { writeFile, unlink } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
+import { constants } from 'node:fs'
+import { access, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { randomUUID } from 'node:crypto'
+import ffmpeg from 'fluent-ffmpeg'
 
 export class VideoThumbnailService {
   /**
@@ -32,17 +33,19 @@ export class VideoThumbnailService {
 
       return thumbnailBuffer
     } finally {
-      // Limpar arquivos temporários
+      // Limpar arquivos temporários (apenas se existirem)
       try {
+        await access(videoPath, constants.F_OK)
         await unlink(videoPath)
       } catch (error) {
-        console.warn('Erro ao deletar vídeo temporário:', error)
+        // Arquivo não existe ou erro ao deletar - ignorar
       }
 
       try {
+        await access(thumbnailPath, constants.F_OK)
         await unlink(thumbnailPath)
       } catch (error) {
-        console.warn('Erro ao deletar thumbnail temporário:', error)
+        // Arquivo não existe ou erro ao deletar - ignorar
       }
     }
   }
@@ -56,15 +59,27 @@ export class VideoThumbnailService {
     timeInSeconds: number,
   ): Promise<void> {
     return new Promise((resolve, reject) => {
+      const folder = outputPath.substring(0, outputPath.lastIndexOf('/'))
+      const filename = outputPath.split('/').pop() || 'thumb.jpg'
+
       ffmpeg(videoPath)
         .screenshots({
           timestamps: [timeInSeconds],
-          filename: outputPath.split('/').pop() || 'thumb.jpg',
-          folder: outputPath.substring(0, outputPath.lastIndexOf('/')),
+          filename,
+          folder,
           size: '640x360', // Resolução do thumbnail (16:9)
         })
         .on('end', () => resolve())
-        .on('error', (error) => reject(error))
+        .on('error', (error) => {
+          // Melhorar mensagem de erro
+          const errorMessage =
+            error.message || 'Erro desconhecido ao processar vídeo'
+          reject(
+            new Error(
+              `FFmpeg falhou: ${errorMessage}. O vídeo pode estar corrompido ou em formato não suportado.`,
+            ),
+          )
+        })
     })
   }
 

@@ -52,7 +52,7 @@ export async function createStandalonePlay(
             videoUrl = uploadResult.url
             console.log('✅ Vídeo enviado:', videoUrl)
 
-            // Gerar thumbnail do vídeo
+            // Gerar thumbnail do vídeo (opcional - não falha o upload se der erro)
             try {
               console.log('🖼️ Gerando thumbnail...')
               const thumbnailService = new VideoThumbnailService()
@@ -67,7 +67,11 @@ export async function createStandalonePlay(
               thumbnailUrl = thumbnailResult.url
               console.log('✅ Thumbnail gerado:', thumbnailUrl)
             } catch (error) {
-              console.error('❌ Erro ao gerar thumbnail:', error)
+              console.warn(
+                '⚠️ Não foi possível gerar thumbnail (vídeo pode estar corrompido ou formato não suportado):',
+                error instanceof Error ? error.message : error,
+              )
+              // Continua sem thumbnail - não é crítico
             }
           } else if (part.fieldname === 'photo') {
             const r2Service = new CloudflareR2Service()
@@ -299,6 +303,18 @@ export async function createStandalonePlay(
       return reply.status(400).send({
         message: 'Validation error',
         issues: error.format(),
+      })
+    }
+
+    // Tratar erro de arquivo muito grande
+    if (
+      error instanceof Error &&
+      (error.message.includes('file too large') ||
+        error.message.includes('request file too large'))
+    ) {
+      return reply.status(413).send({
+        message:
+          'Arquivo muito grande. O tamanho máximo permitido é 50MB.',
       })
     }
 
