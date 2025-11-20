@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { CloudflareR2Service } from '../../lib/cloudflare-r2.js'
+import { VideoCompressionService } from '../../lib/video-compression.js'
 import { VideoThumbnailService } from '../../lib/video-thumbnail.js'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
 import { PrismaPlayRepository } from '../repositories/prisma/prisma-play-repository.js'
@@ -45,19 +46,42 @@ export async function createStandalonePlay(
             const r2Service = new CloudflareR2Service()
             r2Service.validateVideo(buffer, part.filename || 'video.mp4')
 
+            // Comprimir vídeo antes do upload (similar ao WhatsApp)
+            let videoToUpload = buffer
+            try {
+              console.log('🗜️ Comprimindo vídeo...')
+              const compressionService = new VideoCompressionService()
+              videoToUpload = await compressionService.compressVideo(buffer, {
+                maxWidth: 720,
+                maxHeight: 720,
+                videoBitrate: '1M', // 1 Mbps - similar ao WhatsApp
+                audioBitrate: '64k',
+                maxFramerate: 30,
+                quality: 28, // Bom equilíbrio qualidade/tamanho
+              })
+              console.log('✅ Vídeo comprimido com sucesso!')
+            } catch (error) {
+              console.warn(
+                '⚠️ Erro ao comprimir vídeo, usando original:',
+                error instanceof Error ? error.message : error,
+              )
+              // Continua com o vídeo original se a compressão falhar
+            }
+
             const uploadResult = await r2Service.uploadVideo(
-              buffer,
+              videoToUpload,
               part.filename || 'video.mp4',
             )
             videoUrl = uploadResult.url
             console.log('✅ Vídeo enviado:', videoUrl)
 
             // Gerar thumbnail do vídeo (opcional - não falha o upload se der erro)
+            // Usar vídeo comprimido para gerar thumbnail (mais rápido)
             try {
               console.log('🖼️ Gerando thumbnail...')
               const thumbnailService = new VideoThumbnailService()
               const thumbnailBuffer = await thumbnailService.generateThumbnail(
-                buffer,
+                videoToUpload,
                 1,
               )
               const thumbnailResult = await r2Service.uploadThumbnail(

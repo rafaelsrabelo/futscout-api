@@ -1,9 +1,10 @@
-import type { FastifyRequest, FastifyReply } from 'fastify'
+import { VideoCompressionService } from '@/lib/video-compression.js'
+import { VideoThumbnailService } from '@/lib/video-thumbnail.js'
+import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { CloudflareR2Service } from '../../lib/cloudflare-r2.js'
 import { prisma } from '../../lib/prisma.js'
 import { verifyJwt } from '../middlewares/verify-jwt.js'
-import { VideoThumbnailService } from '@/lib/video-thumbnail.js'
 
 const uploadVideoToPlaySchema = z.object({
   playId: z.string().uuid(),
@@ -75,15 +76,37 @@ export async function uploadVideoToPlay(
       })
     }
 
-    // Upload para R2
-    const uploadResult = await r2Service.uploadVideo(buffer, filename)
+    // Comprimir vídeo antes do upload (similar ao WhatsApp)
+    let videoToUpload = buffer
+    try {
+      console.log('🗜️ Comprimindo vídeo...')
+      const compressionService = new VideoCompressionService()
+      videoToUpload = await compressionService.compressVideo(buffer, {
+        maxWidth: 720,
+        maxHeight: 720,
+        videoBitrate: '1M', // 1 Mbps - similar ao WhatsApp
+        audioBitrate: '64k',
+        maxFramerate: 30,
+        quality: 28, // Bom equilíbrio qualidade/tamanho
+      })
+      console.log('✅ Vídeo comprimido com sucesso!')
+    } catch (error) {
+      console.warn(
+        '⚠️ Erro ao comprimir vídeo, usando original:',
+        error instanceof Error ? error.message : error,
+      )
+      // Continua com o vídeo original se a compressão falhar
+    }
 
-    // Gerar thumbnail do vídeo
+    // Upload para R2
+    const uploadResult = await r2Service.uploadVideo(videoToUpload, filename)
+
+    // Gerar thumbnail do vídeo (usar vídeo comprimido para ser mais rápido)
     let thumbnailUrl: string | null = null
     try {
       const thumbnailService = new VideoThumbnailService()
       const thumbnailBuffer = await thumbnailService.generateThumbnail(
-        buffer,
+        videoToUpload,
         1,
       )
       const thumbnailResult = await r2Service.uploadThumbnail(

@@ -75,52 +75,144 @@ export async function getAthlete(request: FastifyRequest, reply: FastifyReply) {
     const userId = request.user.sub
 
     // Buscar dados em paralelo
-    const [favoritesCount, isFavorite, finishedMatches, videoFeed] =
+    const [favoritesCount, isFavorite, allMatches, videoFeed] =
       await Promise.all([
         favoriteRepository.countFavoritesByAthlete(id),
         favoriteRepository.isFavorite(userId, id),
-        // Partidas finalizadas do atleta (usar o ID do AthleteProfile)
-        matchRepository.findByAthleteIdAndStatus(athleteProfile.id, 'FINISHED'),
+        // Buscar todas as partidas do atleta (não apenas FINISHED)
+        // Para perfil público, faz sentido mostrar todas as partidas
+        matchRepository.findByAthlete(athleteProfile.id),
         // Feed de vídeos do atleta (usar o ID do AthleteProfile)
         playRepository.findVideosByAthleteId(athleteProfile.id),
       ])
+
+    // Agrupar partidas por competição/amistoso (mesmo formato do list-my-matches)
+    const groupedMatches: Record<
+      string,
+      {
+        type: 'competition' | 'friendly'
+        competition?: {
+          id: string
+          name: string
+          description: string | null
+          startDate: Date | null
+          endDate: Date | null
+        } | null
+        matches: Array<{
+          id: string
+          adversaryTeam: string
+          date: Date
+          myTeam: {
+            id: string
+            name: string
+            nickname: string | null
+            acronym: string
+          } | null
+          location: string
+          category: string
+          modality: string
+          result: string
+          myTeamScore: number | null
+          adversaryScore: number | null
+          performanceRating: number | null
+          isFriendly: boolean
+          competitionName: string | null
+          competition: {
+            id: string
+            name: string
+            description: string | null
+            startDate: Date | null
+            endDate: Date | null
+          } | null
+        }>
+      }
+    > = {}
+
+    // Separar partidas por competição ou amistoso
+    for (const match of allMatches) {
+      const competitionId = match.competitionId || null
+      const competition = match.competition || null
+      const key = competitionId || 'friendly'
+
+      if (!groupedMatches[key]) {
+        groupedMatches[key] = {
+          type: competitionId ? 'competition' : 'friendly',
+          competition: competition
+            ? {
+                id: competition.id,
+                name: competition.name,
+                description: competition.description || null,
+                startDate: competition.startDate || null,
+                endDate: competition.endDate || null,
+              }
+            : null,
+          matches: [],
+        }
+      }
+
+      groupedMatches[key].matches.push({
+        id: match.id,
+        adversaryTeam: match.adversaryTeam,
+        date: match.date,
+        myTeam: match.myTeam
+          ? {
+              id: match.myTeam.id,
+              name: match.myTeam.name,
+              nickname: match.myTeam.nickname,
+              acronym: match.myTeam.acronym,
+            }
+          : null,
+        location: match.location,
+        category: match.category,
+        modality: match.modality,
+        result: match.result,
+        myTeamScore: match.myTeamScore,
+        adversaryScore: match.adversaryScore,
+        performanceRating: match.performanceRating,
+        isFriendly: !competitionId,
+        competitionName: competition?.name || null,
+        competition: competition
+          ? {
+              id: competition.id,
+              name: competition.name,
+              description: competition.description || null,
+              startDate: competition.startDate || null,
+              endDate: competition.endDate || null,
+            }
+          : null,
+      })
+    }
+
+    // Ordenar partidas dentro de cada grupo por data (mais recente primeiro)
+    for (const key in groupedMatches) {
+      groupedMatches[key].matches.sort((a, b) => {
+        return b.date.getTime() - a.date.getTime()
+      })
+    }
+
+    // Converter para array e ordenar: primeiro competições (por nome), depois amistosos
+    const groupedArray = Object.values(groupedMatches).sort((a, b) => {
+      // Amistosos sempre por último
+      if (a.type === 'friendly' && b.type === 'competition') return 1
+      if (a.type === 'competition' && b.type === 'friendly') return -1
+
+      // Se ambos são competições, ordenar por nome
+      if (a.type === 'competition' && b.type === 'competition') {
+        const nameA = a.competition?.name || ''
+        const nameB = b.competition?.name || ''
+        return nameA.localeCompare(nameB)
+      }
+
+      // Se ambos são amistosos, manter ordem original
+      return 0
+    })
 
     return reply.status(200).send({
       athlete: {
         ...athleteProfile,
         favorites: favoritesCount,
         isFavorite,
-        finishedMatches: finishedMatches.map((match: MatchData) => ({
-          id: match.id,
-          adversaryTeam: match.adversaryTeam,
-          date: match.date,
-          myTeam: match.myTeam
-            ? {
-                id: match.myTeam.id,
-                name: match.myTeam.name,
-                nickname: match.myTeam.nickname,
-                acronym: match.myTeam.acronym,
-              }
-            : null,
-          location: match.location,
-          category: match.category,
-          modality: match.modality,
-          result: match.result,
-          myTeamScore: match.myTeamScore,
-          adversaryScore: match.adversaryScore,
-          performanceRating: match.performanceRating,
-          isFriendly: !match.competitionId,
-          competitionName: match.competition?.name || null,
-          competition: match.competition
-            ? {
-                id: match.competition.id,
-                name: match.competition.name,
-                description: match.competition.description,
-                startDate: match.competition.startDate,
-                endDate: match.competition.endDate,
-              }
-            : null,
-        })),
+        finishedMatches: groupedArray,
         videoFeed: videoFeed.map((play: PlayData) => ({
           id: play.id,
           type: play.playType,
