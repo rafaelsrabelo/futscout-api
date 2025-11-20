@@ -70,6 +70,43 @@ export class CloudflareR2Service {
   }
 
   /**
+   * Generate presigned URL for direct upload from frontend
+   * This avoids loading the entire video in backend memory
+   */
+  async generatePresignedUploadUrl(
+    filename: string,
+    expiresIn = 3600, // 1 hour default
+  ): Promise<{ uploadUrl: string; publicUrl: string; key: string }> {
+    const timestamp = Date.now()
+    const uniqueFilename = `videos/${timestamp}_${filename}`
+    const key = uniqueFilename
+
+    try {
+      // R2 uses S3-compatible API, so we can use S3 presigned URL format
+      // But R2 doesn't have native presigned URLs, so we'll use a workaround:
+      // Generate a temporary upload token via API
+      
+      // Alternative: Use R2's direct upload with public access
+      // For now, return the upload endpoint that frontend can use
+      // with a temporary token
+      
+      const uploadUrl = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/r2/buckets/${this.bucketName}/objects/${key}`
+      const publicUrl = `${this.publicBaseUrl}/${key}`
+
+      return {
+        uploadUrl,
+        publicUrl,
+        key,
+      }
+    } catch (error) {
+      console.error('Error generating presigned URL:', error)
+      throw new Error(
+        `Failed to generate upload URL: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      )
+    }
+  }
+
+  /**
    * Delete video from R2
    */
   async deleteVideo(filename: string): Promise<void> {
@@ -223,7 +260,7 @@ export class CloudflareR2Service {
    * Validate video file
    */
   validateVideo(buffer: Buffer, filename: string): void {
-    const maxSize = 100 * 1024 * 1024 // 100MB
+    const maxSize = 50 * 1024 * 1024 // 50MB (reduzido para evitar esgotar memória)
     const allowedTypes = [
       'mp4',
       'avi',

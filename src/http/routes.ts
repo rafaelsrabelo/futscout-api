@@ -21,6 +21,7 @@ import { executeSavedSearch } from './controllers/execute-saved-search.js'
 import { generateAIScout } from './controllers/generate-ai-scout.js'
 import { generateScoutByPosition } from './controllers/generate-scout-by-position.js'
 import { generateScout } from './controllers/generate-scout.js'
+import { generateVideoUploadUrl } from './controllers/generate-video-upload-url.js'
 import { getAthlete } from './controllers/get-athlete.js'
 import { getCompetition } from './controllers/get-competition.js'
 import { getGeneralStats } from './controllers/get-general-stats.js'
@@ -118,6 +119,11 @@ export async function appRoutes(app: FastifyInstance) {
 
   // Video feed route
   app.get('/videos/feed', { onRequest: [verifyJwt] }, getVideoFeed)
+  app.get(
+    '/videos/upload-url',
+    { onRequest: [verifyJwt] },
+    generateVideoUploadUrl,
+  )
 
   // Scout routes
   app.post('/matches/:id/scout', { onRequest: [verifyJwt] }, generateScout)

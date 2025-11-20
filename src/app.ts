@@ -17,7 +17,8 @@ export const app = fastify()
 // Register multipart plugin for file uploads
 app.register(import('@fastify/multipart'), {
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB
+    fileSize: 50 * 1024 * 1024, // 50MB (reduzido para evitar esgotar memória)
+    files: 1, // Apenas 1 arquivo por request
   },
 })
 

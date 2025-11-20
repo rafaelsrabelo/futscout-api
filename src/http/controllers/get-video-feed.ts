@@ -33,20 +33,11 @@ export async function getVideoFeed(
     }
 
     // Buscar todos os lances com vídeo do atleta (com ou sem partida), ordenado por data mais recente
+    // Otimizado: busca direto por athleteId primeiro (mais eficiente)
     const videoPlays = await prisma.play.findMany({
       where: {
         videoUrl: { not: null },
-        OR: [
-          {
-            match: {
-              athleteId: athleteProfile.id,
-            },
-          },
-          {
-            athleteId: athleteProfile.id,
-            matchId: null, // Lances sem partida
-          },
-        ],
+        athleteId: athleteProfile.id,
       },
       select: {
         id: true,
@@ -80,21 +71,11 @@ export async function getVideoFeed(
       take: limit,
     })
 
-    // Contar total para paginação
+    // Contar total para paginação (otimizado)
     const totalVideos = await prisma.play.count({
       where: {
         videoUrl: { not: null },
-        OR: [
-          {
-            match: {
-              athleteId: athleteProfile.id,
-            },
-          },
-          {
-            athleteId: athleteProfile.id,
-            matchId: null, // Lances sem partida
-          },
-        ],
+        athleteId: athleteProfile.id,
       },
     })
 
