@@ -69,8 +69,9 @@ export async function uploadVideoToPlay(
     const r2Service = new CloudflareR2Service()
 
     // Salvar stream em arquivo temporário (não carrega na memória!)
+    // Com proteção contra fechamento prematuro do stream
     const writeStream = createWriteStream(tempInputPath)
-    data.file.pipe(writeStream)
+    data.file.pipe(writeStream, { end: true })
 
     await new Promise<void>((resolve, reject) => {
       writeStream.on('finish', () => resolve())

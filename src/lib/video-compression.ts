@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { constants, createWriteStream } from 'node:fs'
-import { access, stat, unlink } from 'node:fs/promises'
+import { createWriteStream } from 'node:fs'
+import { stat, unlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Readable } from 'node:stream'
@@ -50,6 +50,8 @@ export class VideoCompressionService {
         console.log(
           `ℹ️ Vídeo pequeno (${(stats.size / 1024 / 1024).toFixed(2)}MB), pulando compressão`,
         )
+        // Limpar arquivo de input já que não vamos usar
+        await unlink(inputPath).catch(() => {})
         return null // Retorna null para indicar que não precisa comprimir
       }
 
@@ -76,6 +78,8 @@ export class VideoCompressionService {
           '⚠️ Vídeo comprimido é maior que o original, mantendo original',
         )
         await unlink(outputPath).catch(() => {})
+        // Limpar input também
+        await unlink(inputPath).catch(() => {})
         return null
       }
 
@@ -86,21 +90,21 @@ export class VideoCompressionService {
         `✅ Vídeo comprimido: ${(stats.size / 1024 / 1024).toFixed(2)}MB → ${(compressedStats.size / 1024 / 1024).toFixed(2)}MB (${compressionRatio.toFixed(1)}% redução)`,
       )
 
+      // Limpar arquivo de input após compressão bem-sucedida
+      await unlink(inputPath).catch(() => {})
+
       return outputPath // Retorna path, não buffer!
     } catch (error) {
-      // Limpar arquivo de saída se houver erro
-      try {
-        await access(outputPath, constants.F_OK)
-        await unlink(outputPath)
-      } catch {
-        // Ignorar
-      }
+      // Limpar arquivos em caso de erro
+      await unlink(outputPath).catch(() => {})
+      await unlink(inputPath).catch(() => {})
       throw error
     }
   }
 
   /**
    * Salva um stream em arquivo usando pipe (sem carregar na memória)
+   * Com proteção contra fechamento prematuro do stream
    */
   private async saveStreamToFile(
     stream: Readable,
@@ -108,10 +112,12 @@ export class VideoCompressionService {
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const writeStream = createWriteStream(filePath)
-      stream.pipe(writeStream)
-      writeStream.on('finish', resolve)
-      writeStream.on('error', reject)
+
+      stream.pipe(writeStream, { end: true })
+
       stream.on('error', reject)
+      writeStream.on('error', reject)
+      writeStream.on('finish', resolve)
     })
   }
 
@@ -245,7 +251,9 @@ export class VideoCompressionService {
         .audioCodec('aac')
         .outputOptions([
           `-crf ${quality}`,
-          '-preset veryfast', // Balance entre memória e qualidade (melhor que ultrafast)
+          '-preset veryfast', // Balance entre memória e qualidade
+          '-threads 1', // Limita threads para reduzir uso de RAM (60-80% menos)
+          '-max_muxing_queue_size 1024', // Evita problemas com vídeos HEVC/4K
           `-vf scale=${targetWidth}:${targetHeight}`,
           `-r ${targetFramerate}`,
           `-b:v ${videoBitrate}`,
