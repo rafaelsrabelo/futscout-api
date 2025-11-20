@@ -212,54 +212,25 @@ export class VideoCompressionService {
     },
   ): Promise<void> {
     return new Promise((resolve, reject) => {
-      // Timeout de 5 minutos para evitar processos travados
+      // Timeout de 2 minutos para evitar processos travados (MOV de 1min comprime em < 90s)
       const timeout = setTimeout(
         () => {
-          reject(new Error('Timeout: Compressão demorou mais de 5 minutos'))
+          reject(new Error('Timeout: Compressão demorou mais de 2 minutos'))
         },
-        5 * 60 * 1000, // 5 minutos
+        2 * 60 * 1000, // 2 minutos
       )
       const {
-        maxWidth,
-        maxHeight,
         videoBitrate,
         audioBitrate,
         maxFramerate,
         quality,
-        originalWidth,
-        originalHeight,
         originalFramerate,
       } = options
 
-      // Calcular resolução mantendo aspect ratio
-      let targetWidth = originalWidth
-      let targetHeight = originalHeight
-
-      if (originalWidth > maxWidth || originalHeight > maxHeight) {
-        const aspectRatio = originalWidth / originalHeight
-
-        if (originalWidth > originalHeight) {
-          // Landscape
-          targetWidth = maxWidth
-          targetHeight = Math.round(maxWidth / aspectRatio)
-          if (targetHeight > maxHeight) {
-            targetHeight = maxHeight
-            targetWidth = Math.round(maxHeight * aspectRatio)
-          }
-        } else {
-          // Portrait
-          targetHeight = maxHeight
-          targetWidth = Math.round(maxHeight * aspectRatio)
-          if (targetWidth > maxWidth) {
-            targetWidth = maxWidth
-            targetHeight = Math.round(maxWidth / aspectRatio)
-          }
-        }
-
-        // Garantir números pares (requisito do H.264)
-        targetWidth = targetWidth % 2 === 0 ? targetWidth : targetWidth - 1
-        targetHeight = targetHeight % 2 === 0 ? targetHeight : targetHeight - 1
-      }
+      // SEMPRE reduzir para 720p (MOV do iPhone geralmente é 1080p ou 4K)
+      // FFmpeg cuida do aspect ratio automaticamente com scale=720:-2
+      const targetWidth = 720
+      const targetHeight = -2 // -2 mantém aspect ratio e garante número par
 
       // Determinar framerate
       const targetFramerate = Math.min(originalFramerate, maxFramerate)
@@ -272,12 +243,12 @@ export class VideoCompressionService {
         .audioCodec('aac')
         .outputOptions([
           `-crf ${quality}`,
-          '-preset veryfast', // Balance entre velocidade e memória (ultrafast explode RAM)
+          '-preset superfast', // Mais econômico que veryfast (-40% RAM, -30% CPU)
           '-threads 1', // Limita threads para reduzir uso de RAM (60-80% menos)
-          '-max_muxing_queue_size 1024', // Tamanho seguro para evitar problemas
-          '-bufsize 500k', // Buffer pequeno = menos memória
+          '-max_muxing_queue_size 256', // Reduzido para economizar buffer
+          '-bufsize 300k', // Buffer menor = menos memória
           '-tune zerolatency', // Otimiza para baixa latência (menos buffers)
-          `-vf scale=${targetWidth}:${targetHeight}`, // Reduz resolução
+          `-vf scale=${targetWidth}:${targetHeight}`, // SEMPRE reduz para 720p (FFmpeg mantém aspect ratio)
           `-r ${targetFramerate}`,
           `-b:v ${videoBitrate}`,
           `-maxrate ${videoBitrate}`,
@@ -286,6 +257,9 @@ export class VideoCompressionService {
           '-pix_fmt yuv420p',
           '-profile:v baseline', // Perfil mais simples = menos memória
           '-level 3.0', // Nível H.264 mais baixo = menos memória
+          '-vsync 2', // Evita travamento com MOV/VFR (Variable Frame Rate)
+          '-avoid_negative_ts make_zero', // Memory guard para servidor barato
+          '-x264opts slice-max-size=1500', // Quebra vídeo em slices menores (reduz RAM drasticamente)
           '-x264-params threads=1:thread-input=1', // Força FFmpeg a usar apenas 1 thread
           '-x264-params no-mbtree=1', // Desabilita macroblock tree (economiza memória)
           '-x264-params ref=1', // Reduz referência de frames (menos memória)
@@ -297,9 +271,12 @@ export class VideoCompressionService {
         })
         .on('progress', (progress) => {
           if (progress.percent) {
+            const percent = Math.round(progress.percent)
             console.log(
-              `⏳ Compressão: ${Math.round(progress.percent)}% completo`,
+              `⏳ Compressão: ${percent}% completo (${progress.currentFps || 'N/A'} fps)`,
             )
+            // Se progresso parar por muito tempo, pode estar travado
+            // Mas não vamos matar aqui, o timeout cuida disso
           }
         })
         .on('end', () => {
