@@ -8,9 +8,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // The `url` property is no longer supported in Prisma 5+. 
-  // Move your connection URL to `prisma.config.ts`. 
-  // See: https://pris.ly/d/config-datasource
 }
 
 enum UserRole {
