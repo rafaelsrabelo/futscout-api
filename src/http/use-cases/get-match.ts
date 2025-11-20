@@ -1,6 +1,6 @@
 import type { Match } from '../../../generated/prisma/client.js'
-import type { MatchRepository } from '../repositories/match-repository.js'
 import type { AthleteProfileRepository } from '../repositories/athlete-profile-repository.js'
+import type { MatchRepository } from '../repositories/match-repository.js'
 
 interface GetMatchRequest {
   matchId: string
@@ -38,15 +38,7 @@ export class GetMatchUseCase {
   ) {}
 
   async execute(request: GetMatchRequest): Promise<Match> {
-    // Primeiro buscar o perfil de atleta do usuário
-    const athleteProfile = await this.athleteProfileRepository.findByUserId(
-      request.userId,
-    )
-
-    if (!athleteProfile) {
-      throw new AthleteProfileNotFoundError()
-    }
-
+    // Buscar a partida diretamente (partidas são públicas para visualização)
     const match = request.includePlays
       ? await this.matchRepository.findByIdWithPlays(request.matchId)
       : await this.matchRepository.findById(request.matchId)
@@ -55,11 +47,8 @@ export class GetMatchUseCase {
       throw new MatchNotFoundError()
     }
 
-    // Comparar com o ID do perfil de atleta, não com o ID do usuário
-    if (match.athleteId !== athleteProfile.id) {
-      throw new MatchNotBelongsToAthleteError()
-    }
-
+    // Partidas são públicas - qualquer usuário autenticado pode visualizar
+    // Apenas edição/deleção requerem que seja o dono
     return match
   }
 }
