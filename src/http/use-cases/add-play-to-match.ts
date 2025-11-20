@@ -1,12 +1,12 @@
 import type {
   Play,
-  PlayType,
   PlayClassification,
+  PlayType,
 } from '../../../generated/prisma/client.js'
-import type { PlayRepository } from '../repositories/play-repository.js'
-import type { MatchRepository } from '../repositories/match-repository.js'
-import type { AthleteProfileRepository } from '../repositories/athlete-profile-repository.js'
 import { prisma } from '../../lib/prisma.js'
+import type { AthleteProfileRepository } from '../repositories/athlete-profile-repository.js'
+import type { MatchRepository } from '../repositories/match-repository.js'
+import type { PlayRepository } from '../repositories/play-repository.js'
 
 interface AddPlayToMatchRequest {
   matchId: string
@@ -73,11 +73,14 @@ export class AddPlayToMatchUseCase {
 
     // Usar transação para criar o play e suas classificações
     const play = await prisma.$transaction(async (tx) => {
-      // Criar o play
+      // Criar o play (com matchId E athleteId para aparecer no feed)
       const createdPlay = await tx.play.create({
         data: {
           match: {
             connect: { id: request.matchId },
+          },
+          athlete: {
+            connect: { id: athleteProfile.id },
           },
           playType: request.playType,
           videoUrl: request.videoUrl ?? null,
@@ -106,7 +109,11 @@ export class AddPlayToMatchUseCase {
       })
     })
 
-    return play!
+    if (!play) {
+      throw new Error('Failed to create play')
+    }
+
+    return play
   }
 }
 
