@@ -264,20 +264,23 @@ export class VideoCompressionService {
       // Determinar framerate
       const targetFramerate = Math.min(originalFramerate, maxFramerate)
 
+      console.time('compression')
+      const startTime = Date.now()
+
       const command = ffmpeg(inputPath)
         .videoCodec('libx264')
         .audioCodec('aac')
         .outputOptions([
           `-crf ${quality}`,
-          '-preset ultrafast', // Máxima velocidade, mínimo uso de memória
+          '-preset veryfast', // Balance entre velocidade e memória (ultrafast explode RAM)
           '-threads 1', // Limita threads para reduzir uso de RAM (60-80% menos)
-          '-max_muxing_queue_size 256', // Reduzido ainda mais para economizar memória
-          '-tune fastdecode', // Otimiza para decodificação rápida (menos memória)
+          '-max_muxing_queue_size 1024', // Tamanho seguro para evitar problemas
+          '-bufsize 500k', // Buffer pequeno = menos memória
+          '-tune zerolatency', // Otimiza para baixa latência (menos buffers)
           `-vf scale=${targetWidth}:${targetHeight}`, // Reduz resolução
           `-r ${targetFramerate}`,
           `-b:v ${videoBitrate}`,
           `-maxrate ${videoBitrate}`,
-          `-bufsize ${this.parseBitrateToNumber(videoBitrate) * 2}M`,
           `-b:a ${audioBitrate}`,
           '-movflags +faststart',
           '-pix_fmt yuv420p',
@@ -286,6 +289,7 @@ export class VideoCompressionService {
           '-x264-params threads=1:thread-input=1', // Força FFmpeg a usar apenas 1 thread
           '-x264-params no-mbtree=1', // Desabilita macroblock tree (economiza memória)
           '-x264-params ref=1', // Reduz referência de frames (menos memória)
+          '-x264-params nal-hrd=cbr', // Constant bitrate = menos buffers
         ])
         .output(outputPath)
         .on('start', () => {
@@ -300,7 +304,9 @@ export class VideoCompressionService {
         })
         .on('end', () => {
           clearTimeout(timeout)
-          console.log('✅ Compressão concluída!')
+          console.timeEnd('compression')
+          const duration = ((Date.now() - startTime) / 1000).toFixed(2)
+          console.log(`✅ Compressão concluída em ${duration}s`)
           resolve()
         })
         .on('error', (error) => {

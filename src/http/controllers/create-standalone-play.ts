@@ -35,6 +35,9 @@ export async function createStandalonePlay(
       const parts = request.parts({
         limits: {
           fileSize: 120 * 1024 * 1024, // 120MB limite real no servidor
+          files: 1, // Apenas 1 arquivo por request
+          fields: 20, // Limite de campos de formulário
+          fieldSize: 2 * 1024 * 1024, // 2MB máximo por campo (evita campos gigantes)
         },
       })
       const formData: Record<string, string | number | null> = {}
@@ -55,20 +58,43 @@ export async function createStandalonePlay(
             const tempInputPath = join(tmpdir(), `${videoId}-input.mp4`)
             const r2Service = new CloudflareR2Service()
 
-            // Salvar stream em arquivo temporário (não carrega na memória!)
-            // Com proteção contra fechamento prematuro do stream
-            const writeStream = createWriteStream(tempInputPath)
-            part.file.pipe(writeStream, { end: true })
+            // Validar MIME type ANTES de salvar
+            const allowedMimeTypes = [
+              'video/mp4',
+              'video/quicktime',
+              'video/x-msvideo',
+              'video/x-ms-wmv',
+              'video/webm',
+              'video/x-matroska',
+            ]
+            if (
+              part.mimetype &&
+              !allowedMimeTypes.includes(part.mimetype.toLowerCase())
+            ) {
+              return reply.status(400).send({
+                message:
+                  'Formato de vídeo inválido. Formatos aceitos: MP4, MOV, AVI, WMV, WebM, MKV.',
+              })
+            }
 
-            await new Promise<void>((resolve, reject) => {
-              writeStream.on('finish', () => resolve())
-              writeStream.on('error', reject)
-              part.file.on('error', reject)
-            })
+            // Salvar stream em arquivo usando pipeline (garante backpressure e fechamento correto)
+            const { pipeline } = await import('node:stream/promises')
+            const writeStream = createWriteStream(tempInputPath)
+
+            // Timeout de 3 minutos para upload
+            request.socket.setTimeout(3 * 60 * 1000)
+
+            await pipeline(part.file, writeStream)
+            writeStream.close() // Garante flush completo
 
             // Validar arquivo (lê apenas metadados, não o arquivo inteiro)
             const fileStats = await stat(tempInputPath)
             const filename = part.filename || 'video.mp4'
+            const fileSizeMB = fileStats.size / (1024 * 1024)
+            console.log(
+              `📊 Arquivo recebido: ${filename} (${fileSizeMB.toFixed(2)}MB)`,
+            )
+
             if (fileStats.size > 100 * 1024 * 1024) {
               await unlink(tempInputPath).catch(() => {})
               return reply.status(413).send({
@@ -81,7 +107,6 @@ export async function createStandalonePlay(
             // IMPORTANTE: Comprime vídeos entre 30MB e 90MB (vídeos de celular de 1 minuto geralmente são 60-100MB)
             // Usa configurações muito conservadoras para evitar estouro de memória
             let finalVideoPath = tempInputPath
-            const fileSizeMB = fileStats.size / (1024 * 1024)
 
             if (fileSizeMB >= 30 && fileSizeMB <= 90) {
               try {
@@ -144,13 +169,19 @@ export async function createStandalonePlay(
             }
 
             // Upload usando stream (não carrega na memória!)
+            console.time('upload-to-r2')
             const uploadStream = createReadStream(finalVideoPath)
             const uploadResult = await r2Service.uploadVideoFromStream(
               uploadStream,
               filename,
             )
+            console.timeEnd('upload-to-r2')
             videoUrl = uploadResult.url
-            console.log('✅ Vídeo enviado:', videoUrl)
+            const finalSizeMB =
+              (await stat(finalVideoPath)).size / (1024 * 1024)
+            console.log(
+              `✅ Vídeo enviado: ${videoUrl} (${finalSizeMB.toFixed(2)}MB)`,
+            )
 
             // Limpar arquivos temporários
             await unlink(finalVideoPath).catch(() => {})

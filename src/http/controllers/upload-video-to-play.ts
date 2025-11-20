@@ -53,6 +53,9 @@ export async function uploadVideoToPlay(
     const parts = request.parts({
       limits: {
         fileSize: 120 * 1024 * 1024, // 120MB limite real no servidor
+        files: 1, // Apenas 1 arquivo por request
+        fields: 20, // Limite de campos de formulário
+        fieldSize: 2 * 1024 * 1024, // 2MB máximo por campo (evita campos gigantes)
       },
     })
     let videoPart: {
@@ -89,19 +92,31 @@ export async function uploadVideoToPlay(
     const filename = videoPart.filename || 'video.mp4'
     const r2Service = new CloudflareR2Service()
 
-    // Salvar stream em arquivo temporário (não carrega na memória!)
-    // Com proteção contra fechamento prematuro do stream
-    const writeStream = createWriteStream(tempInputPath)
-    videoPart.file.pipe(writeStream, { end: true })
+    // Validar extensão do arquivo (mimetype pode não estar disponível no parts)
+    const allowedExtensions = ['.mp4', '.mov', '.avi', '.wmv', '.webm', '.mkv']
+    const fileExt = filename.toLowerCase().substring(filename.lastIndexOf('.'))
+    if (!allowedExtensions.includes(fileExt)) {
+      return reply.status(400).send({
+        message:
+          'Formato de vídeo inválido. Formatos aceitos: MP4, MOV, AVI, WMV, WebM, MKV.',
+      })
+    }
 
-    await new Promise<void>((resolve, reject) => {
-      writeStream.on('finish', () => resolve())
-      writeStream.on('error', reject)
-      videoPart.file.on('error', reject)
-    })
+    // Salvar stream em arquivo usando pipeline (garante backpressure e fechamento correto)
+    const { pipeline } = await import('node:stream/promises')
+    const writeStream = createWriteStream(tempInputPath)
+
+    // Timeout de 3 minutos para upload
+    request.socket.setTimeout(3 * 60 * 1000)
+
+    await pipeline(videoPart.file, writeStream)
+    writeStream.close() // Garante flush completo
 
     // Validar tamanho do arquivo
     const fileStats = await stat(tempInputPath)
+    const fileSizeMB = fileStats.size / (1024 * 1024)
+    console.log(`📊 Arquivo recebido: ${filename} (${fileSizeMB.toFixed(2)}MB)`)
+
     if (fileStats.size > 100 * 1024 * 1024) {
       await unlink(tempInputPath).catch(() => {})
       return reply.status(413).send({
@@ -113,7 +128,6 @@ export async function uploadVideoToPlay(
     // IMPORTANTE: Comprime vídeos entre 30MB e 90MB (vídeos de celular de 1 minuto geralmente são 60-100MB)
     // Usa configurações muito conservadoras para evitar estouro de memória
     let finalVideoPath = tempInputPath
-    const fileSizeMB = fileStats.size / (1024 * 1024)
 
     if (fileSizeMB >= 30 && fileSizeMB <= 90) {
       try {
@@ -169,10 +183,16 @@ export async function uploadVideoToPlay(
     }
 
     // Upload usando stream (não carrega na memória!)
+    console.time('upload-to-r2')
     const uploadStream = createReadStream(finalVideoPath)
     const uploadResult = await r2Service.uploadVideoFromStream(
       uploadStream,
       filename,
+    )
+    console.timeEnd('upload-to-r2')
+    const finalSizeMB = (await stat(finalVideoPath)).size / (1024 * 1024)
+    console.log(
+      `✅ Vídeo enviado: ${uploadResult.url} (${finalSizeMB.toFixed(2)}MB)`,
     )
 
     // Limpar arquivo temporário
