@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { PrismaObserverProfileRepository } from '../repositories/prisma/prisma-observer-profile-repository.js'
 import { CreateObserverProfileUseCase } from '../use-cases/create-observer-profile.js'
 import { CpfAlreadyExistsError } from '../use-cases/errors/cpf-already-exists-error.js'
+import { InvalidCpfError } from '../use-cases/errors/invalid-cpf-error.js'
 
 export async function createObserverProfile(
   request: FastifyRequest,
@@ -47,6 +48,10 @@ export async function createObserverProfile(
   } catch (err) {
     if (err instanceof CpfAlreadyExistsError) {
       return reply.status(409).send({ message: err.message })
+    }
+
+    if (err instanceof InvalidCpfError) {
+      return reply.status(400).send({ message: err.message })
     }
 
     throw err

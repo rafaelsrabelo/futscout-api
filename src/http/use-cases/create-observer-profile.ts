@@ -1,7 +1,8 @@
+import { prisma } from '../../lib/prisma.js'
 import { validateCpf } from '../../utils/validateCpf.js'
 import type { ObserverProfileRepository } from '../repositories/observer-profile-repository.js'
 import { CpfAlreadyExistsError } from './errors/cpf-already-exists-error.js'
-import { prisma } from '../../lib/prisma.js'
+import { InvalidCpfError } from './errors/invalid-cpf-error.js'
 
 interface CreateObserverProfileRequest {
   userId: string
@@ -39,7 +40,7 @@ export class CreateObserverProfileUseCase {
   }: CreateObserverProfileRequest): Promise<CreateObserverProfileResponse> {
     // Validar CPF
     if (!validateCpf(cpf)) {
-      throw new Error('Invalid CPF format')
+      throw new InvalidCpfError()
     }
 
     // Normalizar CPF (remover pontos e traços)

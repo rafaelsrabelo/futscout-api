@@ -1,9 +1,10 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { PrismaObserverProfileRepository } from '../repositories/prisma/prisma-observer-profile-repository.js'
-import { UpdateObserverProfileUseCase } from '../use-cases/update-observer-profile.js'
 import { CpfAlreadyExistsError } from '../use-cases/errors/cpf-already-exists-error.js'
+import { InvalidCpfError } from '../use-cases/errors/invalid-cpf-error.js'
 import { ObserverProfileNotFoundError } from '../use-cases/errors/observer-profile-not-found-error.js'
+import { UpdateObserverProfileUseCase } from '../use-cases/update-observer-profile.js'
 
 export async function updateObserverProfile(
   request: FastifyRequest,
@@ -54,6 +55,10 @@ export async function updateObserverProfile(
 
     if (err instanceof CpfAlreadyExistsError) {
       return reply.status(409).send({ message: err.message })
+    }
+
+    if (err instanceof InvalidCpfError) {
+      return reply.status(400).send({ message: err.message })
     }
 
     throw err

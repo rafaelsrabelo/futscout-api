@@ -3,6 +3,7 @@ import { ZodError } from 'zod'
 import { env } from './env/index.js'
 import { appRoutes } from './http/routes.js'
 import { AthleteProfileNotFoundError } from './http/use-cases/create-match.js'
+import { InvalidCpfError } from './http/use-cases/errors/invalid-cpf-error.js'
 import {
   MatchNotBelongsToAthleteError,
   MatchNotFoundError,
@@ -67,6 +68,12 @@ app.setErrorHandler((error, request, reply) => {
   if (error instanceof CompetitionNotBelongsToAthleteError) {
     return reply.status(403).send({
       message: 'Access denied',
+    })
+  }
+
+  if (error instanceof InvalidCpfError) {
+    return reply.status(400).send({
+      message: 'Invalid CPF format',
     })
   }
 

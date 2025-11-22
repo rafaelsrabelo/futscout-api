@@ -1,6 +1,7 @@
 import { validateCpf } from '../../utils/validateCpf.js'
 import type { ObserverProfileRepository } from '../repositories/observer-profile-repository.js'
 import { CpfAlreadyExistsError } from './errors/cpf-already-exists-error.js'
+import { InvalidCpfError } from './errors/invalid-cpf-error.js'
 import { ObserverProfileNotFoundError } from './errors/observer-profile-not-found-error.js'
 
 interface UpdateObserverProfileRequest {
@@ -48,7 +49,7 @@ export class UpdateObserverProfileUseCase {
     if (cpf) {
       // Validar CPF
       if (!validateCpf(cpf)) {
-        throw new Error('Invalid CPF format')
+        throw new InvalidCpfError()
       }
 
       // Normalizar CPF (remover pontos e traços)
