@@ -49,6 +49,7 @@ import { toggleFavorite } from './controllers/toggle-favorite.js'
 import { updateCompetition } from './controllers/update-competition.js'
 import { updateMatch } from './controllers/update-match.js'
 import { updateObserverProfile } from './controllers/update-observer-profile.js'
+import { updatePlayVideoUrl } from './controllers/update-play-video-url.js'
 import { updatePlay } from './controllers/update-play.js'
 import { updateSavedSearch } from './controllers/update-saved-search.js'
 import { updateUserRole } from './controllers/update-user-role.js'
@@ -128,6 +129,12 @@ export async function appRoutes(app: FastifyInstance) {
     '/plays/:playId/video',
     { onRequest: [verifyJwt] },
     uploadVideoToPlay,
+  )
+  // Endpoint para atualizar play com URL do vídeo (quando upload já foi feito para R2)
+  app.put(
+    '/plays/:playId/video-url',
+    { onRequest: [verifyJwt] },
+    updatePlayVideoUrl,
   )
 
   // Video feed route
