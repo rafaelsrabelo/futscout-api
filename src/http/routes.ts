@@ -57,6 +57,8 @@ import { uploadObserverProfilePhoto } from './controllers/upload-observer-profil
 import { uploadProfilePhoto } from './controllers/upload-profile-photo.js'
 import { uploadVideoToPlay } from './controllers/upload-video-to-play.js'
 import { verifyEmail } from './controllers/verify-email.js'
+import { publicListAthletes } from './controllers/public-list-athletes.js'
+import { publicGetAthlete } from './controllers/public-get-athlete.js'
 
 import { verifyJwt } from './middlewares/verify-jwt.js'
 
@@ -67,6 +69,10 @@ export async function appRoutes(app: FastifyInstance) {
   app.post('/auth/sessions', authenticate)
   app.post('/auth/social-login', socialLogin)
   app.post('/auth/refresh', refreshToken)
+
+  // Public athlete routes (accessible without JWT for web)
+  app.get('/public/athletes', publicListAthletes)
+  app.get('/public/athletes/:id', publicGetAthlete)
 
   // Protected routes
   app.get('/auth/me', { onRequest: [verifyJwt] }, getProfile)
