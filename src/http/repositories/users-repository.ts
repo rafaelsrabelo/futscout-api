@@ -12,4 +12,5 @@ export interface UsersRepository {
   update(userId: string, data: Partial<User>): Promise<User>
   updateProfile(userId: string, isProfile: boolean): Promise<User>
   updateUserActiveStatus(userId: string, isActive: boolean): Promise<User>
+  delete(userId: string): Promise<void>
 }

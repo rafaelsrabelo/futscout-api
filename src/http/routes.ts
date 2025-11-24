@@ -10,6 +10,7 @@ import { createPlayWithVideoUrl } from './controllers/create-play-with-video-url
 import { createSavedSearch } from './controllers/create-saved-search.js'
 import { createStandalonePlay } from './controllers/create-standalone-play.js'
 import { createTeam } from './controllers/create-team.js'
+import { deleteAccount } from './controllers/delete-account.js'
 import { deleteCompetition } from './controllers/delete-competition.js'
 import { deleteMatch } from './controllers/delete-match.js'
 import { deletePlay } from './controllers/delete-play.js'
@@ -78,6 +79,7 @@ export async function appRoutes(app: FastifyInstance) {
   app.get('/auth/me', { onRequest: [verifyJwt] }, getProfile)
   app.delete('/auth/sessions', { onRequest: [verifyJwt] }, logout)
   app.delete('/auth/sessions/all', { onRequest: [verifyJwt] }, logoutAll)
+  app.delete('/auth/account', { onRequest: [verifyJwt] }, deleteAccount)
 
   // User routes
   app.patch('/users/me/role', { onRequest: [verifyJwt] }, updateUserRole)
