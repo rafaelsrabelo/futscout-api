@@ -141,11 +141,11 @@ export class CreateMatchUseCase {
       category: finalCategory,
       location: finalLocation,
       streamUrl: request.streamUrl ?? null,
-      competition: request.competitionId
-        ? {
-            connect: { id: request.competitionId },
-          }
-        : undefined,
+      ...(request.competitionId && {
+        competition: {
+          connect: { id: request.competitionId },
+        },
+      }),
       status: request.status || 'SCHEDULED',
       result: calculatedResult,
       myTeamScore: request.myTeamScore ?? null,
@@ -163,5 +163,3 @@ export class CreateMatchUseCase {
     return match
   }
 }
-
-export { AthleteProfileNotFoundError }
