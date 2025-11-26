@@ -4,10 +4,7 @@ import { env } from '../../../env/index.js'
 import { prisma } from '../../../lib/prisma.js'
 import { stripe } from '../../../lib/stripe.js'
 
-export async function checkout(
-  request: FastifyRequest,
-  reply: FastifyReply,
-) {
+export async function checkout(request: FastifyRequest, reply: FastifyReply) {
   const checkoutBodySchema = z.object({
     planId: z.string().uuid(),
     // URLs de redirecionamento opcionais (se não enviar, usa padrão do .env)
@@ -23,7 +20,8 @@ export async function checkout(
 
     // Usar URLs fornecidas pelo app ou padrão do .env
     const finalSuccessUrl =
-      successUrl || `${env.APP_REDIRECT_URL}/success?session_id={CHECKOUT_SESSION_ID}`
+      successUrl ||
+      `${env.APP_REDIRECT_URL}/success?session_id={CHECKOUT_SESSION_ID}`
     const finalCancelUrl = cancelUrl || `${env.APP_REDIRECT_URL}/cancel`
 
     // Buscar o plano
@@ -95,6 +93,7 @@ export async function checkout(
     })
   } catch (error) {
     console.error('❌ Error creating checkout session:', error)
+
     if (error instanceof z.ZodError) {
       return reply.status(400).send({
         message: 'Validation error',
@@ -102,10 +101,23 @@ export async function checkout(
       })
     }
 
+    // Se for erro do Stripe, retornar mais detalhes
+    if (error && typeof error === 'object' && 'type' in error) {
+      const stripeError = error as { type?: string; message?: string }
+      console.error('Stripe error details:', {
+        type: stripeError.type,
+        message: stripeError.message,
+      })
+      return reply.status(500).send({
+        message: 'Error creating checkout session',
+        error: stripeError.message || 'Unknown Stripe error',
+        type: stripeError.type,
+      })
+    }
+
     return reply.status(500).send({
       message: 'Error creating checkout session',
+      error: error instanceof Error ? error.message : 'Unknown error',
     })
   }
 }
-
-
