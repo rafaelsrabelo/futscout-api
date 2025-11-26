@@ -1,4 +1,5 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
+import type Stripe from 'stripe'
 import { z } from 'zod'
 import { env } from '../../../env/index.js'
 import { prisma } from '../../../lib/prisma.js'
@@ -55,11 +56,15 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
       try {
         // Tentar buscar o customer no Stripe
         await stripe.customers.retrieve(customerId)
-        // Se chegou aqui, o customer existe
+        // Se chegou aqui, o customer existe e é válido
+        console.log(`✅ Customer ${customerId} existe no Stripe`)
       } catch (error) {
         // Se o customer não existe, limpar o ID e criar novo
         const stripeError = error as { code?: string; message?: string }
-        if (stripeError.code === 'resource_missing') {
+        if (
+          stripeError.code === 'resource_missing' ||
+          stripeError.message?.includes('No such customer')
+        ) {
           console.log(
             `⚠️ Customer ${customerId} não existe no Stripe, criando novo...`,
           )
@@ -70,6 +75,7 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
             data: { stripeCustomerId: null },
           })
         } else {
+          // Se for outro erro, relançar
           throw error
         }
       }
@@ -77,6 +83,7 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
 
     // Criar customer no Stripe se não existir
     if (!customerId) {
+      console.log(`🆕 Criando novo customer no Stripe para usuário ${userId}`)
       const customer = await stripe.customers.create({
         email: user.email,
         name: user.name,
@@ -86,6 +93,7 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
       })
 
       customerId = customer.id
+      console.log(`✅ Customer criado: ${customerId}`)
 
       // Salvar customerId no banco
       await prisma.user.update({
@@ -95,22 +103,77 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
     }
 
     // Criar sessão de checkout
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      mode: 'subscription',
-      line_items: [
-        {
-          price: plan.stripePriceId,
-          quantity: 1,
+    let session: Stripe.Checkout.Session
+    try {
+      session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        mode: 'subscription',
+        line_items: [
+          {
+            price: plan.stripePriceId,
+            quantity: 1,
+          },
+        ],
+        success_url: finalSuccessUrl,
+        cancel_url: finalCancelUrl,
+        metadata: {
+          userId,
+          planId,
         },
-      ],
-      success_url: finalSuccessUrl,
-      cancel_url: finalCancelUrl,
-      metadata: {
-        userId,
-        planId,
-      },
-    })
+      })
+    } catch (sessionError) {
+      // Se o erro for de customer inválido, criar novo customer e tentar novamente
+      const stripeSessionError = sessionError as {
+        code?: string
+        message?: string
+      }
+      if (
+        stripeSessionError.code === 'resource_missing' ||
+        stripeSessionError.message?.includes('No such customer')
+      ) {
+        console.log(
+          `⚠️ Customer ${customerId} inválido ao criar sessão, criando novo...`,
+        )
+        // Limpar customerId inválido
+        await prisma.user.update({
+          where: { id: userId },
+          data: { stripeCustomerId: null },
+        })
+        // Criar novo customer
+        const newCustomer = await stripe.customers.create({
+          email: user.email,
+          name: user.name,
+          metadata: {
+            userId: user.id,
+          },
+        })
+        customerId = newCustomer.id
+        // Salvar novo customerId
+        await prisma.user.update({
+          where: { id: userId },
+          data: { stripeCustomerId: customerId },
+        })
+        // Tentar criar sessão novamente
+        session = await stripe.checkout.sessions.create({
+          customer: customerId,
+          mode: 'subscription',
+          line_items: [
+            {
+              price: plan.stripePriceId,
+              quantity: 1,
+            },
+          ],
+          success_url: finalSuccessUrl,
+          cancel_url: finalCancelUrl,
+          metadata: {
+            userId,
+            planId,
+          },
+        })
+      } else {
+        throw sessionError
+      }
+    }
 
     return reply.status(200).send({
       url: session.url,
