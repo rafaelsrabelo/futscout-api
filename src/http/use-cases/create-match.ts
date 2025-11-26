@@ -163,3 +163,5 @@ export class CreateMatchUseCase {
     return match
   }
 }
+
+export { AthleteProfileNotFoundError }

@@ -4,6 +4,7 @@ import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-at
 import { PrismaMatchRepository } from '../repositories/prisma/prisma-match-repository.js'
 import { PrismaPlayRepository } from '../repositories/prisma/prisma-play-repository.js'
 import { AddPlayToMatchUseCase } from '../use-cases/add-play-to-match.js'
+import { incrementVideoUsage } from '../utils/increment-usage.js'
 
 export async function addPlay(request: FastifyRequest, reply: FastifyReply) {
   const addPlayParamsSchema = z.object({
@@ -96,6 +97,11 @@ export async function addPlay(request: FastifyRequest, reply: FastifyReply) {
     observations: observations || null,
     classifications: classifications || [],
   })
+
+  // Incrementar contador de vídeos dentro de jogos se houver vídeo
+  if (play.videoUrl) {
+    await incrementVideoUsage(request.user.sub)
+  }
 
   return reply.status(201).send({ play })
 }

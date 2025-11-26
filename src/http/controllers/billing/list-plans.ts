@@ -21,6 +21,7 @@ export async function listPlans(request: FastifyRequest, reply: FastifyReply) {
         currency: plan.currency,
         monthlyLimitMatches: plan.monthlyLimitMatches,
         monthlyLimitVideos: plan.monthlyLimitVideos,
+        monthlyLimitStandaloneVideos: plan.monthlyLimitStandaloneVideos,
         isUnlimited: plan.isUnlimited,
         // Não retornar stripePriceId (informação interna)
       })),

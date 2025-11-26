@@ -73,18 +73,21 @@ export async function getSubscription(
         currency: plan.currency,
         monthlyLimitMatches: plan.monthlyLimitMatches,
         monthlyLimitVideos: plan.monthlyLimitVideos,
+        monthlyLimitStandaloneVideos: plan.monthlyLimitStandaloneVideos,
         isUnlimited: plan.isUnlimited,
       },
       usage: usage
         ? {
             matchesUsed: usage.matchesUsed,
             videosUsed: usage.videosUsed,
+            standaloneVideosUsed: usage.standaloneVideosUsed,
             month: usage.month,
             year: usage.year,
           }
         : {
             matchesUsed: 0,
             videosUsed: 0,
+            standaloneVideosUsed: 0,
             month,
             year,
           },

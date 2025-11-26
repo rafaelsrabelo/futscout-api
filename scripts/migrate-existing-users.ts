@@ -27,7 +27,7 @@ async function migrateExistingUsers() {
     }
 
     console.log('✅ Plano FREE encontrado')
-    console.log(`   Limites: ${freePlan.monthlyLimitMatches} jogos, ${freePlan.monthlyLimitVideos} vídeos por mês\n`)
+    console.log(`   Limites: ${freePlan.monthlyLimitMatches} jogos, ${freePlan.monthlyLimitStandaloneVideos} vídeos standalone por mês\n`)
 
     // 2. Contar usuários existentes
     const totalUsers = await prisma.user.count()
@@ -77,8 +77,8 @@ async function migrateExistingUsers() {
       },
     })
 
-    // Contar vídeos criados este mês por usuários sem assinatura
-    const playsThisMonth = await prisma.play.groupBy({
+    // Contar vídeos dentro de jogos criados este mês
+    const videosInMatchesThisMonth = await prisma.play.groupBy({
       by: ['athleteId'],
       where: {
         createdAt: {
@@ -87,6 +87,38 @@ async function migrateExistingUsers() {
         videoUrl: {
           not: null,
         },
+        matchId: {
+          not: null, // Só vídeos que têm matchId (dentro de jogos)
+        },
+        athlete: {
+          user: {
+            subscriptions: {
+              none: {
+                status: 'active',
+                currentPeriodEnd: {
+                  gte: new Date(),
+                },
+              },
+            },
+          },
+        },
+      },
+      _count: {
+        id: true,
+      },
+    })
+
+    // Contar vídeos standalone criados este mês
+    const standaloneVideosThisMonth = await prisma.play.groupBy({
+      by: ['athleteId'],
+      where: {
+        createdAt: {
+          gte: new Date(year, month - 1, 1),
+        },
+        videoUrl: {
+          not: null,
+        },
+        matchId: null, // Só vídeos sem matchId (standalone)
         athlete: {
           user: {
             subscriptions: {
@@ -107,7 +139,8 @@ async function migrateExistingUsers() {
 
     console.log(`📈 Estatísticas do mês atual (${month}/${year}):`)
     console.log(`   Usuários que criaram jogos: ${matchesThisMonth.length}`)
-    console.log(`   Usuários que criaram vídeos: ${playsThisMonth.length}\n`)
+    console.log(`   Usuários que criaram vídeos em jogos: ${videosInMatchesThisMonth.length}`)
+    console.log(`   Usuários que criaram vídeos standalone: ${standaloneVideosThisMonth.length}\n`)
 
     // 5. Inicializar contadores de uso para usuários que já criaram conteúdo
     console.log('🔄 Inicializando contadores de uso...')
@@ -140,6 +173,7 @@ async function migrateExistingUsers() {
           year,
           matchesUsed: matchGroup._count.id,
           videosUsed: 0,
+          standaloneVideosUsed: 0,
         },
         update: {
           matchesUsed: matchGroup._count.id,
@@ -153,10 +187,10 @@ async function migrateExistingUsers() {
       }
     }
 
-    // Processar vídeos
-    for (const playGroup of playsThisMonth) {
+    // Processar vídeos dentro de jogos
+    for (const videoGroup of videosInMatchesThisMonth) {
       const athlete = await prisma.athleteProfile.findUnique({
-        where: { id: playGroup.athleteId },
+        where: { id: videoGroup.athleteId },
         include: { user: true },
       })
 
@@ -177,11 +211,47 @@ async function migrateExistingUsers() {
           month,
           year,
           matchesUsed: 0,
-          videosUsed: playGroup._count.id,
+          videosUsed: videoGroup._count.id,
+          standaloneVideosUsed: 0,
         },
         update: {
           videosUsed: {
-            increment: playGroup._count.id,
+            increment: videoGroup._count.id,
+          },
+        },
+      })
+    }
+
+    // Processar vídeos standalone
+    for (const standaloneGroup of standaloneVideosThisMonth) {
+      const athlete = await prisma.athleteProfile.findUnique({
+        where: { id: standaloneGroup.athleteId },
+        include: { user: true },
+      })
+
+      if (!athlete) continue
+
+      const userId = athlete.userId
+
+      await prisma.usage.upsert({
+        where: {
+          userId_month_year: {
+            userId,
+            month,
+            year,
+          },
+        },
+        create: {
+          userId,
+          month,
+          year,
+          matchesUsed: 0,
+          videosUsed: 0,
+          standaloneVideosUsed: standaloneGroup._count.id,
+        },
+        update: {
+          standaloneVideosUsed: {
+            increment: standaloneGroup._count.id,
           },
         },
       })

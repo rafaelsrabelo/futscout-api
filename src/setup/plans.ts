@@ -20,7 +20,8 @@ export async function seedPlans() {
         price: 0,
         currency: 'BRL',
         monthlyLimitMatches: 5, // 5 jogos por mês
-        monthlyLimitVideos: 25, // 5 vídeos por jogo × 5 jogos = 25 vídeos
+        monthlyLimitVideos: null, // Vídeos dentro de jogos não têm limite (só conta)
+        monthlyLimitStandaloneVideos: 5, // 5 vídeos standalone (lances sem partida)
         isUnlimited: false,
       },
     })
@@ -31,7 +32,8 @@ export async function seedPlans() {
       where: { name: 'FREE' },
       data: {
         monthlyLimitMatches: 5,
-        monthlyLimitVideos: 25,
+        monthlyLimitVideos: null, // Vídeos dentro de jogos não têm limite
+        monthlyLimitStandaloneVideos: 5, // 5 vídeos standalone
       },
     })
     console.log('ℹ️  Plano FREE atualizado')

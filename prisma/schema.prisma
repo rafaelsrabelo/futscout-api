@@ -542,7 +542,8 @@ model Plan {
   price       Int      // in cents
   currency    String   @default("BRL")
   monthlyLimitMatches Int?
-  monthlyLimitVideos  Int?
+  monthlyLimitVideos  Int?  // Vídeos dentro de jogos (não limitado no FREE, só conta)
+  monthlyLimitStandaloneVideos Int?  // Vídeos standalone (lances sem partida)
   isUnlimited Boolean  @default(false)
   stripePriceId String?
   createdAt   DateTime @default(now())
@@ -572,7 +573,8 @@ model Usage {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   month       Int
   year        Int
-  videosUsed  Int      @default(0)
+  videosUsed  Int      @default(0)  // Vídeos dentro de jogos (só conta, não limita)
+  standaloneVideosUsed Int @default(0)  // Vídeos standalone (lances sem partida)
   matchesUsed Int      @default(0)
   createdAt   DateTime @default(now())
 

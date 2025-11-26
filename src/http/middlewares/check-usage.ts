@@ -68,13 +68,39 @@ export async function checkUsage(
           month,
           year,
           videosUsed: 0,
+          standaloneVideosUsed: 0,
           matchesUsed: 0,
         },
       })
     }
 
-    // Verificar limites de vídeos
+    // Detectar tipo de rota para aplicar limite correto
+    const route = request.url.split('?')[0] // Remove query params
+    // Rotas standalone: /plays, /plays/with-url, /plays/direct-upload, /videos/upload-url
+    // NÃO standalone: /matches/:id/plays (vídeos dentro de jogos)
+    const isStandaloneVideoRoute =
+      (route.includes('/plays') && !route.includes('/matches/')) ||
+      route.includes('/videos/upload-url')
+
+    // Verificar limites de vídeos standalone (lances sem partida)
+    if (isStandaloneVideoRoute) {
+      if (
+        plan.monthlyLimitStandaloneVideos !== null &&
+        usage.standaloneVideosUsed >= plan.monthlyLimitStandaloneVideos
+      ) {
+        return reply.status(402).send({
+          message:
+            'Monthly standalone video limit reached. Please upgrade your plan.',
+          limit: plan.monthlyLimitStandaloneVideos,
+          used: usage.standaloneVideosUsed,
+        })
+      }
+    }
+
+    // Verificar limites de vídeos dentro de jogos (não limitado no FREE, só conta)
+    // Este limite só se aplica se monthlyLimitVideos não for null
     if (
+      !isStandaloneVideoRoute &&
       plan.monthlyLimitVideos !== null &&
       usage.videosUsed >= plan.monthlyLimitVideos
     ) {

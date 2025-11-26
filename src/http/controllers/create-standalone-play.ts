@@ -7,7 +7,9 @@ import { VideoThumbnailService } from '../../lib/video-thumbnail.js'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
 import { PrismaPlayRepository } from '../repositories/prisma/prisma-play-repository.js'
 import { CreateStandalonePlayUseCase } from '../use-cases/create-standalone-play.js'
-import { incrementVideoUsage } from '../utils/increment-usage.js'
+import {
+  incrementStandaloneVideoUsage,
+} from '../utils/increment-usage.js'
 
 export async function createStandalonePlay(
   request: FastifyRequest,
@@ -404,9 +406,9 @@ export async function createStandalonePlay(
       classifications: classifications as PlayClassification[],
     })
 
-    // Incrementar contador de uso de vídeos se houver vídeo
+    // Incrementar contador de uso de vídeos standalone se houver vídeo
     if (play.videoUrl) {
-      await incrementVideoUsage(request.user.sub)
+      await incrementStandaloneVideoUsage(request.user.sub)
     }
 
     console.log('✅ Lance criado com sucesso:', {
