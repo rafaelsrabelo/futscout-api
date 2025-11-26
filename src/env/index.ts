@@ -37,6 +37,14 @@ const envSchema = z.object({
   // Social login providers
   GOOGLE_CLIENT_IDS: z.string().optional(),
   APPLE_CLIENT_IDS: z.string().optional(),
+
+  // Stripe configuration
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_PUBLISHABLE_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  // URL de redirecionamento do app após pagamento (deep link)
+  // Exemplo para mobile: futscout://payment/success
+  APP_REDIRECT_URL: z.string().default('futscout://payment'),
 })
 
 const _env = envSchema.safeParse(process.env)

@@ -4,6 +4,7 @@ import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-at
 import { PrismaCompetitionRepository } from '../repositories/prisma/prisma-competition-repository.js'
 import { PrismaMatchRepository } from '../repositories/prisma/prisma-match-repository.js'
 import { CreateMatchUseCase } from '../use-cases/create-match.js'
+import { incrementMatchUsage } from '../utils/increment-usage.js'
 
 export async function createMatch(
   request: FastifyRequest,
@@ -14,26 +15,28 @@ export async function createMatch(
     adversaryTeam: z.string(),
     date: z.string().transform((val) => new Date(val)),
     modality: z.enum(['FUT_11', 'FUT_7', 'FUTSAL']).optional(),
-    category: z.enum([
-      'U5',
-      'U6',
-      'U7',
-      'U8',
-      'U9',
-      'U10',
-      'U11',
-      'U12',
-      'U13',
-      'U14',
-      'U15',
-      'U16',
-      'U17',
-      'U18',
-      'U19',
-      'U20',
-      'AMATEUR',
-      'PROFESSIONAL',
-    ]).optional(),
+    category: z
+      .enum([
+        'U5',
+        'U6',
+        'U7',
+        'U8',
+        'U9',
+        'U10',
+        'U11',
+        'U12',
+        'U13',
+        'U14',
+        'U15',
+        'U16',
+        'U17',
+        'U18',
+        'U19',
+        'U20',
+        'AMATEUR',
+        'PROFESSIONAL',
+      ])
+      .optional(),
     location: z.string().optional(),
     streamUrl: z.string().optional(),
     competition_id: z.string().uuid().optional(), // Se não fornecido, é amistoso
@@ -145,6 +148,9 @@ export async function createMatch(
     youtubeUrl: youtubeUrl || null,
     performanceRating: performanceRating || null,
   })
+
+  // Incrementar contador de uso de partidas
+  await incrementMatchUsage(request.user.sub)
 
   return reply.status(201).send({ match })
 }

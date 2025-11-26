@@ -15,23 +15,32 @@ interface CreateMatchRequest {
   myTeamId: string
   adversaryTeam: string
   date: Date
-  modality?: Modality // Opcional se competitionId for fornecido
-  category?: Category // Opcional se competitionId for fornecido
-  location?: string // Opcional se competitionId for fornecido
-  streamUrl?: string | null
-  competitionId?: string | null // Se null, é amistoso
-  status?: MatchStatus
-  result?: MatchResult
-  myTeamScore?: number | null
-  adversaryScore?: number | null
-  playerPosition?: PlayerPosition | null
-  observations?: string | null
-  matchDuration?: number | null
-  approximateTime?: number | null
-  photoUrl?: string | null
-  videoUrl?: string | null
-  youtubeUrl?: string | null
-  performanceRating?: number | null
+  modality?:
+    | Modality // Opcional se competitionId for fornecido
+    | undefined // Opcional se competitionId for fornecido
+  category?:
+    | Category // Opcional se competitionId for fornecido
+    | undefined // Opcional se competitionId for fornecido
+  location?:
+    | string // Opcional se competitionId for fornecido
+    | undefined // Opcional se competitionId for fornecido
+  streamUrl?: string | null | undefined
+  competitionId?:
+    | string
+    | null // Se null, é amistoso
+    | undefined // Se null, é amistoso
+  status?: MatchStatus | undefined
+  result?: MatchResult | undefined
+  myTeamScore?: number | null | undefined
+  adversaryScore?: number | null | undefined
+  playerPosition?: PlayerPosition | null | undefined
+  observations?: string | null | undefined
+  matchDuration?: number | null | undefined
+  approximateTime?: number | null | undefined
+  photoUrl?: string | null | undefined
+  videoUrl?: string | null | undefined
+  youtubeUrl?: string | null | undefined
+  performanceRating?: number | null | undefined
 }
 
 class AthleteProfileNotFoundError extends Error {

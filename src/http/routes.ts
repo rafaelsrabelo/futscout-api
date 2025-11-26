@@ -1,7 +1,13 @@
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { addPlay } from './controllers/add-play.js'
 import { addTeamHistory } from './controllers/add-team-history.js'
 import { authenticate } from './controllers/authenticate.js'
+import { checkout } from './controllers/billing/checkout.js'
+import { getStripeConfig } from './controllers/billing/get-stripe-config.js'
+import { getSubscription } from './controllers/billing/get-subscription.js'
+import { listPlans } from './controllers/billing/list-plans.js'
+import { portal } from './controllers/billing/portal.js'
+import { webhook } from './controllers/billing/webhook.js'
 import { createAthleteProfile } from './controllers/create-athlete-profile.js'
 import { createCompetition } from './controllers/create-competition.js'
 import { createMatch } from './controllers/create-match.js'
@@ -41,6 +47,8 @@ import { listMyTeams } from './controllers/list-my-teams.js'
 import { listSavedSearches } from './controllers/list-saved-searches.js'
 import { listTeamHistory } from './controllers/list-team-history.js'
 import { logout, logoutAll } from './controllers/logout.js'
+import { publicGetAthlete } from './controllers/public-get-athlete.js'
+import { publicListAthletes } from './controllers/public-list-athletes.js'
 import { refreshToken } from './controllers/refresh-token.js'
 import { regenerateThumbnail } from './controllers/regenerate-thumbnail.js'
 import { register } from './controllers/register.js'
@@ -58,9 +66,8 @@ import { uploadObserverProfilePhoto } from './controllers/upload-observer-profil
 import { uploadProfilePhoto } from './controllers/upload-profile-photo.js'
 import { uploadVideoToPlay } from './controllers/upload-video-to-play.js'
 import { verifyEmail } from './controllers/verify-email.js'
-import { publicListAthletes } from './controllers/public-list-athletes.js'
-import { publicGetAthlete } from './controllers/public-get-athlete.js'
 
+import { checkUsage } from './middlewares/check-usage.js'
 import { verifyJwt } from './middlewares/verify-jwt.js'
 
 export async function appRoutes(app: FastifyInstance) {
@@ -113,22 +120,26 @@ export async function appRoutes(app: FastifyInstance) {
   app.delete('/competitions/:id', { onRequest: [verifyJwt] }, deleteCompetition)
 
   // Match routes
-  app.post('/matches', { onRequest: [verifyJwt] }, createMatch)
+  app.post('/matches', { onRequest: [verifyJwt, checkUsage] }, createMatch)
   app.get('/matches', { onRequest: [verifyJwt] }, listMyMatches)
   app.get('/matches/:id', { onRequest: [verifyJwt] }, getMatch)
   app.put('/matches/:id', { onRequest: [verifyJwt] }, updateMatch)
   app.delete('/matches/:id', { onRequest: [verifyJwt] }, deleteMatch)
   app.post('/matches/:id/plays', { onRequest: [verifyJwt] }, addPlay)
-  app.post('/plays', { onRequest: [verifyJwt] }, createStandalonePlay)
+  app.post(
+    '/plays',
+    { onRequest: [verifyJwt, checkUsage] },
+    createStandalonePlay,
+  )
   // Nova rota: Upload direto (backend não toca no vídeo)
   app.post(
     '/plays/with-url',
-    { onRequest: [verifyJwt] },
+    { onRequest: [verifyJwt, checkUsage] },
     createPlayWithVideoUrl,
   )
   app.post(
     '/plays/direct-upload',
-    { onRequest: [verifyJwt] },
+    { onRequest: [verifyJwt, checkUsage] },
     createPlayWithVideoUrl,
   )
   app.put('/plays/:playId', { onRequest: [verifyJwt] }, updatePlay)
@@ -149,7 +160,7 @@ export async function appRoutes(app: FastifyInstance) {
   app.get('/videos/feed', { onRequest: [verifyJwt] }, getVideoFeed)
   app.get(
     '/videos/upload-url',
-    { onRequest: [verifyJwt] },
+    { onRequest: [verifyJwt, checkUsage] },
     generateVideoUploadUrl,
   )
   app.post(
@@ -223,5 +234,38 @@ export async function appRoutes(app: FastifyInstance) {
     '/athletes/sync-current-club',
     { onRequest: [verifyJwt] },
     syncCurrentClub,
+  )
+
+  // Billing routes
+  // Rota pública para obter a chave publicável do Stripe (para o frontend)
+  app.get('/billing/stripe-config', getStripeConfig)
+  // Rota pública para listar planos disponíveis
+  app.get('/billing/plans', listPlans)
+  // Rota protegida para verificar assinatura e uso atual
+  app.get('/billing/subscription', { onRequest: [verifyJwt] }, getSubscription)
+
+  app.post('/billing/checkout', { onRequest: [verifyJwt] }, checkout)
+  app.post('/billing/portal', { onRequest: [verifyJwt] }, portal)
+  // Webhook route - sem autenticação JWT, usa assinatura do Stripe
+  // Configurar parser customizado apenas para esta rota
+  app.post(
+    '/billing/webhook',
+    {
+      bodyLimit: 1048576, // 1MB
+      config: {
+        rawBody: true,
+      },
+    },
+    async (request, reply) => {
+      // Garantir que temos o body como Buffer
+      const body = request.body
+      if (Buffer.isBuffer(body)) {
+        ;(request as FastifyRequest & { rawBody: Buffer }).rawBody = body
+      } else {
+        ;(request as FastifyRequest & { rawBody: Buffer }).rawBody =
+          Buffer.from(typeof body === 'string' ? body : JSON.stringify(body))
+      }
+      return webhook(request, reply)
+    },
   )
 }

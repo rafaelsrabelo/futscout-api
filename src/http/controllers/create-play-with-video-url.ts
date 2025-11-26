@@ -7,6 +7,7 @@ import { VideoThumbnailService } from '../../lib/video-thumbnail.js'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
 import { PrismaPlayRepository } from '../repositories/prisma/prisma-play-repository.js'
 import { CreateStandalonePlayUseCase } from '../use-cases/create-standalone-play.js'
+import { incrementVideoUsage } from '../utils/increment-usage.js'
 
 /**
  * Cria um play com vídeo já no R2 (upload direto do frontend)
@@ -112,6 +113,9 @@ export async function createPlayWithVideoUrl(
       observations: observations || null,
       classifications: (classifications || []) as PlayClassification[],
     })
+
+    // Incrementar contador de uso de vídeos
+    await incrementVideoUsage(request.user.sub)
 
     console.log('✅ Play criado com sucesso (upload direto):', {
       id: play.id,

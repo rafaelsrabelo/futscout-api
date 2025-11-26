@@ -161,6 +161,7 @@ model User {
   emailVerified Boolean @default(false)
   isActive  Boolean  @default(false)
   isProfile Boolean  @default(false)
+  stripeCustomerId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -172,6 +173,8 @@ model User {
   favorites      Favorite[]
   teams          Team[]
   savedSearches  SavedSearch[]
+  subscriptions  Subscription[]
+  usages         Usage[]
 
   @@map("users")
   @@unique([provider, providerId])
@@ -531,4 +534,48 @@ model SavedSearch {
   updatedAt   DateTime @updatedAt
 
   @@map("saved_searches")
+}
+
+model Plan {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  price       Int      // in cents
+  currency    String   @default("BRL")
+  monthlyLimitMatches Int?
+  monthlyLimitVideos  Int?
+  isUnlimited Boolean  @default(false)
+  stripePriceId String?
+  createdAt   DateTime @default(now())
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id                    String   @id @default(uuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId                String
+  plan                  Plan     @relation(fields: [planId], references: [id])
+  status                String   // active, canceled, past_due
+  currentPeriodEnd      DateTime
+  stripeSubscriptionId  String?
+  createdAt             DateTime @default(now())
+
+  @@map("subscriptions")
+}
+
+model Usage {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  month       Int
+  year        Int
+  videosUsed  Int      @default(0)
+  matchesUsed Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, month, year])
+  @@map("usages")
 }
