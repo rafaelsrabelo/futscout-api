@@ -1,7 +1,12 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import z from 'zod'
-import { PrismaMatchRepository } from '../repositories/prisma/prisma-match-repository.js'
+import { prisma } from '../../lib/prisma.js'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
+import { PrismaMatchRepository } from '../repositories/prisma/prisma-match-repository.js'
+import {
+  decrementMatchUsage,
+  decrementVideoUsage,
+} from '../utils/increment-usage.js'
 
 export async function deleteMatch(
   request: FastifyRequest,
@@ -43,8 +48,25 @@ export async function deleteMatch(
       })
     }
 
-    // Deletar a partida
+    // Contar vídeos da partida ANTES de deletar (para decrementar contador)
+    const playsWithVideos = await prisma.play.count({
+      where: {
+        matchId: id,
+        videoUrl: { not: null },
+      },
+    })
+
+    // Deletar a partida (plays serão deletados em cascade)
     await matchRepository.delete(id)
+
+    // Decrementar contadores de uso
+    // Decrementar vídeos (um por vídeo na partida)
+    for (let i = 0; i < playsWithVideos; i++) {
+      await decrementVideoUsage(userId)
+    }
+
+    // Decrementar contador de matches
+    await decrementMatchUsage(userId)
 
     return reply.status(204).send()
   } catch (error) {

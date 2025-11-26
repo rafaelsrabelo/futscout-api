@@ -47,7 +47,10 @@ export async function getSubscription(
     const month = now.getMonth() + 1
     const year = now.getFullYear()
 
-    const usage = await prisma.usage.findUnique({
+    const firstDayOfMonth = new Date(year, month - 1, 1)
+    const lastDayOfMonth = new Date(year, month, 0, 23, 59, 59, 999)
+
+    let usage = await prisma.usage.findUnique({
       where: {
         userId_month_year: {
           userId,
@@ -56,6 +59,79 @@ export async function getSubscription(
         },
       },
     })
+
+    // Se não tem registro de uso, buscar do banco diretamente
+    if (!usage) {
+      // Buscar perfil do atleta
+      const athleteProfile = await prisma.athleteProfile.findUnique({
+        where: { userId },
+      })
+
+      if (athleteProfile) {
+        // Contar partidas criadas este mês
+        const matchesCount = await prisma.match.count({
+          where: {
+            athleteId: athleteProfile.id,
+            createdAt: {
+              gte: firstDayOfMonth,
+              lte: lastDayOfMonth,
+            },
+          },
+        })
+
+        // Contar vídeos em jogos criados este mês
+        const videosInMatchesCount = await prisma.play.count({
+          where: {
+            match: {
+              athleteId: athleteProfile.id,
+            },
+            videoUrl: { not: null },
+            matchId: { not: null },
+            createdAt: {
+              gte: firstDayOfMonth,
+              lte: lastDayOfMonth,
+            },
+          },
+        })
+
+        // Contar vídeos standalone criados este mês
+        const standaloneVideosCount = await prisma.play.count({
+          where: {
+            athleteId: athleteProfile.id,
+            videoUrl: { not: null },
+            matchId: null,
+            createdAt: {
+              gte: firstDayOfMonth,
+              lte: lastDayOfMonth,
+            },
+          },
+        })
+
+        // Criar registro de uso com os valores do banco
+        usage = await prisma.usage.create({
+          data: {
+            userId,
+            month,
+            year,
+            matchesUsed: matchesCount,
+            videosUsed: videosInMatchesCount,
+            standaloneVideosUsed: standaloneVideosCount,
+          },
+        })
+      } else {
+        // Se não tem perfil, criar com zeros
+        usage = await prisma.usage.create({
+          data: {
+            userId,
+            month,
+            year,
+            matchesUsed: 0,
+            videosUsed: 0,
+            standaloneVideosUsed: 0,
+          },
+        })
+      }
+    }
 
     return reply.status(200).send({
       subscription: subscription
@@ -76,21 +152,13 @@ export async function getSubscription(
         monthlyLimitStandaloneVideos: plan.monthlyLimitStandaloneVideos,
         isUnlimited: plan.isUnlimited,
       },
-      usage: usage
-        ? {
-            matchesUsed: usage.matchesUsed,
-            videosUsed: usage.videosUsed,
-            standaloneVideosUsed: usage.standaloneVideosUsed,
-            month: usage.month,
-            year: usage.year,
-          }
-        : {
-            matchesUsed: 0,
-            videosUsed: 0,
-            standaloneVideosUsed: 0,
-            month,
-            year,
-          },
+      usage: {
+        matchesUsed: usage.matchesUsed,
+        videosUsed: usage.videosUsed,
+        standaloneVideosUsed: usage.standaloneVideosUsed,
+        month: usage.month,
+        year: usage.year,
+      },
     })
   } catch (error) {
     console.error('❌ Error getting subscription:', error)

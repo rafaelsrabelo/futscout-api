@@ -86,6 +86,72 @@ export class DeletePlayUseCase {
 
     // Deletar o lance
     await this.playRepository.delete(request.playId)
+
+    // Decrementar contador de uso se o play tinha vídeo
+    if (play.videoUrl) {
+      const now = new Date()
+      const month = now.getMonth() + 1
+      const year = now.getFullYear()
+
+      // Determinar se é vídeo standalone ou de jogo
+      if (play.matchId) {
+        // Vídeo dentro de jogo
+        const usage = await prisma.usage.findUnique({
+          where: {
+            userId_month_year: {
+              userId: request.userId,
+              month,
+              year,
+            },
+          },
+        })
+
+        if (usage && usage.videosUsed > 0) {
+          await prisma.usage.update({
+            where: {
+              userId_month_year: {
+                userId: request.userId,
+                month,
+                year,
+              },
+            },
+            data: {
+              videosUsed: {
+                decrement: 1,
+              },
+            },
+          })
+        }
+      } else {
+        // Vídeo standalone
+        const usage = await prisma.usage.findUnique({
+          where: {
+            userId_month_year: {
+              userId: request.userId,
+              month,
+              year,
+            },
+          },
+        })
+
+        if (usage && usage.standaloneVideosUsed > 0) {
+          await prisma.usage.update({
+            where: {
+              userId_month_year: {
+                userId: request.userId,
+                month,
+                year,
+              },
+            },
+            data: {
+              standaloneVideosUsed: {
+                decrement: 1,
+              },
+            },
+          })
+        }
+      }
+    }
   }
 }
 

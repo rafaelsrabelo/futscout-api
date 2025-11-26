@@ -86,3 +86,102 @@ export async function incrementStandaloneVideoUsage(userId: string) {
     },
   })
 }
+
+export async function decrementVideoUsage(userId: string) {
+  const now = new Date()
+  const month = now.getMonth() + 1
+  const year = now.getFullYear()
+
+  const usage = await prisma.usage.findUnique({
+    where: {
+      userId_month_year: {
+        userId,
+        month,
+        year,
+      },
+    },
+  })
+
+  if (usage && usage.videosUsed > 0) {
+    await prisma.usage.update({
+      where: {
+        userId_month_year: {
+          userId,
+          month,
+          year,
+        },
+      },
+      data: {
+        videosUsed: {
+          decrement: 1,
+        },
+      },
+    })
+  }
+}
+
+export async function decrementStandaloneVideoUsage(userId: string) {
+  const now = new Date()
+  const month = now.getMonth() + 1
+  const year = now.getFullYear()
+
+  const usage = await prisma.usage.findUnique({
+    where: {
+      userId_month_year: {
+        userId,
+        month,
+        year,
+      },
+    },
+  })
+
+  if (usage && usage.standaloneVideosUsed > 0) {
+    await prisma.usage.update({
+      where: {
+        userId_month_year: {
+          userId,
+          month,
+          year,
+        },
+      },
+      data: {
+        standaloneVideosUsed: {
+          decrement: 1,
+        },
+      },
+    })
+  }
+}
+
+export async function decrementMatchUsage(userId: string) {
+  const now = new Date()
+  const month = now.getMonth() + 1
+  const year = now.getFullYear()
+
+  const usage = await prisma.usage.findUnique({
+    where: {
+      userId_month_year: {
+        userId,
+        month,
+        year,
+      },
+    },
+  })
+
+  if (usage && usage.matchesUsed > 0) {
+    await prisma.usage.update({
+      where: {
+        userId_month_year: {
+          userId,
+          month,
+          year,
+        },
+      },
+      data: {
+        matchesUsed: {
+          decrement: 1,
+        },
+      },
+    })
+  }
+}
