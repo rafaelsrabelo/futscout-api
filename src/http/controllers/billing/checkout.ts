@@ -50,6 +50,31 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
 
     let customerId = user.stripeCustomerId
 
+    // Verificar se o customer existe no Stripe, se não existir criar novo
+    if (customerId) {
+      try {
+        // Tentar buscar o customer no Stripe
+        await stripe.customers.retrieve(customerId)
+        // Se chegou aqui, o customer existe
+      } catch (error) {
+        // Se o customer não existe, limpar o ID e criar novo
+        const stripeError = error as { code?: string; message?: string }
+        if (stripeError.code === 'resource_missing') {
+          console.log(
+            `⚠️ Customer ${customerId} não existe no Stripe, criando novo...`,
+          )
+          customerId = null
+          // Limpar customerId inválido do banco
+          await prisma.user.update({
+            where: { id: userId },
+            data: { stripeCustomerId: null },
+          })
+        } else {
+          throw error
+        }
+      }
+    }
+
     // Criar customer no Stripe se não existir
     if (!customerId) {
       const customer = await stripe.customers.create({
