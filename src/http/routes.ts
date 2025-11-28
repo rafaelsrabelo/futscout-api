@@ -246,25 +246,38 @@ export async function appRoutes(app: FastifyInstance) {
 
   app.post('/billing/checkout', { onRequest: [verifyJwt] }, checkout)
   app.post('/billing/portal', { onRequest: [verifyJwt] }, portal)
+
   // Webhook route - sem autenticação JWT, usa assinatura do Stripe
-  // Configurar parser customizado apenas para esta rota
+  // Configurar parser customizado APENAS para webhook para preservar body como Buffer
+  app.addContentTypeParser(
+    'application/json',
+    { parseAs: 'buffer', bodyLimit: 1048576 },
+    (request, body, done) => {
+      // Para webhook, preservar body como Buffer (não processar como JSON)
+      if (request.url === '/api/billing/webhook') {
+        const bodyBuffer = Buffer.isBuffer(body) ? body : Buffer.from(body)
+        ;(request as FastifyRequest & { rawBody: Buffer }).rawBody = bodyBuffer
+        // Manter body como Buffer para validação do Stripe
+        done(null, bodyBuffer)
+      } else {
+        // Para outras rotas, processar normalmente como JSON
+        try {
+          const bodyBuffer = Buffer.isBuffer(body) ? body : Buffer.from(body)
+          const json = JSON.parse(bodyBuffer.toString())
+          done(null, json)
+        } catch (err) {
+          done(err as Error, undefined)
+        }
+      }
+    },
+  )
+
   app.post(
     '/billing/webhook',
     {
       bodyLimit: 1048576, // 1MB
-      config: {
-        rawBody: true,
-      },
     },
     async (request, reply) => {
-      // Garantir que temos o body como Buffer
-      const body = request.body
-      if (Buffer.isBuffer(body)) {
-        ;(request as FastifyRequest & { rawBody: Buffer }).rawBody = body
-      } else {
-        ;(request as FastifyRequest & { rawBody: Buffer }).rawBody =
-          Buffer.from(typeof body === 'string' ? body : JSON.stringify(body))
-      }
       return webhook(request, reply)
     },
   )

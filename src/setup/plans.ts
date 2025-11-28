@@ -40,6 +40,8 @@ export async function seedPlans() {
   }
 
   // Criar plano PREMIUM se não existir
+  const stripePriceId = process.env.STRIPE_PRICE_ID || undefined
+
   if (!existingPremiumPlan) {
     await prisma.plan.create({
       data: {
@@ -48,12 +50,35 @@ export async function seedPlans() {
         currency: 'BRL',
         monthlyLimitMatches: null,
         monthlyLimitVideos: null,
+        monthlyLimitStandaloneVideos: null,
         isUnlimited: true,
+        stripePriceId,
       },
     })
     console.log('✅ Plano PREMIUM criado')
+    if (stripePriceId) {
+      console.log(`   Stripe Price ID: ${stripePriceId}`)
+    } else {
+      console.log(
+        '   ⚠️  Stripe Price ID não configurado (configure STRIPE_PRICE_ID no .env)',
+      )
+    }
   } else {
-    console.log('ℹ️  Plano PREMIUM já existe')
+    // Atualizar stripePriceId se foi fornecido via env
+    if (stripePriceId && !existingPremiumPlan.stripePriceId) {
+      await prisma.plan.update({
+        where: { name: 'PREMIUM' },
+        data: { stripePriceId },
+      })
+      console.log(
+        `ℹ️  Plano PREMIUM atualizado com Stripe Price ID: ${stripePriceId}`,
+      )
+    } else {
+      console.log('ℹ️  Plano PREMIUM já existe')
+      if (!existingPremiumPlan.stripePriceId) {
+        console.log('   ⚠️  Stripe Price ID não configurado')
+      }
+    }
   }
 
   console.log('✅ Plans seeding completed')

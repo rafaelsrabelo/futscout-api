@@ -10,6 +10,14 @@ export async function getSubscription(
 ) {
   try {
     const userId = request.user.sub
+    
+    // Debug: mostrar token recebido (apenas para desenvolvimento)
+    const authHeader = request.headers.authorization
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '')
+      console.log('🔑 Token recebido:', token.substring(0, 20) + '...' + token.substring(token.length - 10))
+      console.log('🔑 Token completo:', token)
+    }
 
     // Buscar assinatura ativa
     const subscription = await prisma.subscription.findFirst({

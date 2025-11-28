@@ -3,34 +3,44 @@ import { env } from '../../../env/index.js'
 import { prisma } from '../../../lib/prisma.js'
 import { stripe } from '../../../lib/stripe.js'
 
-export async function webhook(
-  request: FastifyRequest,
-  reply: FastifyReply,
-) {
+export async function webhook(request: FastifyRequest, reply: FastifyReply) {
   const sig = request.headers['stripe-signature']
 
   if (!sig) {
-    return reply.status(400).send({ message: 'Missing stripe-signature header' })
+    return reply
+      .status(400)
+      .send({ message: 'Missing stripe-signature header' })
   }
 
   if (!env.STRIPE_WEBHOOK_SECRET) {
-    return reply.status(500).send({ message: 'Stripe webhook secret not configured' })
+    return reply
+      .status(500)
+      .send({ message: 'Stripe webhook secret not configured' })
   }
 
   let event: import('stripe').Stripe.Event
 
   try {
     // Verificar assinatura do webhook
-    // Usar rawBody se disponível, senão tentar obter do body
-    const rawBody = (request as FastifyRequest & { rawBody?: Buffer }).rawBody || request.body
-    const body = Buffer.isBuffer(rawBody)
-      ? rawBody
-      : typeof rawBody === 'string'
-        ? Buffer.from(rawBody)
-        : Buffer.from(JSON.stringify(rawBody))
-    
+    // O body deve ser um Buffer exatamente como recebido do Stripe
+    const rawBody =
+      (request as FastifyRequest & { rawBody?: Buffer }).rawBody ||
+      (Buffer.isBuffer(request.body) ? request.body : null)
+
+    if (!rawBody || !Buffer.isBuffer(rawBody)) {
+      console.error('❌ Webhook body is not a Buffer:', {
+        type: typeof request.body,
+        isBuffer: Buffer.isBuffer(request.body),
+        hasRawBody: !!(request as FastifyRequest & { rawBody?: Buffer })
+          .rawBody,
+      })
+      return reply.status(400).send({
+        message: 'Invalid request body format. Expected raw Buffer.',
+      })
+    }
+
     event = stripe.webhooks.constructEvent(
-      body,
+      rawBody,
       sig,
       env.STRIPE_WEBHOOK_SECRET,
     )
@@ -44,7 +54,8 @@ export async function webhook(
     switch (event.type) {
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
-        const subscription = event.data.object as import('stripe').Stripe.Subscription
+        const subscription = event.data
+          .object as import('stripe').Stripe.Subscription
 
         // Buscar usuário pelo customerId
         const user = await prisma.user.findUnique({
@@ -77,7 +88,9 @@ export async function webhook(
         }
 
         // Criar ou atualizar subscription
-        const currentPeriodEnd = new Date(subscription.current_period_end * 1000)
+        const currentPeriodEnd = new Date(
+          subscription.current_period_end * 1000,
+        )
         const status =
           subscription.status === 'active'
             ? 'active'
@@ -122,7 +135,8 @@ export async function webhook(
       }
 
       case 'customer.subscription.deleted': {
-        const subscription = event.data.object as import('stripe').Stripe.Subscription
+        const subscription = event.data
+          .object as import('stripe').Stripe.Subscription
 
         // Buscar usuário pelo customerId
         const user = await prisma.user.findUnique({
@@ -216,4 +230,3 @@ export async function webhook(
     return reply.status(500).send({ message: 'Webhook processing failed' })
   }
 }
-
