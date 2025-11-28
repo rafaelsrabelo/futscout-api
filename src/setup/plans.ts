@@ -40,7 +40,7 @@ export async function seedPlans() {
   }
 
   // Criar plano PREMIUM se não existir
-  const stripePriceId = process.env.STRIPE_PRICE_ID || undefined
+  const stripePriceId = process.env.STRIPE_PRICE_ID || null
 
   if (!existingPremiumPlan) {
     await prisma.plan.create({
@@ -52,7 +52,7 @@ export async function seedPlans() {
         monthlyLimitVideos: null,
         monthlyLimitStandaloneVideos: null,
         isUnlimited: true,
-        stripePriceId,
+        stripePriceId: stripePriceId ?? null,
       },
     })
     console.log('✅ Plano PREMIUM criado')
@@ -68,7 +68,7 @@ export async function seedPlans() {
     if (stripePriceId && !existingPremiumPlan.stripePriceId) {
       await prisma.plan.update({
         where: { name: 'PREMIUM' },
-        data: { stripePriceId },
+        data: { stripePriceId: stripePriceId ?? null },
       })
       console.log(
         `ℹ️  Plano PREMIUM atualizado com Stripe Price ID: ${stripePriceId}`,
