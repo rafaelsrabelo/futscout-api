@@ -50,87 +50,231 @@ export async function webhook(request: FastifyRequest, reply: FastifyReply) {
   }
 
   try {
+    console.log(`📥 [webhook] Evento recebido: ${event.type}`)
+    
     // Processar eventos
     switch (event.type) {
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated': {
-        const subscription = event.data
-          .object as import('stripe').Stripe.Subscription
-
-        // Buscar usuário pelo customerId
-        const user = await prisma.user.findUnique({
-          where: { stripeCustomerId: subscription.customer },
-        })
-
-        if (!user) {
-          console.error('User not found for customer:', subscription.customer)
-          return reply.status(200).send({ received: true })
-        }
-
-        // Buscar planId do metadata ou do priceId
-        let planId: string | null = null
-
-        // Tentar buscar pelo stripePriceId
-        if (subscription.items?.data?.[0]?.price?.id) {
-          const plan = await prisma.plan.findFirst({
-            where: {
-              stripePriceId: subscription.items.data[0].price.id,
-            },
-          })
-          if (plan) {
-            planId = plan.id
+      case 'checkout.session.completed': {
+        const session = event.data.object as import('stripe').Stripe.Checkout.Session
+        
+        console.log('✅ [webhook] Checkout session completed:', session.id)
+        console.log('   Customer:', session.customer)
+        console.log('   Subscription:', session.subscription)
+        console.log('   Metadata:', session.metadata)
+        
+        // Se tem subscription, processar ela
+        if (session.subscription && typeof session.subscription === 'string') {
+          try {
+            const subscription = await stripe.subscriptions.retrieve(session.subscription)
+            
+            // Buscar usuário pelo customerId ou metadata
+            let user = null
+            if (session.customer && typeof session.customer === 'string') {
+              user = await prisma.user.findUnique({
+                where: { stripeCustomerId: session.customer },
+              })
+            }
+            
+            // Se não encontrou pelo customerId, tentar pelo metadata
+            if (!user && session.metadata?.userId) {
+              user = await prisma.user.findUnique({
+                where: { id: session.metadata.userId },
+              })
+            }
+            
+            if (!user) {
+              console.error(`❌ [webhook] User not found for checkout session: ${session.id}`)
+              return reply.status(200).send({ received: true })
+            }
+            
+            // Buscar plano pelo priceId
+            const priceId = subscription.items?.data?.[0]?.price?.id
+            if (!priceId) {
+              console.error(`❌ [webhook] PriceId not found in subscription: ${subscription.id}`)
+              return reply.status(200).send({ received: true })
+            }
+            
+            const plan = await prisma.plan.findFirst({
+              where: { stripePriceId: priceId },
+            })
+            
+            if (!plan) {
+              console.error(`❌ [webhook] Plan not found for priceId: ${priceId}`)
+              return reply.status(200).send({ received: true })
+            }
+            
+            // Criar ou atualizar subscription
+            const currentPeriodEnd = new Date(subscription.current_period_end * 1000)
+            const status =
+              subscription.status === 'active'
+                ? 'active'
+                : subscription.status === 'past_due'
+                  ? 'past_due'
+                  : 'canceled'
+            
+            const existingSubscription = await prisma.subscription.findFirst({
+              where: {
+                OR: [
+                  { stripeSubscriptionId: subscription.id },
+                  { userId: user.id },
+                ],
+              },
+            })
+            
+            if (existingSubscription) {
+              await prisma.subscription.update({
+                where: { id: existingSubscription.id },
+                data: {
+                  planId: plan.id,
+                  status,
+                  currentPeriodEnd,
+                  stripeSubscriptionId: subscription.id,
+                },
+              })
+              console.log(`✅ [webhook] Subscription atualizada: ${existingSubscription.id}`)
+            } else {
+              await prisma.subscription.create({
+                data: {
+                  userId: user.id,
+                  planId: plan.id,
+                  status,
+                  currentPeriodEnd,
+                  stripeSubscriptionId: subscription.id,
+                },
+              })
+              console.log(`✅ [webhook] Subscription criada para usuário: ${user.id}`)
+            }
+          } catch (error) {
+            console.error('❌ [webhook] Erro ao processar checkout.session.completed:', error)
           }
         }
+        break
+      }
+      
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated': {
+        try {
+          const subscription = event.data
+            .object as import('stripe').Stripe.Subscription
 
-        if (!planId) {
-          console.error('Plan not found for subscription:', subscription.id)
-          return reply.status(200).send({ received: true })
-        }
+          console.log('📦 [webhook] Processando subscription:', subscription.id)
+          console.log('   Customer:', subscription.customer)
+          console.log('   Status:', subscription.status)
+          console.log('   Price ID:', subscription.items?.data?.[0]?.price?.id)
+          
+          // Validar customer
+          if (!subscription.customer) {
+            console.error('❌ [webhook] Subscription sem customer ID')
+            return reply.status(200).send({ received: true })
+          }
 
-        // Criar ou atualizar subscription
-        const currentPeriodEnd = new Date(
-          subscription.current_period_end * 1000,
-        )
-        const status =
-          subscription.status === 'active'
-            ? 'active'
-            : subscription.status === 'past_due'
-              ? 'past_due'
-              : 'canceled'
+          const customerId = typeof subscription.customer === 'string' 
+            ? subscription.customer 
+            : (subscription.customer as { id?: string })?.id || null
 
-        // Buscar subscription existente pelo stripeSubscriptionId ou userId
-        const existingSubscription = await prisma.subscription.findFirst({
-          where: {
-            OR: [
-              { stripeSubscriptionId: subscription.id },
-              { userId: user.id },
-            ],
-          },
-        })
+          if (!customerId) {
+            console.error('❌ [webhook] Não foi possível extrair customer ID')
+            return reply.status(200).send({ received: true })
+          }
+          
+          // Buscar usuário pelo customerId
+          const user = await prisma.user.findUnique({
+            where: { stripeCustomerId: customerId },
+          })
 
-        if (existingSubscription) {
-          await prisma.subscription.update({
-            where: { id: existingSubscription.id },
-            data: {
-              planId,
-              status,
-              currentPeriodEnd,
-              stripeSubscriptionId: subscription.id,
+          if (!user) {
+            console.error('❌ [webhook] User not found for customer:', customerId)
+            console.error('   Verifique se o stripeCustomerId está correto no banco')
+            return reply.status(200).send({ received: true })
+          }
+          
+          console.log('✅ [webhook] User encontrado:', user.id, `(${user.email})`)
+
+          // Buscar planId pelo stripePriceId
+          const priceId = subscription.items?.data?.[0]?.price?.id
+          if (!priceId) {
+            console.error('❌ [webhook] Price ID não encontrado na subscription')
+            return reply.status(200).send({ received: true })
+          }
+
+          console.log('🔍 [webhook] Buscando plano para priceId:', priceId)
+          const plan = await prisma.plan.findFirst({
+            where: {
+              stripePriceId: priceId,
             },
           })
-        } else {
-          await prisma.subscription.create({
-            data: {
-              userId: user.id,
-              planId,
-              status,
-              currentPeriodEnd,
-              stripeSubscriptionId: subscription.id,
+
+          if (!plan) {
+            console.error('❌ [webhook] Plan not found for priceId:', priceId)
+            console.error('   Verifique se o stripePriceId do plano está correto no banco')
+            console.error('   Price IDs disponíveis no banco:')
+            const allPlans = await prisma.plan.findMany({
+              select: { name: true, stripePriceId: true },
+            })
+            for (const p of allPlans) {
+              console.error(`     - ${p.name}: ${p.stripePriceId || 'não configurado'}`)
+            }
+            return reply.status(200).send({ received: true })
+          }
+          
+          console.log('✅ [webhook] Plan encontrado:', plan.name, `(${plan.id})`)
+
+          // Criar ou atualizar subscription
+          const currentPeriodEnd = new Date(
+            subscription.current_period_end * 1000,
+          )
+          const status =
+            subscription.status === 'active'
+              ? 'active'
+              : subscription.status === 'past_due'
+                ? 'past_due'
+                : 'canceled'
+
+          console.log('🔍 [webhook] Buscando subscription existente...')
+          // Buscar subscription existente pelo stripeSubscriptionId ou userId
+          const existingSubscription = await prisma.subscription.findFirst({
+            where: {
+              OR: [
+                { stripeSubscriptionId: subscription.id },
+                { userId: user.id },
+              ],
             },
           })
-        }
 
-        console.log('✅ Subscription updated:', subscription.id)
+          if (existingSubscription) {
+            console.log('🔄 [webhook] Atualizando subscription existente:', existingSubscription.id)
+            await prisma.subscription.update({
+              where: { id: existingSubscription.id },
+              data: {
+                planId: plan.id,
+                status,
+                currentPeriodEnd,
+                stripeSubscriptionId: subscription.id,
+              },
+            })
+            console.log('✅ [webhook] Subscription atualizada:', existingSubscription.id)
+          } else {
+            console.log('➕ [webhook] Criando nova subscription...')
+            const newSubscription = await prisma.subscription.create({
+              data: {
+                userId: user.id,
+                planId: plan.id,
+                status,
+                currentPeriodEnd,
+                stripeSubscriptionId: subscription.id,
+              },
+            })
+            console.log('✅ [webhook] Subscription criada:', newSubscription.id)
+          }
+
+          console.log('✅ [webhook] Subscription processada com sucesso:', subscription.id)
+        } catch (error) {
+          console.error('❌ [webhook] Erro ao processar customer.subscription.created/updated:', error)
+          console.error('   Stack:', error instanceof Error ? error.stack : 'N/A')
+          // Não retornar erro 500, senão o Stripe vai continuar tentando
+          // Retornar 200 para evitar retentativas infinitas
+          return reply.status(200).send({ received: true, error: 'Processing failed but acknowledged' })
+        }
         break
       }
 
@@ -221,12 +365,22 @@ export async function webhook(request: FastifyRequest, reply: FastifyReply) {
       }
 
       default:
-        console.log(`Unhandled event type: ${event.type}`)
+        console.log(`ℹ️ [webhook] Evento não processado: ${event.type}`)
     }
 
+    console.log('✅ [webhook] Evento processado com sucesso:', event.type)
     return reply.status(200).send({ received: true })
   } catch (error) {
-    console.error('❌ Error processing webhook:', error)
-    return reply.status(500).send({ message: 'Webhook processing failed' })
+    console.error('❌ [webhook] Error processing webhook:', error)
+    console.error('   Event type:', event?.type)
+    console.error('   Error details:', error instanceof Error ? error.message : error)
+    console.error('   Stack:', error instanceof Error ? error.stack : 'N/A')
+    
+    // Retornar 500 apenas para erros inesperados (ex: erro de conexão com banco)
+    // Erros de lógica (usuário não encontrado, etc) já retornam 200 dentro dos cases
+    return reply.status(500).send({ 
+      message: 'Webhook processing failed',
+      eventType: event?.type,
+    })
   }
 }
