@@ -75,13 +75,28 @@ export async function getSubscription(
             (a, b) => b.created - a.created
           )[0]
           
+          // Validar current_period_end
+          if (!stripeSubscription.current_period_end || typeof stripeSubscription.current_period_end !== 'number') {
+            console.error('❌ [get-subscription] current_period_end inválido:', stripeSubscription.current_period_end)
+            console.error('   Subscription:', stripeSubscription.id)
+            throw new Error('Invalid current_period_end from Stripe subscription')
+          }
+          
+          const currentPeriodEndDate = new Date(stripeSubscription.current_period_end * 1000)
+          if (Number.isNaN(currentPeriodEndDate.getTime())) {
+            console.error('❌ [get-subscription] Erro ao criar data do current_period_end')
+            console.error('   Valor:', stripeSubscription.current_period_end)
+            console.error('   Timestamp:', stripeSubscription.current_period_end * 1000)
+            throw new Error('Invalid time value for current_period_end')
+          }
+          
           console.log('✅ [get-subscription] Subscription encontrada no Stripe:', {
             id: stripeSubscription.id,
             status: stripeSubscription.status,
             priceId: stripeSubscription.items.data[0]?.price?.id,
             livemode: stripeSubscription.livemode,
             created: new Date(stripeSubscription.created * 1000).toISOString(),
-            currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000).toISOString(),
+            currentPeriodEnd: currentPeriodEndDate.toISOString(),
           })
           
           // Verificar se o ambiente está correto
@@ -103,15 +118,14 @@ export async function getSubscription(
               console.log('✅ [get-subscription] Plano encontrado:', plan.name)
               
               // Criar subscription no banco local
-              const currentPeriodEnd = new Date(
-                stripeSubscription.current_period_end * 1000,
-              )
+              // currentPeriodEnd já foi validado acima
+              const currentPeriodEnd = currentPeriodEndDate
               
               subscription = await prisma.subscription.create({
                 data: {
                   userId,
                   planId: plan.id,
-                  status: 'active',
+                  status: stripeSubscription.status === 'active' ? 'active' : 'canceled',
                   currentPeriodEnd,
                   stripeSubscriptionId: stripeSubscription.id,
                 },
