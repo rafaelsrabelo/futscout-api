@@ -123,14 +123,13 @@ export async function getSubscription(
 
           if (!currentPeriodEnd) {
             // Tentar pegar do subscription item (para billing_mode: flexible)
-            const firstItem = stripeSubscription.items?.data?.[0] as
-              | (Stripe.SubscriptionItem & {
-                  current_period_end?: number
-                })
-              | undefined
+            const firstItem = stripeSubscription.items?.data?.[0]
+            const itemPeriodEnd = (
+              firstItem as { current_period_end?: number } | undefined
+            )?.current_period_end
 
-            if (firstItem?.current_period_end) {
-              currentPeriodEnd = firstItem.current_period_end
+            if (itemPeriodEnd && typeof itemPeriodEnd === 'number') {
+              currentPeriodEnd = itemPeriodEnd
               console.log(
                 'ℹ️ [get-subscription] Usando current_period_end do subscription item',
               )
