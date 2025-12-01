@@ -20,7 +20,7 @@ export async function seedPlans() {
         price: 0,
         currency: 'BRL',
         monthlyLimitMatches: 5, // 5 jogos por mês
-        monthlyLimitVideos: null, // Vídeos dentro de jogos não têm limite (só conta)
+        monthlyLimitVideos: 5, // 5 vídeos por jogo
         monthlyLimitStandaloneVideos: 5, // 5 vídeos standalone (lances sem partida)
         isUnlimited: false,
       },
@@ -28,15 +28,24 @@ export async function seedPlans() {
     console.log('✅ Plano FREE criado')
   } else {
     // Atualizar plano existente se os limites mudaram
-    await prisma.plan.update({
-      where: { name: 'FREE' },
-      data: {
-        monthlyLimitMatches: 5,
-        monthlyLimitVideos: null, // Vídeos dentro de jogos não têm limite
-        monthlyLimitStandaloneVideos: 5, // 5 vídeos standalone
-      },
-    })
-    console.log('ℹ️  Plano FREE atualizado')
+    const needsUpdate =
+      existingFreePlan.monthlyLimitMatches !== 5 ||
+      existingFreePlan.monthlyLimitVideos !== 5 ||
+      existingFreePlan.monthlyLimitStandaloneVideos !== 5
+
+    if (needsUpdate) {
+      await prisma.plan.update({
+        where: { name: 'FREE' },
+        data: {
+          monthlyLimitMatches: 5,
+          monthlyLimitVideos: 5, // 5 vídeos por jogo
+          monthlyLimitStandaloneVideos: 5, // 5 vídeos standalone
+        },
+      })
+      console.log('ℹ️  Plano FREE atualizado')
+    } else {
+      console.log('ℹ️  Plano FREE já existe com limites corretos')
+    }
   }
 
   // Criar plano PREMIUM se não existir
@@ -48,10 +57,10 @@ export async function seedPlans() {
         name: 'PREMIUM',
         price: 2990, // R$29,90 em centavos
         currency: 'BRL',
-        monthlyLimitMatches: null,
-        monthlyLimitVideos: null,
-        monthlyLimitStandaloneVideos: null,
-        isUnlimited: true,
+        monthlyLimitMatches: 10, // 10 jogos por mês
+        monthlyLimitVideos: 10, // 10 vídeos por partida
+        monthlyLimitStandaloneVideos: null, // Lances standalone ilimitados
+        isUnlimited: false,
         stripePriceId: stripePriceId ?? null,
       },
     })
@@ -64,15 +73,29 @@ export async function seedPlans() {
       )
     }
   } else {
-    // Atualizar stripePriceId se foi fornecido via env
-    if (stripePriceId && !existingPremiumPlan.stripePriceId) {
+    // Atualizar limites e stripePriceId se necessário
+    const needsUpdate =
+      existingPremiumPlan.monthlyLimitMatches !== 10 ||
+      existingPremiumPlan.monthlyLimitVideos !== 10 ||
+      existingPremiumPlan.monthlyLimitStandaloneVideos !== null ||
+      existingPremiumPlan.isUnlimited !== false ||
+      (stripePriceId && !existingPremiumPlan.stripePriceId)
+
+    if (needsUpdate) {
       await prisma.plan.update({
         where: { name: 'PREMIUM' },
-        data: { stripePriceId: stripePriceId ?? null },
+        data: {
+          monthlyLimitMatches: 10,
+          monthlyLimitVideos: 10,
+          monthlyLimitStandaloneVideos: null,
+          isUnlimited: false,
+          stripePriceId: stripePriceId ?? existingPremiumPlan.stripePriceId,
+        },
       })
-      console.log(
-        `ℹ️  Plano PREMIUM atualizado com Stripe Price ID: ${stripePriceId}`,
-      )
+      console.log('ℹ️  Plano PREMIUM atualizado com limites corretos')
+      if (stripePriceId && !existingPremiumPlan.stripePriceId) {
+        console.log(`   Stripe Price ID: ${stripePriceId}`)
+      }
     } else {
       console.log('ℹ️  Plano PREMIUM já existe')
       if (!existingPremiumPlan.stripePriceId) {

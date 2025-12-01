@@ -5,7 +5,8 @@ import { stripe } from '../src/lib/stripe.js'
 
 config()
 
-const customerId = 'cus_TVHvHhqsnhbbSr' // Customer ID de produção
+// Usar customer ID do argumento ou o padrão
+const customerId = process.argv[2] || 'cus_TVHvHhqsnhbbSr' // Customer ID de produção
 const userId = 'da037682-f58f-4b0b-afba-f7ec12b9ebf8' // userId do metadata
 
 async function sincronizarSubscription() {
@@ -20,7 +21,9 @@ async function sincronizarSubscription() {
 
   if (!isLiveMode) {
     console.error('❌ Você está usando chaves de TEST!')
-    console.error('   Use chaves de PRODUÇÃO (sk_live_...) para sincronizar subscriptions de produção.\n')
+    console.error(
+      '   Use chaves de PRODUÇÃO (sk_live_...) para sincronizar subscriptions de produção.\n',
+    )
     return
   }
 
@@ -32,7 +35,9 @@ async function sincronizarSubscription() {
       limit: 10,
     })
 
-    console.log(`📋 Encontradas ${stripeSubscriptions.data.length} subscription(s) no Stripe\n`)
+    console.log(
+      `📋 Encontradas ${stripeSubscriptions.data.length} subscription(s) no Stripe\n`,
+    )
 
     // Filtrar apenas ativas ou em trial
     const activeOrTrialingSubs = stripeSubscriptions.data.filter(
@@ -74,7 +79,9 @@ async function sincronizarSubscription() {
     console.log('📋 Detalhes da subscription:')
     console.log(`   Status: ${stripeSubscription.status}`)
     console.log(`   Livemode: ${stripeSubscription.livemode}`)
-    console.log(`   Created: ${new Date(stripeSubscription.created * 1000).toISOString()}`)
+    console.log(
+      `   Created: ${new Date(stripeSubscription.created * 1000).toISOString()}`,
+    )
 
     // Obter current_period_end
     let currentPeriodEnd: number | undefined =
@@ -86,7 +93,9 @@ async function sincronizarSubscription() {
       stripeSubscription.trial_end
     ) {
       currentPeriodEnd = stripeSubscription.trial_end
-      console.log(`   Trial end: ${new Date(currentPeriodEnd * 1000).toISOString()}`)
+      console.log(
+        `   Trial end: ${new Date(currentPeriodEnd * 1000).toISOString()}`,
+      )
     }
 
     if (!currentPeriodEnd) {
@@ -107,7 +116,9 @@ async function sincronizarSubscription() {
     }
 
     const currentPeriodEndDate = new Date(currentPeriodEnd * 1000)
-    console.log(`   Current period end: ${currentPeriodEndDate.toISOString()}\n`)
+    console.log(
+      `   Current period end: ${currentPeriodEndDate.toISOString()}\n`,
+    )
 
     // Buscar priceId
     const priceId = stripeSubscription.items.data[0]?.price?.id
@@ -130,7 +141,9 @@ async function sincronizarSubscription() {
         select: { name: true, stripePriceId: true },
       })
       for (const p of allPlans) {
-        console.error(`     - ${p.name}: ${p.stripePriceId || 'não configurado'}`)
+        console.error(
+          `     - ${p.name}: ${p.stripePriceId || 'não configurado'}`,
+        )
       }
       console.error('\n💡 Solução: Atualize o stripePriceId do plano PREMIUM:')
       console.error(`   tsx scripts/update-premium-price.ts ${priceId}`)
@@ -142,10 +155,7 @@ async function sincronizarSubscription() {
     // Verificar se já existe subscription no banco
     const existingSubscription = await prisma.subscription.findFirst({
       where: {
-        OR: [
-          { stripeSubscriptionId: latestSubscriptionId },
-          { userId },
-        ],
+        OR: [{ stripeSubscriptionId: latestSubscriptionId }, { userId }],
       },
       include: { plan: true },
     })
@@ -155,13 +165,16 @@ async function sincronizarSubscription() {
       console.log(`   ID: ${existingSubscription.id}`)
       console.log(`   Plano: ${existingSubscription.plan.name}`)
       console.log(`   Status: ${existingSubscription.status}`)
-      console.log(`   Current period end: ${existingSubscription.currentPeriodEnd.toISOString()}\n`)
+      console.log(
+        `   Current period end: ${existingSubscription.currentPeriodEnd.toISOString()}\n`,
+      )
 
       // Atualizar se necessário
       if (
         existingSubscription.planId !== plan.id ||
         existingSubscription.status !== 'active' ||
-        existingSubscription.currentPeriodEnd.getTime() !== currentPeriodEndDate.getTime()
+        existingSubscription.currentPeriodEnd.getTime() !==
+          currentPeriodEndDate.getTime()
       ) {
         console.log('🔄 Atualizando subscription...')
         await prisma.subscription.update({
@@ -214,4 +227,3 @@ async function sincronizarSubscription() {
 }
 
 sincronizarSubscription().catch(console.error)
-

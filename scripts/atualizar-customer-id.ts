@@ -19,10 +19,18 @@ async function atualizarCustomerId() {
   // Verificar se o customer existe no Stripe
   try {
     const customer = await stripe.customers.retrieve(novoCustomerId)
+
+    if (customer.deleted) {
+      console.error('❌ Customer foi deletado no Stripe:', novoCustomerId)
+      process.exit(1)
+    }
+
     console.log('✅ Customer encontrado no Stripe:')
     console.log(`   ID: ${customer.id}`)
     console.log(`   Email: ${customer.email}`)
-    console.log(`   Livemode: ${customer.livemode ? 'PRODUÇÃO ✅' : 'TEST ❌'}\n`)
+    console.log(
+      `   Livemode: ${customer.livemode ? 'PRODUÇÃO ✅' : 'TEST ❌'}\n`,
+    )
   } catch (error) {
     console.error('❌ Customer não encontrado no Stripe:', novoCustomerId)
     process.exit(1)
@@ -45,7 +53,9 @@ async function atualizarCustomerId() {
 
   console.log('👤 Usuário atual:')
   console.log(`   Email: ${user.email}`)
-  console.log(`   Stripe Customer ID atual: ${user.stripeCustomerId || 'não configurado'}\n`)
+  console.log(
+    `   Stripe Customer ID atual: ${user.stripeCustomerId || 'não configurado'}\n`,
+  )
 
   // Atualizar
   await prisma.user.update({
@@ -71,8 +81,12 @@ async function atualizarCustomerId() {
   )
 
   if (activeSubs.length > 0) {
-    console.log(`📦 Encontradas ${activeSubs.length} subscription(s) ativa(s)\n`)
-    console.log('💡 A subscription será sincronizada automaticamente na próxima requisição')
+    console.log(
+      `📦 Encontradas ${activeSubs.length} subscription(s) ativa(s)\n`,
+    )
+    console.log(
+      '💡 A subscription será sincronizada automaticamente na próxima requisição',
+    )
     console.log('   ou você pode executar:')
     console.log('   tsx scripts/sincronizar-subscription-producao.ts')
   } else {
@@ -81,4 +95,3 @@ async function atualizarCustomerId() {
 }
 
 atualizarCustomerId().catch(console.error)
-
