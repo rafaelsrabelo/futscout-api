@@ -1,4 +1,5 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
+import type Stripe from 'stripe'
 import { prisma } from '../../../lib/prisma.js'
 import { stripe } from '../../../lib/stripe.js'
 
@@ -11,8 +12,11 @@ export async function getSubscription(
 ) {
   try {
     const userId = request.user.sub
-    
-    console.log('🔍 [get-subscription] Buscando subscription para userId:', userId)
+
+    console.log(
+      '🔍 [get-subscription] Buscando subscription para userId:',
+      userId,
+    )
 
     // Buscar usuário para pegar stripeCustomerId
     const user = await prisma.user.findUnique({
@@ -42,23 +46,35 @@ export async function getSubscription(
       },
     })
 
-    console.log('📦 [get-subscription] Subscription no banco local:', subscription ? {
-      id: subscription.id,
-      status: subscription.status,
-      planName: subscription.plan.name,
-      stripeSubscriptionId: subscription.stripeSubscriptionId,
-    } : 'não encontrada')
+    console.log(
+      '📦 [get-subscription] Subscription no banco local:',
+      subscription
+        ? {
+            id: subscription.id,
+            status: subscription.status,
+            planName: subscription.plan.name,
+            stripeSubscriptionId: subscription.stripeSubscriptionId,
+          }
+        : 'não encontrada',
+    )
 
     // Se não encontrou no banco local, tentar sincronizar do Stripe
     if (!subscription && user?.stripeCustomerId) {
-      console.log('🔄 [get-subscription] Subscription não encontrada no banco, tentando sincronizar do Stripe...')
-      console.log('🔑 [get-subscription] Stripe Customer ID:', user.stripeCustomerId)
-      
+      console.log(
+        '🔄 [get-subscription] Subscription não encontrada no banco, tentando sincronizar do Stripe...',
+      )
+      console.log(
+        '🔑 [get-subscription] Stripe Customer ID:',
+        user.stripeCustomerId,
+      )
+
       // Verificar qual ambiente do Stripe está sendo usado
       const stripeKey = process.env.STRIPE_SECRET_KEY || ''
       const isLiveMode = stripeKey.startsWith('sk_live_')
-      console.log(`🌍 [get-subscription] Ambiente Stripe: ${isLiveMode ? 'PRODUÇÃO' : 'TEST'}`)
-      
+      console.log(
+        `🌍 [get-subscription] Ambiente Stripe: ${isLiveMode ? 'PRODUÇÃO' : 'TEST'}`,
+      )
+
       try {
         // Buscar subscriptions ativas no Stripe
         const stripeSubscriptions = await stripe.subscriptions.list({
@@ -66,45 +82,70 @@ export async function getSubscription(
           status: 'active',
           limit: 10, // Aumentar para ver todas
         })
-        
-        console.log(`📋 [get-subscription] Encontradas ${stripeSubscriptions.data.length} subscription(s) no Stripe`)
+
+        console.log(
+          `📋 [get-subscription] Encontradas ${stripeSubscriptions.data.length} subscription(s) no Stripe`,
+        )
 
         if (stripeSubscriptions.data.length > 0) {
           // Pegar a subscription mais recente
           const stripeSubscription = stripeSubscriptions.data.sort(
-            (a, b) => b.created - a.created
-          )[0]
-          
+            (a, b) => b.created - a.created,
+          )[0] as import('stripe').Stripe.Subscription
+
           // Validar current_period_end
-          if (!stripeSubscription.current_period_end || typeof stripeSubscription.current_period_end !== 'number') {
-            console.error('❌ [get-subscription] current_period_end inválido:', stripeSubscription.current_period_end)
+          const currentPeriodEnd = (
+            stripeSubscription as Stripe.Subscription & {
+              current_period_end: number
+            }
+          ).current_period_end
+          if (!currentPeriodEnd || typeof currentPeriodEnd !== 'number') {
+            console.error(
+              '❌ [get-subscription] current_period_end inválido:',
+              currentPeriodEnd,
+            )
             console.error('   Subscription:', stripeSubscription.id)
-            throw new Error('Invalid current_period_end from Stripe subscription')
+            throw new Error(
+              'Invalid current_period_end from Stripe subscription',
+            )
           }
-          
-          const currentPeriodEndDate = new Date(stripeSubscription.current_period_end * 1000)
+
+          const currentPeriodEndDate = new Date(currentPeriodEnd * 1000)
           if (Number.isNaN(currentPeriodEndDate.getTime())) {
-            console.error('❌ [get-subscription] Erro ao criar data do current_period_end')
-            console.error('   Valor:', stripeSubscription.current_period_end)
-            console.error('   Timestamp:', stripeSubscription.current_period_end * 1000)
+            console.error(
+              '❌ [get-subscription] Erro ao criar data do current_period_end',
+            )
+            console.error('   Valor:', currentPeriodEnd)
+            console.error('   Timestamp:', currentPeriodEnd * 1000)
             throw new Error('Invalid time value for current_period_end')
           }
-          
-          console.log('✅ [get-subscription] Subscription encontrada no Stripe:', {
-            id: stripeSubscription.id,
-            status: stripeSubscription.status,
-            priceId: stripeSubscription.items.data[0]?.price?.id,
-            livemode: stripeSubscription.livemode,
-            created: new Date(stripeSubscription.created * 1000).toISOString(),
-            currentPeriodEnd: currentPeriodEndDate.toISOString(),
-          })
-          
+
+          console.log(
+            '✅ [get-subscription] Subscription encontrada no Stripe:',
+            {
+              id: stripeSubscription.id,
+              status: stripeSubscription.status,
+              priceId: stripeSubscription.items.data[0]?.price?.id,
+              livemode: stripeSubscription.livemode,
+              created: new Date(
+                stripeSubscription.created * 1000,
+              ).toISOString(),
+              currentPeriodEnd: currentPeriodEndDate.toISOString(),
+            },
+          )
+
           // Verificar se o ambiente está correto
           if (isLiveMode && !stripeSubscription.livemode) {
-            console.warn('⚠️ [get-subscription] ATENÇÃO: Subscription está em TEST mode mas você está usando chave de PRODUÇÃO!')
+            console.warn(
+              '⚠️ [get-subscription] ATENÇÃO: Subscription está em TEST mode mas você está usando chave de PRODUÇÃO!',
+            )
           } else if (!isLiveMode && stripeSubscription.livemode) {
-            console.warn('⚠️ [get-subscription] ATENÇÃO: Subscription está em PRODUÇÃO mas você está usando chave de TEST!')
-            console.warn('⚠️ [get-subscription] Use sk_live_... no .env para buscar subscriptions de produção')
+            console.warn(
+              '⚠️ [get-subscription] ATENÇÃO: Subscription está em PRODUÇÃO mas você está usando chave de TEST!',
+            )
+            console.warn(
+              '⚠️ [get-subscription] Use sk_live_... no .env para buscar subscriptions de produção',
+            )
           }
 
           // Buscar plano pelo stripePriceId
@@ -116,16 +157,19 @@ export async function getSubscription(
 
             if (plan) {
               console.log('✅ [get-subscription] Plano encontrado:', plan.name)
-              
+
               // Criar subscription no banco local
               // currentPeriodEnd já foi validado acima
               const currentPeriodEnd = currentPeriodEndDate
-              
+
               subscription = await prisma.subscription.create({
                 data: {
                   userId,
                   planId: plan.id,
-                  status: stripeSubscription.status === 'active' ? 'active' : 'canceled',
+                  status:
+                    stripeSubscription.status === 'active'
+                      ? 'active'
+                      : 'canceled',
                   currentPeriodEnd,
                   stripeSubscriptionId: stripeSubscription.id,
                 },
@@ -133,47 +177,93 @@ export async function getSubscription(
                   plan: true,
                 },
               })
-              
-              console.log('✅ [get-subscription] Subscription criada no banco local:', {
-                id: subscription.id,
-                planName: subscription.plan.name,
-              })
+
+              console.log(
+                '✅ [get-subscription] Subscription criada no banco local:',
+                {
+                  id: subscription.id,
+                  planName: subscription.plan.name,
+                },
+              )
             } else {
-              console.error('❌ [get-subscription] Plano não encontrado para priceId:', priceId)
+              console.error(
+                '❌ [get-subscription] Plano não encontrado para priceId:',
+                priceId,
+              )
+              console.error(
+                '💡 [get-subscription] Price IDs disponíveis no banco:',
+              )
+              const allPlans = await prisma.plan.findMany({
+                select: { name: true, stripePriceId: true },
+              })
+              for (const p of allPlans) {
+                console.error(
+                  `     - ${p.name}: ${p.stripePriceId || 'não configurado'}`,
+                )
+                if (p.stripePriceId === priceId) {
+                  console.error('       ✅ CORRESPONDÊNCIA ENCONTRADA!')
+                }
+              }
+              console.error(
+                '💡 [get-subscription] O priceId da subscription não corresponde a nenhum plano no banco',
+              )
+              console.error(
+                '💡 [get-subscription] Solução: Atualize o stripePriceId do plano PREMIUM no banco',
+              )
             }
           } else {
-            console.error('❌ [get-subscription] PriceId não encontrado na subscription do Stripe')
+            console.error(
+              '❌ [get-subscription] PriceId não encontrado na subscription do Stripe',
+            )
           }
         } else {
-          console.log('ℹ️ [get-subscription] Nenhuma subscription ativa encontrada no Stripe')
+          console.log(
+            'ℹ️ [get-subscription] Nenhuma subscription ativa encontrada no Stripe',
+          )
           console.log('💡 [get-subscription] Possíveis causas:')
           console.log('   1. Subscription foi cancelada')
           console.log('   2. Customer ID está incorreto')
-          console.log('   3. Ambiente do Stripe não corresponde (test vs production)')
+          console.log(
+            '   3. Ambiente do Stripe não corresponde (test vs production)',
+          )
         }
       } catch (stripeError) {
-        const error = stripeError as { type?: string; code?: string; message?: string }
+        const error = stripeError as {
+          type?: string
+          code?: string
+          message?: string
+        }
         console.error('❌ [get-subscription] Erro ao buscar do Stripe:', {
           type: error.type,
           code: error.code,
           message: error.message,
         })
-        
-        if (stripeError.code === 'resource_missing') {
-          console.error('💡 [get-subscription] Customer não encontrado no Stripe. Verifique:')
+
+        if (error.code === 'resource_missing') {
+          console.error(
+            '💡 [get-subscription] Customer não encontrado no Stripe. Verifique:',
+          )
           console.error('   1. Se o stripeCustomerId está correto no banco')
-          console.error('   2. Se está usando a chave correta do Stripe (test vs production)')
+          console.error(
+            '   2. Se está usando a chave correta do Stripe (test vs production)',
+          )
         }
       }
     } else if (!user?.stripeCustomerId) {
-      console.log('⚠️ [get-subscription] Usuário não tem stripeCustomerId configurado')
-      console.log('💡 [get-subscription] Isso significa que o usuário nunca fez checkout ou o customer não foi salvo')
+      console.log(
+        '⚠️ [get-subscription] Usuário não tem stripeCustomerId configurado',
+      )
+      console.log(
+        '💡 [get-subscription] Isso significa que o usuário nunca fez checkout ou o customer não foi salvo',
+      )
     }
 
     // Se não tem assinatura ativa, retornar plano FREE
     let plan = subscription?.plan ?? null
     if (!plan) {
-      console.log('ℹ️ [get-subscription] Nenhuma subscription ativa encontrada, usando plano FREE')
+      console.log(
+        'ℹ️ [get-subscription] Nenhuma subscription ativa encontrada, usando plano FREE',
+      )
       plan = await prisma.plan.findUnique({
         where: { name: 'FREE' },
       })

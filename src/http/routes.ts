@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { addPlay } from './controllers/add-play.js'
 import { addTeamHistory } from './controllers/add-team-history.js'
 import { authenticate } from './controllers/authenticate.js'
+import { checkPriceIdMatch } from './controllers/billing/check-price-id-match.js'
 import { checkout } from './controllers/billing/checkout.js'
 import { getStripeConfig } from './controllers/billing/get-stripe-config.js'
 import { getSubscription } from './controllers/billing/get-subscription.js'
@@ -243,6 +244,8 @@ export async function appRoutes(app: FastifyInstance) {
   app.get('/billing/plans', listPlans)
   // Rota protegida para verificar assinatura e uso atual
   app.get('/billing/subscription', { onRequest: [verifyJwt] }, getSubscription)
+  // Rota temporária para verificar correspondência de Price IDs (debug)
+  app.get('/billing/check-price-id-match', checkPriceIdMatch)
 
   app.post('/billing/checkout', { onRequest: [verifyJwt] }, checkout)
   app.post('/billing/portal', { onRequest: [verifyJwt] }, portal)
