@@ -107,6 +107,11 @@ export async function getSubscription(
           const stripeSubscription =
             retrievedSubscription as unknown as Stripe.Subscription & {
               current_period_end?: number
+              items?: {
+                data?: Array<{
+                  current_period_end?: number
+                }>
+              }
             }
 
           // Tentar obter current_period_end de diferentes lugares
