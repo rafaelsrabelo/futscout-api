@@ -89,22 +89,81 @@ export async function getSubscription(
 
         if (stripeSubscriptions.data.length > 0) {
           // Pegar a subscription mais recente
-          const stripeSubscription = stripeSubscriptions.data.sort(
+          const sortedSubs = stripeSubscriptions.data.sort(
             (a, b) => b.created - a.created,
-          )[0] as import('stripe').Stripe.Subscription
+          )
+          const latestSubscriptionId = sortedSubs[0]?.id
 
-          // Validar current_period_end
-          const currentPeriodEnd = (
-            stripeSubscription as Stripe.Subscription & {
-              current_period_end: number
+          if (!latestSubscriptionId) {
+            console.error(
+              '❌ [get-subscription] Subscription ID não encontrado',
+            )
+            throw new Error('Subscription ID not found')
+          }
+
+          // Buscar subscription completa do Stripe para ter todos os dados
+          const retrievedSubscription =
+            await stripe.subscriptions.retrieve(latestSubscriptionId)
+          const stripeSubscription =
+            retrievedSubscription as unknown as Stripe.Subscription & {
+              current_period_end?: number
             }
-          ).current_period_end
+
+          // Tentar obter current_period_end de diferentes lugares
+          // 1. Do objeto subscription diretamente
+          // 2. Do primeiro subscription item (para billing_mode: flexible)
+          // 3. Calcular a partir de billing_cycle_anchor + intervalo
+          let currentPeriodEnd: number | undefined =
+            stripeSubscription.current_period_end
+
+          if (!currentPeriodEnd) {
+            // Tentar pegar do subscription item (para billing_mode: flexible)
+            const firstItem = stripeSubscription.items?.data?.[0] as
+              | (Stripe.SubscriptionItem & {
+                  current_period_end?: number
+                })
+              | undefined
+
+            if (firstItem?.current_period_end) {
+              currentPeriodEnd = firstItem.current_period_end
+              console.log(
+                'ℹ️ [get-subscription] Usando current_period_end do subscription item',
+              )
+            } else if (
+              stripeSubscription.billing_cycle_anchor &&
+              stripeSubscription.items?.data?.[0]?.price?.recurring?.interval
+            ) {
+              // Calcular a partir de billing_cycle_anchor + intervalo
+              const interval =
+                stripeSubscription.items.data[0].price.recurring.interval
+              const anchor = stripeSubscription.billing_cycle_anchor
+              const intervalSeconds =
+                interval === 'month'
+                  ? 30 * 24 * 60 * 60
+                  : interval === 'year'
+                    ? 365 * 24 * 60 * 60
+                    : interval === 'week'
+                      ? 7 * 24 * 60 * 60
+                      : 24 * 60 * 60 // day
+              currentPeriodEnd = anchor + intervalSeconds
+              console.log(
+                'ℹ️ [get-subscription] Calculando current_period_end a partir de billing_cycle_anchor',
+              )
+            }
+          }
+
           if (!currentPeriodEnd || typeof currentPeriodEnd !== 'number') {
             console.error(
               '❌ [get-subscription] current_period_end inválido:',
               currentPeriodEnd,
             )
             console.error('   Subscription:', stripeSubscription.id)
+            console.error('   Tentou buscar de:', {
+              subscriptionRoot: stripeSubscription.current_period_end,
+              subscriptionItem:
+                stripeSubscription.items?.data?.[0]?.current_period_end,
+              billingCycleAnchor: stripeSubscription.billing_cycle_anchor,
+            })
             throw new Error(
               'Invalid current_period_end from Stripe subscription',
             )
