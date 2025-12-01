@@ -128,16 +128,36 @@ export async function webhook(request: FastifyRequest, reply: FastifyReply) {
               return reply.status(200).send({ received: true })
             }
 
+            // Obter current_period_end (pode estar no item para billing_mode: flexible)
+            let currentPeriodEndTimestamp: number | undefined =
+              subscription.current_period_end
+
+            if (!currentPeriodEndTimestamp) {
+              // Tentar pegar do subscription item (para billing_mode: flexible)
+              const firstItem = subscription.items?.data?.[0]
+              const itemPeriodEnd = (
+                firstItem as { current_period_end?: number } | undefined
+              )?.current_period_end
+
+              if (itemPeriodEnd && typeof itemPeriodEnd === 'number') {
+                currentPeriodEndTimestamp = itemPeriodEnd
+              }
+            }
+
+            if (!currentPeriodEndTimestamp || typeof currentPeriodEndTimestamp !== 'number') {
+              console.error(
+                '❌ [webhook] current_period_end não encontrado na subscription',
+              )
+              return reply.status(200).send({ received: true })
+            }
+
             // Criar ou atualizar subscription
             const currentPeriodEnd = new Date(
-              (
-                subscription as Stripe.Subscription & {
-                  current_period_end: number
-                }
-              ).current_period_end * 1000,
+              currentPeriodEndTimestamp * 1000,
             )
             const status =
-              subscription.status === 'active'
+              subscription.status === 'active' ||
+              subscription.status === 'trialing'
                 ? 'active'
                 : subscription.status === 'past_due'
                   ? 'past_due'
@@ -286,12 +306,39 @@ export async function webhook(request: FastifyRequest, reply: FastifyReply) {
             `(${plan.id})`,
           )
 
+          // Obter current_period_end (pode estar no item para billing_mode: flexible)
+          let currentPeriodEndTimestamp: number | undefined =
+            subscription.current_period_end
+
+          if (!currentPeriodEndTimestamp) {
+            // Tentar pegar do subscription item (para billing_mode: flexible)
+            const firstItem = subscription.items?.data?.[0]
+            const itemPeriodEnd = (
+              firstItem as { current_period_end?: number } | undefined
+            )?.current_period_end
+
+            if (itemPeriodEnd && typeof itemPeriodEnd === 'number') {
+              currentPeriodEndTimestamp = itemPeriodEnd
+              console.log(
+                'ℹ️ [webhook] Usando current_period_end do subscription item',
+              )
+            }
+          }
+
+          if (!currentPeriodEndTimestamp || typeof currentPeriodEndTimestamp !== 'number') {
+            console.error(
+              '❌ [webhook] current_period_end não encontrado na subscription',
+            )
+            return reply.status(200).send({ received: true })
+          }
+
           // Criar ou atualizar subscription
           const currentPeriodEnd = new Date(
-            subscription.current_period_end * 1000,
+            currentPeriodEndTimestamp * 1000,
           )
           const status =
-            subscription.status === 'active'
+            subscription.status === 'active' ||
+            subscription.status === 'trialing'
               ? 'active'
               : subscription.status === 'past_due'
                 ? 'past_due'

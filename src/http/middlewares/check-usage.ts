@@ -90,9 +90,10 @@ export async function checkUsage(
       ) {
         return reply.status(402).send({
           message:
-            'Monthly standalone video limit reached. Please upgrade your plan.',
+            'Você atingiu o limite mensal de vídeos standalone. Faça upgrade do seu plano para continuar.',
           limit: plan.monthlyLimitStandaloneVideos,
           used: usage.standaloneVideosUsed,
+          planName: plan.name,
         })
       }
     }
@@ -105,9 +106,11 @@ export async function checkUsage(
       usage.videosUsed >= plan.monthlyLimitVideos
     ) {
       return reply.status(402).send({
-        message: 'Monthly video limit reached. Please upgrade your plan.',
+        message:
+          'Você atingiu o limite mensal de vídeos em partidas. Faça upgrade do seu plano para continuar.',
         limit: plan.monthlyLimitVideos,
         used: usage.videosUsed,
+        planName: plan.name,
       })
     }
 
@@ -117,9 +120,11 @@ export async function checkUsage(
       usage.matchesUsed >= plan.monthlyLimitMatches
     ) {
       return reply.status(402).send({
-        message: 'Monthly match limit reached. Please upgrade your plan.',
+        message:
+          'Você atingiu o limite mensal de partidas. Faça upgrade do seu plano para continuar.',
         limit: plan.monthlyLimitMatches,
         used: usage.matchesUsed,
+        planName: plan.name,
       })
     }
 

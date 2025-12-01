@@ -76,20 +76,28 @@ export async function getSubscription(
       )
 
       try {
-        // Buscar subscriptions ativas no Stripe
+        // Buscar subscriptions ativas no Stripe (incluindo trialing)
         const stripeSubscriptions = await stripe.subscriptions.list({
           customer: user.stripeCustomerId,
-          status: 'active',
+          status: 'all', // Buscar todas para incluir trialing
           limit: 10, // Aumentar para ver todas
         })
 
-        console.log(
-          `📋 [get-subscription] Encontradas ${stripeSubscriptions.data.length} subscription(s) no Stripe`,
+        // Filtrar apenas subscriptions ativas ou em trial
+        const activeOrTrialingSubs = stripeSubscriptions.data.filter(
+          (sub) => sub.status === 'active' || sub.status === 'trialing',
         )
 
-        if (stripeSubscriptions.data.length > 0) {
+        console.log(
+          `📋 [get-subscription] Encontradas ${stripeSubscriptions.data.length} subscription(s) no Stripe (total)`,
+        )
+        console.log(
+          `📋 [get-subscription] ${activeOrTrialingSubs.length} subscription(s) ativas ou em trial`,
+        )
+
+        if (activeOrTrialingSubs.length > 0) {
           // Pegar a subscription mais recente
-          const sortedSubs = stripeSubscriptions.data.sort(
+          const sortedSubs = activeOrTrialingSubs.sort(
             (a, b) => b.created - a.created,
           )
           const latestSubscriptionId = sortedSubs[0]?.id
@@ -115,11 +123,24 @@ export async function getSubscription(
             }
 
           // Tentar obter current_period_end de diferentes lugares
-          // 1. Do objeto subscription diretamente
-          // 2. Do primeiro subscription item (para billing_mode: flexible)
-          // 3. Calcular a partir de billing_cycle_anchor + intervalo
+          // Para subscriptions em trial, usar trial_end se disponível
+          const stripeSubWithTrial = stripeSubscription as Stripe.Subscription & {
+            trial_end?: number
+          }
+
           let currentPeriodEnd: number | undefined =
             stripeSubscription.current_period_end
+
+          // Se está em trial e tem trial_end, usar trial_end
+          if (
+            stripeSubscription.status === 'trialing' &&
+            stripeSubWithTrial.trial_end
+          ) {
+            currentPeriodEnd = stripeSubWithTrial.trial_end
+            console.log(
+              'ℹ️ [get-subscription] Subscription em trial, usando trial_end',
+            )
+          }
 
           if (!currentPeriodEnd) {
             // Tentar pegar do subscription item (para billing_mode: flexible)
@@ -213,10 +234,13 @@ export async function getSubscription(
 
           // Buscar plano pelo stripePriceId
           const priceId = stripeSubscription.items.data[0]?.price?.id
+          console.log('🔍 [get-subscription] PriceId da subscription:', priceId)
           if (priceId) {
             const plan = await prisma.plan.findFirst({
               where: { stripePriceId: priceId },
             })
+
+            console.log('🔍 [get-subscription] Plano encontrado no banco:', plan ? plan.name : 'NENHUM')
 
             if (plan) {
               console.log('✅ [get-subscription] Plano encontrado:', plan.name)
@@ -230,7 +254,8 @@ export async function getSubscription(
                   userId,
                   planId: plan.id,
                   status:
-                    stripeSubscription.status === 'active'
+                    stripeSubscription.status === 'active' ||
+                    stripeSubscription.status === 'trialing'
                       ? 'active'
                       : 'canceled',
                   currentPeriodEnd,

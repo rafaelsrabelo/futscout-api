@@ -126,7 +126,11 @@ export async function appRoutes(app: FastifyInstance) {
   app.get('/matches/:id', { onRequest: [verifyJwt] }, getMatch)
   app.put('/matches/:id', { onRequest: [verifyJwt] }, updateMatch)
   app.delete('/matches/:id', { onRequest: [verifyJwt] }, deleteMatch)
-  app.post('/matches/:id/plays', { onRequest: [verifyJwt] }, addPlay)
+  app.post(
+    '/matches/:id/plays',
+    { onRequest: [verifyJwt, checkUsage] },
+    addPlay,
+  )
   app.post(
     '/plays',
     { onRequest: [verifyJwt, checkUsage] },
