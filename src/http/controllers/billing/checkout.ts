@@ -103,8 +103,8 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
     }
 
     // Verificar se é promotion code ou coupon ID
-    let isPromotionCode = false
-    let promotionCodeId: string | undefined
+    // Se for promotion code, buscar o cupom associado
+    let finalCouponId: string | undefined = couponCode
 
     if (couponCode) {
       try {
@@ -115,12 +115,30 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
         })
 
         if (promotionCodes.data.length > 0) {
-          // É um promotion code!
-          promotionCodeId = promotionCodes.data[0]?.id
-          isPromotionCode = true
-          console.log(
-            `✅ [checkout] Código promocional "${couponCode}" encontrado (ID: ${promotionCodeId})`,
-          )
+          // É um promotion code! Buscar o cupom associado
+          const promotionCodeId = promotionCodes.data[0]?.id
+          if (promotionCodeId) {
+            // Buscar promotion code completo com cupom expandido
+            const promotionCodeFull = await stripe.promotionCodes.retrieve(
+              promotionCodeId,
+              { expand: ['coupon'] },
+            )
+            // O coupon pode ser string (ID) ou objeto expandido
+            // Acessar coupon de forma segura
+            const promotionCodeWithCoupon =
+              promotionCodeFull as Stripe.PromotionCode & {
+                coupon?: string | Stripe.Coupon
+              }
+            const coupon = promotionCodeWithCoupon.coupon
+            if (typeof coupon === 'string') {
+              finalCouponId = coupon
+            } else if (coupon && typeof coupon === 'object' && 'id' in coupon) {
+              finalCouponId = coupon.id
+            }
+            console.log(
+              `✅ [checkout] Código promocional "${couponCode}" encontrado, usando cupom: ${finalCouponId}`,
+            )
+          }
         } else {
           // Não é promotion code, usar como coupon ID diretamente
           console.log(
@@ -165,16 +183,14 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
         },
       }
 
-      // Adicionar promotion code ou coupon
-      if (couponCode) {
-        if (isPromotionCode && promotionCodeId) {
-          // Usar promotion code (campo específico do Stripe)
-          sessionParams.promotion_code = promotionCodeId
-          console.log(`   ✅ Usando promotion code: ${promotionCodeId}`)
-        } else {
-          // Usar coupon ID diretamente
-          sessionParams.discounts = [{ coupon: couponCode }]
-          console.log(`   ✅ Usando coupon ID: ${couponCode}`)
+      // Adicionar cupom (já resolvido se era promotion code)
+      if (finalCouponId) {
+        sessionParams.discounts = [{ coupon: finalCouponId }]
+        console.log(`   ✅ Usando cupom ID: ${finalCouponId}`)
+        if (finalCouponId !== couponCode) {
+          console.log(
+            `   ℹ️ Código promocional "${couponCode}" convertido para cupom "${finalCouponId}"`,
+          )
         }
       }
 
@@ -182,12 +198,8 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
 
       console.log('✅ [checkout] Sessão criada com sucesso:', session.id)
       console.log('   Session URL:', session.url)
-      if (couponCode) {
-        if (isPromotionCode) {
-          console.log(`   ✅ Promotion code aplicado: ${couponCode}`)
-        } else {
-          console.log(`   ✅ Cupom aplicado: ${couponCode}`)
-        }
+      if (finalCouponId) {
+        console.log(`   ✅ Cupom aplicado: ${finalCouponId}`)
       }
     } catch (sessionError) {
       console.error('❌ [checkout] Erro ao criar sessão:', sessionError)
@@ -250,13 +262,9 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
           },
         }
 
-        // Adicionar promotion code ou coupon novamente
-        if (couponCode) {
-          if (isPromotionCode && promotionCodeId) {
-            retrySessionParams.promotion_code = promotionCodeId
-          } else {
-            retrySessionParams.discounts = [{ coupon: couponCode }]
-          }
+        // Adicionar cupom novamente (já resolvido se era promotion code)
+        if (finalCouponId) {
+          retrySessionParams.discounts = [{ coupon: finalCouponId }]
         }
 
         session = await stripe.checkout.sessions.create(retrySessionParams)
