@@ -336,13 +336,28 @@ export async function webhook(request: FastifyRequest, reply: FastifyReply) {
           const currentPeriodEnd = new Date(
             currentPeriodEndTimestamp * 1000,
           )
-          const status =
-            subscription.status === 'active' ||
-            subscription.status === 'trialing'
-              ? 'active'
-              : subscription.status === 'past_due'
-                ? 'past_due'
-                : 'canceled'
+          
+          // Verificar se a subscription foi cancelada mas ainda está ativa até o fim do período
+          const cancelAtPeriodEnd = (subscription as Stripe.Subscription & {
+            cancel_at_period_end?: boolean
+          }).cancel_at_period_end
+          
+          // Determinar status: se cancel_at_period_end é true, manter como 'active' até o período terminar
+          // O sistema automaticamente usará FREE quando currentPeriodEnd expirar
+          let status: string
+          if (cancelAtPeriodEnd && (subscription.status === 'active' || subscription.status === 'trialing')) {
+            // Subscription cancelada mas ainda ativa até o fim do período
+            status = 'active'
+            console.log('ℹ️ [webhook] Subscription cancelada mas ativa até:', currentPeriodEnd.toISOString())
+          } else {
+            status =
+              subscription.status === 'active' ||
+              subscription.status === 'trialing'
+                ? 'active'
+                : subscription.status === 'past_due'
+                  ? 'past_due'
+                  : 'canceled'
+          }
 
           console.log('🔍 [webhook] Buscando subscription existente...')
           // Buscar subscription existente pelo stripeSubscriptionId ou userId

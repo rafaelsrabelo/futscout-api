@@ -1,13 +1,12 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import z from 'zod'
-import { PrismaTeamRepository } from '../repositories/prisma/prisma-team-repository.js'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
+import { PrismaTeamRepository } from '../repositories/prisma/prisma-team-repository.js'
 
 export async function createTeam(request: FastifyRequest, reply: FastifyReply) {
   const createTeamBodySchema = z.object({
     name: z.string().min(1).max(100),
-    nickname: z.string().min(1).max(50).optional(),
-    acronym: z.string().min(1).max(10),
+    acronym: z.string().min(1).max(10).optional(),
     shieldPhoto: z.string().url().optional(),
     isPrincipal: z.boolean().optional().default(false),
   })
@@ -37,8 +36,7 @@ export async function createTeam(request: FastifyRequest, reply: FastifyReply) {
 
     const team = await prismaTeamRepository.create({
       name: data.name,
-      nickname: data.nickname || null,
-      acronym: data.acronym,
+      acronym: data.acronym || null,
       shieldPhoto: data.shieldPhoto || null,
       isPrincipal: data.isPrincipal,
       userId,
@@ -61,7 +59,6 @@ export async function createTeam(request: FastifyRequest, reply: FastifyReply) {
       team: {
         id: team.id,
         name: team.name,
-        nickname: team.nickname,
         acronym: team.acronym,
         shieldPhoto: team.shieldPhoto,
         isPrincipal: team.isPrincipal,

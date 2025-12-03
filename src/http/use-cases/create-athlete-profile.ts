@@ -5,6 +5,7 @@ import type {
   AthleteProfileRepository,
   CreateAthleteProfileData,
 } from '../repositories/athlete-profile-repository.js'
+import type { TeamRepository } from '../repositories/team-repository.js'
 import type { UsersRepository } from '../repositories/users-repository.js'
 
 interface CreateAthleteProfileUseCaseRequest {
@@ -50,8 +51,7 @@ interface CreateAthleteProfileUseCaseRequest {
   team?:
     | {
         name: string
-        nickname?: string | undefined
-        acronym: string
+        acronym?: string | undefined
         shieldPhoto?: string | undefined
         isPrincipal?: boolean | undefined
       }
@@ -75,8 +75,7 @@ interface CreateAthleteProfileUseCaseResponse {
   team?: {
     id: string
     name: string
-    nickname?: string | null
-    acronym: string
+    acronym?: string | null
     shieldPhoto?: string | null
     isPrincipal: boolean
     createdAt: Date
@@ -89,7 +88,7 @@ export class CreateAthleteProfileUseCase {
     private athleteProfileRepository: AthleteProfileRepository,
     private usersRepository: UsersRepository,
     private addressRepository: AddressRepository,
-    private teamRepository?: any,
+    private teamRepository?: TeamRepository,
   ) {}
 
   async execute(
@@ -168,8 +167,7 @@ export class CreateAthleteProfileUseCase {
         }
         team = await this.teamRepository.create({
           name: data.team.name,
-          nickname: data.team.nickname || null,
-          acronym: data.team.acronym,
+          acronym: data.team.acronym || null,
           shieldPhoto: data.team.shieldPhoto || null,
           isPrincipal: data.team.isPrincipal,
           userId: data.userId,

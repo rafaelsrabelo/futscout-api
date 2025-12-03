@@ -4,6 +4,7 @@ import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-at
 import { PrismaFavoriteRepository } from '../repositories/prisma/prisma-favorite-repository.js'
 import { PrismaMatchRepository } from '../repositories/prisma/prisma-match-repository.js'
 import { PrismaPlayRepository } from '../repositories/prisma/prisma-play-repository.js'
+import { isUserPremium } from '../utils/check-premium.js'
 
 type PlayData = {
   id: string
@@ -48,7 +49,7 @@ export async function getAthlete(request: FastifyRequest, reply: FastifyReply) {
     const userId = request.user.sub
 
     // Buscar dados em paralelo
-    const [favoritesCount, isFavorite, allMatches, videoFeed] =
+    const [favoritesCount, isFavorite, allMatches, videoFeed, isPremium] =
       await Promise.all([
         favoriteRepository.countFavoritesByAthlete(id),
         favoriteRepository.isFavorite(userId, id),
@@ -57,6 +58,8 @@ export async function getAthlete(request: FastifyRequest, reply: FastifyReply) {
         matchRepository.findByAthlete(athleteProfile.id),
         // Feed de vídeos do atleta (usar o ID do AthleteProfile)
         playRepository.findVideosByAthleteId(athleteProfile.id),
+        // Verificar se o atleta é premium
+        isUserPremium(athleteProfile.userId),
       ])
 
     // Agrupar partidas por competição/amistoso (mesmo formato do list-my-matches)
@@ -78,8 +81,7 @@ export async function getAthlete(request: FastifyRequest, reply: FastifyReply) {
           myTeam: {
             id: string
             name: string
-            nickname: string | null
-            acronym: string
+            acronym: string | null
           } | null
           location: string
           category: string
@@ -147,7 +149,6 @@ export async function getAthlete(request: FastifyRequest, reply: FastifyReply) {
           ? {
               id: match.myTeamId,
               name: matchWithRelations.myTeam.name,
-              nickname: matchWithRelations.myTeam.nickname,
               acronym: matchWithRelations.myTeam.acronym,
             }
           : null,
@@ -213,6 +214,7 @@ export async function getAthlete(request: FastifyRequest, reply: FastifyReply) {
         ...athleteProfile,
         favorites: favoritesCount,
         isFavorite,
+        isPremium,
         finishedMatches: groupedArray,
         videoFeed: videoFeed.map((play: PlayData) => ({
           id: play.id,

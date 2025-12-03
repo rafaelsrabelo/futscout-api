@@ -1,10 +1,10 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import z from 'zod'
-import { PrismaUsersRepository } from '../repositories/prisma/prisma-users-repository.js'
-import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
-import { PrismaAddressRepository } from '../repositories/prisma/prisma-address-repository.js'
-import { CreateAthleteProfileUseCase } from '../use-cases/create-athlete-profile.js'
 import { validateCpf } from '../../utils/validateCpf.js'
+import { PrismaAddressRepository } from '../repositories/prisma/prisma-address-repository.js'
+import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
+import { PrismaUsersRepository } from '../repositories/prisma/prisma-users-repository.js'
+import { CreateAthleteProfileUseCase } from '../use-cases/create-athlete-profile.js'
 
 export async function createAthleteProfile(
   request: FastifyRequest,
@@ -60,8 +60,7 @@ export async function createAthleteProfile(
     // Campos de time (opcionais)
     team: z.object({
       name: z.string().min(1).max(100),
-      nickname: z.string().min(1).max(50).optional(),
-      acronym: z.string().min(1).max(10),
+      acronym: z.string().min(1).max(10).optional(),
       shieldPhoto: z.string().url().optional(),
       isPrincipal: z.boolean().optional().default(false),
     }).optional(),

@@ -15,7 +15,6 @@ export async function listMyTeams(
       teams: teams.map((team) => ({
         id: team.id,
         name: team.name,
-        nickname: team.nickname,
         acronym: team.acronym,
         shieldPhoto: team.shieldPhoto,
         isPrincipal: team.isPrincipal,

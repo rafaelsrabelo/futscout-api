@@ -4,6 +4,7 @@ import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-at
 import { PrismaFavoriteRepository } from '../repositories/prisma/prisma-favorite-repository.js'
 import { PrismaMatchRepository } from '../repositories/prisma/prisma-match-repository.js'
 import { PrismaPlayRepository } from '../repositories/prisma/prisma-play-repository.js'
+import { isUserPremium } from '../utils/check-premium.js'
 
 type PlayData = {
   id: string
@@ -49,13 +50,15 @@ export async function publicGetAthlete(
     }
 
     // Buscar dados em paralelo (sem isFavorite, pois não há usuário autenticado)
-    const [favoritesCount, allMatches, videoFeed] = await Promise.all([
+    const [favoritesCount, allMatches, videoFeed, isPremium] = await Promise.all([
       favoriteRepository.countFavoritesByAthlete(id),
       // Buscar todas as partidas do atleta (não apenas FINISHED)
       // Para perfil público, faz sentido mostrar todas as partidas
       matchRepository.findByAthlete(athleteProfile.id),
       // Feed de vídeos do atleta (usar o ID do AthleteProfile)
       playRepository.findVideosByAthleteId(athleteProfile.id),
+      // Verificar se o atleta é premium
+      isUserPremium(athleteProfile.userId),
     ])
 
     // Agrupar partidas por competição/amistoso (mesmo formato do list-my-matches)
@@ -77,8 +80,7 @@ export async function publicGetAthlete(
           myTeam: {
             id: string
             name: string
-            nickname: string | null
-            acronym: string
+            acronym: string | null
           } | null
           location: string
           category: string
@@ -146,7 +148,6 @@ export async function publicGetAthlete(
           ? {
               id: match.myTeamId,
               name: matchWithRelations.myTeam.name,
-              nickname: matchWithRelations.myTeam.nickname,
               acronym: matchWithRelations.myTeam.acronym,
             }
           : null,
@@ -212,6 +213,7 @@ export async function publicGetAthlete(
         ...athleteProfile,
         favorites: favoritesCount,
         isFavorite: false, // Always false for public access
+        isPremium,
         finishedMatches: groupedArray,
         videoFeed: videoFeed.map((play: PlayData) => ({
           id: play.id,

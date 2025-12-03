@@ -1,7 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import z from 'zod'
-import { PrismaTeamRepository } from '../repositories/prisma/prisma-team-repository.js'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
+import { PrismaTeamRepository } from '../repositories/prisma/prisma-team-repository.js'
 
 export async function editTeam(request: FastifyRequest, reply: FastifyReply) {
   const editTeamParamsSchema = z.object({
@@ -10,7 +10,6 @@ export async function editTeam(request: FastifyRequest, reply: FastifyReply) {
 
   const editTeamBodySchema = z.object({
     name: z.string().min(1).max(100).optional(),
-    nickname: z.string().min(1).max(50).optional(),
     acronym: z.string().min(1).max(10).optional(),
     shieldPhoto: z.string().url().optional().nullable(),
     isPrincipal: z.boolean().optional(),
@@ -60,8 +59,7 @@ export async function editTeam(request: FastifyRequest, reply: FastifyReply) {
     // Atualizar apenas os campos fornecidos
     const updatedTeam = await prismaTeamRepository.update(id, {
       ...(data.name && { name: data.name }),
-      ...(data.nickname !== undefined && { nickname: data.nickname }),
-      ...(data.acronym && { acronym: data.acronym }),
+      ...(data.acronym !== undefined && { acronym: data.acronym }),
       ...(data.shieldPhoto !== undefined && { shieldPhoto: data.shieldPhoto }),
       ...(data.isPrincipal !== undefined && { isPrincipal: data.isPrincipal }),
     })
@@ -96,7 +94,6 @@ export async function editTeam(request: FastifyRequest, reply: FastifyReply) {
       team: {
         id: updatedTeam.id,
         name: updatedTeam.name,
-        nickname: updatedTeam.nickname,
         acronym: updatedTeam.acronym,
         shieldPhoto: updatedTeam.shieldPhoto,
         isPrincipal: updatedTeam.isPrincipal,

@@ -39,7 +39,6 @@ export async function listTeamHistory(
           team: {
             id: team.id,
             name: team.name,
-            nickname: team.nickname,
             acronym: team.acronym,
             shieldPhoto: team.shieldPhoto,
           },

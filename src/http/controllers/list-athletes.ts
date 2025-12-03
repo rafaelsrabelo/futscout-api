@@ -3,6 +3,7 @@ import z from 'zod'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
 import { PrismaFavoriteRepository } from '../repositories/prisma/prisma-favorite-repository.js'
 import { ListAthletesUseCase } from '../use-cases/list-athletes.js'
+import { isUserPremium } from '../utils/check-premium.js'
 
 export async function listAthletes(
   request: FastifyRequest,
@@ -46,18 +47,20 @@ export async function listAthletes(
 
     const { athletes } = await listAthletesUseCase.execute(cleanFilters)
 
-    // Add favorites count and isFavorite to each athlete
+    // Add favorites count, isFavorite and premium status to each athlete
     const userId = request.user.sub
     const athletesWithFavorites = await Promise.all(
       athletes.map(async (athlete) => {
-        const [favoritesCount, isFavorite] = await Promise.all([
+        const [favoritesCount, isFavorite, isPremium] = await Promise.all([
           favoriteRepository.countFavoritesByAthlete(athlete.id),
           favoriteRepository.isFavorite(userId, athlete.id),
+          isUserPremium(athlete.userId),
         ])
         return {
           ...athlete,
           favorites: favoritesCount,
           isFavorite,
+          isPremium,
         }
       }),
     )

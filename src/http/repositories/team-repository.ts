@@ -1,7 +1,6 @@
 export interface CreateTeamData {
   name: string
-  nickname?: string | null
-  acronym: string
+  acronym?: string | null
   shieldPhoto?: string | null
   isPrincipal?: boolean
   userId: string
@@ -17,8 +16,8 @@ export interface UpdateTeamData {
 export interface Team {
   id: string
   name: string
-  nickname: string | null
-  acronym: string
+  nickname: string | null // DEPRECATED: não usar mais
+  acronym: string | null
   shieldPhoto: string | null
   isPrincipal: boolean
   userId: string

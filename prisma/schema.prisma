@@ -321,8 +321,8 @@ model TeamHistory {
 model Team {
   id          String         @id @default(uuid())
   name        String
-  nickname    String?        // Nome popular/apelido (ex: "Palmeiras")
-  acronym     String         
+  nickname    String?        // Nome popular/apelido (ex: "Palmeiras") - DEPRECATED: não usar mais
+  acronym     String?        // Sigla do time (opcional)
   shieldPhoto String?        
   isPrincipal Boolean        @default(false) // Indica se é o time principal do usuário
   
