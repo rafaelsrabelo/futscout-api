@@ -102,10 +102,52 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
       })
     }
 
+    // Verificar se é promotion code ou coupon ID
+    let isPromotionCode = false
+    let promotionCodeId: string | undefined
+
+    if (couponCode) {
+      try {
+        // Tentar buscar como promotion code
+        const promotionCodes = await stripe.promotionCodes.list({
+          code: couponCode,
+          limit: 1,
+        })
+
+        if (promotionCodes.data.length > 0) {
+          // É um promotion code!
+          promotionCodeId = promotionCodes.data[0]?.id
+          isPromotionCode = true
+          console.log(
+            `✅ [checkout] Código promocional "${couponCode}" encontrado (ID: ${promotionCodeId})`,
+          )
+        } else {
+          // Não é promotion code, usar como coupon ID diretamente
+          console.log(
+            `ℹ️ [checkout] Usando "${couponCode}" como ID do cupom diretamente`,
+          )
+        }
+      } catch (promoError) {
+        // Se der erro, tentar usar como coupon ID
+        console.log(
+          `ℹ️ [checkout] Erro ao buscar promotion code, usando "${couponCode}" como ID do cupom`,
+        )
+      }
+    }
+
     // Criar sessão de checkout
     let session: Stripe.Checkout.Session
     try {
-      session = await stripe.checkout.sessions.create({
+      console.log('🛒 [checkout] Criando sessão de checkout...')
+      console.log('   Plan ID:', planId)
+      console.log('   Plan Name:', plan.name)
+      console.log('   Stripe Price ID:', plan.stripePriceId)
+      console.log('   Customer ID:', customerId)
+      console.log('   Coupon Code:', couponCode || 'nenhum')
+
+      // Criar payload base
+      // Usar Record<string, unknown> porque promotion_code não está no tipo do Stripe
+      const sessionParams: Record<string, unknown> = {
         customer: customerId,
         mode: 'subscription',
         line_items: [
@@ -114,9 +156,6 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
             quantity: 1,
           },
         ],
-        ...(couponCode && {
-          discounts: [{ coupon: couponCode }],
-        }),
         success_url: finalSuccessUrl,
         cancel_url: finalCancelUrl,
         metadata: {
@@ -124,13 +163,47 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
           planId,
           ...(couponCode && { couponCode }),
         },
-      })
+      }
+
+      // Adicionar promotion code ou coupon
+      if (couponCode) {
+        if (isPromotionCode && promotionCodeId) {
+          // Usar promotion code (campo específico do Stripe)
+          sessionParams.promotion_code = promotionCodeId
+          console.log(`   ✅ Usando promotion code: ${promotionCodeId}`)
+        } else {
+          // Usar coupon ID diretamente
+          sessionParams.discounts = [{ coupon: couponCode }]
+          console.log(`   ✅ Usando coupon ID: ${couponCode}`)
+        }
+      }
+
+      session = await stripe.checkout.sessions.create(sessionParams)
+
+      console.log('✅ [checkout] Sessão criada com sucesso:', session.id)
+      console.log('   Session URL:', session.url)
+      if (couponCode) {
+        if (isPromotionCode) {
+          console.log(`   ✅ Promotion code aplicado: ${couponCode}`)
+        } else {
+          console.log(`   ✅ Cupom aplicado: ${couponCode}`)
+        }
+      }
     } catch (sessionError) {
+      console.error('❌ [checkout] Erro ao criar sessão:', sessionError)
+
       // Se o erro for de customer inválido, criar novo customer e tentar novamente
       const stripeSessionError = sessionError as {
         code?: string
         message?: string
+        type?: string
       }
+
+      console.error('   Erro detalhado:', {
+        code: stripeSessionError.code,
+        message: stripeSessionError.message,
+        type: stripeSessionError.type,
+      })
       if (
         stripeSessionError.code === 'resource_missing' ||
         stripeSessionError.message?.includes('No such customer')
@@ -158,7 +231,8 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
           data: { stripeCustomerId: customerId },
         })
         // Tentar criar sessão novamente
-        session = await stripe.checkout.sessions.create({
+        // Usar Record<string, unknown> porque promotion_code não está no tipo do Stripe
+        const retrySessionParams: Record<string, unknown> = {
           customer: customerId,
           mode: 'subscription',
           line_items: [
@@ -167,9 +241,6 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
               quantity: 1,
             },
           ],
-          ...(couponCode && {
-            discounts: [{ coupon: couponCode }],
-          }),
           success_url: finalSuccessUrl,
           cancel_url: finalCancelUrl,
           metadata: {
@@ -177,7 +248,18 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
             planId,
             ...(couponCode && { couponCode }),
           },
-        })
+        }
+
+        // Adicionar promotion code ou coupon novamente
+        if (couponCode) {
+          if (isPromotionCode && promotionCodeId) {
+            retrySessionParams.promotion_code = promotionCodeId
+          } else {
+            retrySessionParams.discounts = [{ coupon: couponCode }]
+          }
+        }
+
+        session = await stripe.checkout.sessions.create(retrySessionParams)
       } else {
         throw sessionError
       }
