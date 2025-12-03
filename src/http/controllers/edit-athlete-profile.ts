@@ -1,7 +1,9 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { AthleteProfile } from 'generated/prisma/client.js'
 import { z } from 'zod'
-import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
 import { PrismaAddressRepository } from '../repositories/prisma/prisma-address-repository.js'
+import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
+import { PrismaUsersRepository } from '../repositories/prisma/prisma-users-repository.js'
 import { EditAthleteProfileUseCase } from '../use-cases/edit-athlete-profile.js'
 
 export async function editAthleteProfile(
@@ -9,6 +11,7 @@ export async function editAthleteProfile(
   reply: FastifyReply,
 ) {
   const editAthleteProfileBodySchema = z.object({
+    name: z.string().min(2).max(100).optional(), // Nome do usuário
     nickname: z.string().min(2).max(50).optional(),
     profilePhoto: z.string().url().optional(),
     birthDate: z.string().datetime().optional(), // Data de nascimento editável
@@ -25,7 +28,7 @@ export async function editAthleteProfile(
       .enum(['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD'])
       .nullable()
       .optional(),
-    currentClub: z.string().max(100).optional(),
+    currentClub: z.string().max(100).nullable().optional(),
     biography: z.string().max(500).optional(),
     hasManager: z.boolean().optional(),
     managerName: z.string().max(100).nullable().optional(),
@@ -56,25 +59,37 @@ export async function editAthleteProfile(
 
     const athleteProfileRepository = new PrismaAthleteProfileRepository()
     const addressRepository = new PrismaAddressRepository()
+    const usersRepository = new PrismaUsersRepository()
     const editAthleteProfileUseCase = new EditAthleteProfileUseCase(
       athleteProfileRepository,
       addressRepository,
+      usersRepository,
     )
 
     // Prepare data for use case, excluding undefined values
-    const { address, ...otherData } = profileData
+    // Tratar string vazia em currentClub como null (para permitir limpar o campo)
+    const { address, currentClub, ...otherData } = profileData
     const useCaseRequest = {
       userId,
       ...otherData,
+      ...(currentClub !== undefined && {
+        currentClub: currentClub === '' ? null : currentClub,
+      }),
       ...(address !== undefined && { address }),
     }
 
     const { athleteProfile } =
       await editAthleteProfileUseCase.execute(useCaseRequest)
 
+    // O perfil retornado já inclui o user com o nome atualizado
+    const profileWithUser = athleteProfile as AthleteProfile & {
+      user?: { name?: string }
+    }
+
     return reply.status(200).send({
       athleteProfile: {
         id: athleteProfile.id,
+        name: profileWithUser.user?.name, // Nome do usuário atualizado
         nickname: athleteProfile.nickname,
         profilePhoto: athleteProfile.profilePhoto,
         height: athleteProfile.height,

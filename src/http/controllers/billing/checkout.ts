@@ -8,15 +8,15 @@ import { stripe } from '../../../lib/stripe.js'
 export async function checkout(request: FastifyRequest, reply: FastifyReply) {
   const checkoutBodySchema = z.object({
     planId: z.string().uuid(),
+    couponCode: z.string().optional(), // Código do cupom (ex: "2R1pZ2aq") ou código promocional (ex: "SOUFUTSCORE")
     // URLs de redirecionamento opcionais (se não enviar, usa padrão do .env)
     successUrl: z.string().url().optional(),
     cancelUrl: z.string().url().optional(),
   })
 
   try {
-    const { planId, successUrl, cancelUrl } = checkoutBodySchema.parse(
-      request.body,
-    )
+    const { planId, couponCode, successUrl, cancelUrl } =
+      checkoutBodySchema.parse(request.body)
     const userId = request.user.sub
 
     // Usar URLs fornecidas pelo app ou padrão do .env
@@ -114,11 +114,15 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
             quantity: 1,
           },
         ],
+        ...(couponCode && {
+          discounts: [{ coupon: couponCode }],
+        }),
         success_url: finalSuccessUrl,
         cancel_url: finalCancelUrl,
         metadata: {
           userId,
           planId,
+          ...(couponCode && { couponCode }),
         },
       })
     } catch (sessionError) {
@@ -163,11 +167,15 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
               quantity: 1,
             },
           ],
+          ...(couponCode && {
+            discounts: [{ coupon: couponCode }],
+          }),
           success_url: finalSuccessUrl,
           cancel_url: finalCancelUrl,
           metadata: {
             userId,
             planId,
+            ...(couponCode && { couponCode }),
           },
         })
       } else {

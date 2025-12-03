@@ -1,12 +1,14 @@
+import type { AthleteProfile } from 'generated/prisma/client.js'
+import type { AddressRepository } from '../repositories/address-repository.js'
 import type {
   AthleteProfileRepository,
   UpdateAthleteProfileData,
 } from '../repositories/athlete-profile-repository.js'
-import type { AddressRepository } from '../repositories/address-repository.js'
-import type { AthleteProfile } from 'generated/prisma/client.js'
+import type { UsersRepository } from '../repositories/users-repository.js'
 
 interface EditAthleteProfileUseCaseRequest {
   userId: string
+  name?: string | undefined // Nome do usuário
   nickname?: string | undefined
   profilePhoto?: string | undefined
   birthDate?: string | undefined // Data de nascimento editável
@@ -73,10 +75,12 @@ export class EditAthleteProfileUseCase {
   constructor(
     private athleteProfileRepository: AthleteProfileRepository,
     private addressRepository: AddressRepository,
+    private usersRepository: UsersRepository,
   ) {}
 
   async execute({
     userId,
+    name,
     address,
     ...profileData
   }: EditAthleteProfileUseCaseRequest): Promise<EditAthleteProfileUseCaseResponse> {
@@ -86,6 +90,11 @@ export class EditAthleteProfileUseCase {
 
     if (!existingProfile) {
       throw new Error('Athlete profile not found')
+    }
+
+    // Atualizar nome do usuário se fornecido
+    if (name !== undefined) {
+      await this.usersRepository.update(userId, { name })
     }
 
     // Se o nickname foi fornecido e é diferente do atual, verificar se já existe
@@ -105,6 +114,7 @@ export class EditAthleteProfileUseCase {
     }
 
     // Atualizar o perfil (excluindo address)
+    // Filtrar apenas undefined, mas manter null (para permitir limpar campos)
     const filteredData = Object.fromEntries(
       Object.entries(profileData).filter(([, value]) => value !== undefined),
     ) as UpdateAthleteProfileData
@@ -179,8 +189,12 @@ export class EditAthleteProfileUseCase {
     // Return updated profile with address included
     const updatedProfile = await this.athleteProfileRepository.findByUserId(userId)
     
+    if (!updatedProfile) {
+      throw new Error('Athlete profile not found after update')
+    }
+    
     return {
-      athleteProfile: updatedProfile!,
+      athleteProfile: updatedProfile,
     }
   }
 }
