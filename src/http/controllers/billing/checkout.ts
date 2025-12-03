@@ -56,8 +56,6 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
       try {
         // Tentar buscar o customer no Stripe
         await stripe.customers.retrieve(customerId)
-        // Se chegou aqui, o customer existe e é válido
-        console.log(`✅ Customer ${customerId} existe no Stripe`)
       } catch (error) {
         // Se o customer não existe, limpar o ID e criar novo
         const stripeError = error as { code?: string; message?: string }
@@ -65,9 +63,6 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
           stripeError.code === 'resource_missing' ||
           stripeError.message?.includes('No such customer')
         ) {
-          console.log(
-            `⚠️ Customer ${customerId} não existe no Stripe, criando novo...`,
-          )
           customerId = null
           // Limpar customerId inválido do banco
           await prisma.user.update({
@@ -83,7 +78,6 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
 
     // Criar customer no Stripe se não existir
     if (!customerId) {
-      console.log(`🆕 Criando novo customer no Stripe para usuário ${userId}`)
       const customer = await stripe.customers.create({
         email: user.email,
         name: user.name,
@@ -93,7 +87,6 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
       })
 
       customerId = customer.id
-      console.log(`✅ Customer criado: ${customerId}`)
 
       // Salvar customerId no banco
       await prisma.user.update({
@@ -108,11 +101,26 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
 
     if (couponCode) {
       try {
-        // Tentar buscar como promotion code
-        const promotionCodes = await stripe.promotionCodes.list({
-          code: couponCode,
-          limit: 1,
-        })
+        // Tentar buscar como promotion code (case-insensitive)
+        const searchCodes = [
+          couponCode,
+          couponCode.toUpperCase(),
+          couponCode.toLowerCase(),
+        ]
+
+        let promotionCodes = { data: [] as Stripe.PromotionCode[] }
+
+        // Tentar cada variação
+        for (const searchCode of searchCodes) {
+          const result = await stripe.promotionCodes.list({
+            code: searchCode,
+            limit: 1,
+          })
+          if (result.data.length > 0) {
+            promotionCodes = result
+            break
+          }
+        }
 
         if (promotionCodes.data.length > 0) {
           // É um promotion code! Buscar o cupom associado
@@ -123,48 +131,36 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
               promotionCodeId,
               { expand: ['coupon'] },
             )
-            // O coupon pode ser string (ID) ou objeto expandido
-            // Acessar coupon de forma segura
+
+            // Acessar coupon - quando expandido, vem como objeto Coupon
             const promotionCodeWithCoupon =
               promotionCodeFull as Stripe.PromotionCode & {
                 coupon?: string | Stripe.Coupon
               }
             const coupon = promotionCodeWithCoupon.coupon
-            if (typeof coupon === 'string') {
-              finalCouponId = coupon
-            } else if (coupon && typeof coupon === 'object' && 'id' in coupon) {
-              finalCouponId = coupon.id
+
+            if (coupon) {
+              if (typeof coupon === 'string') {
+                finalCouponId = coupon
+              } else if (typeof coupon === 'object' && coupon.id) {
+                finalCouponId = coupon.id
+              }
+            } else {
+              // Se não conseguiu extrair, não usar cupom inválido
+              finalCouponId = undefined
             }
-            console.log(
-              `✅ [checkout] Código promocional "${couponCode}" encontrado, usando cupom: ${finalCouponId}`,
-            )
           }
-        } else {
-          // Não é promotion code, usar como coupon ID diretamente
-          console.log(
-            `ℹ️ [checkout] Usando "${couponCode}" como ID do cupom diretamente`,
-          )
         }
+        // Se não encontrou promotion code, usar como coupon ID diretamente
       } catch (promoError) {
         // Se der erro, tentar usar como coupon ID
-        console.log(
-          `ℹ️ [checkout] Erro ao buscar promotion code, usando "${couponCode}" como ID do cupom`,
-        )
       }
     }
 
     // Criar sessão de checkout
     let session: Stripe.Checkout.Session
     try {
-      console.log('🛒 [checkout] Criando sessão de checkout...')
-      console.log('   Plan ID:', planId)
-      console.log('   Plan Name:', plan.name)
-      console.log('   Stripe Price ID:', plan.stripePriceId)
-      console.log('   Customer ID:', customerId)
-      console.log('   Coupon Code:', couponCode || 'nenhum')
-
       // Criar payload base
-      // Usar Record<string, unknown> porque promotion_code não está no tipo do Stripe
       const sessionParams: Record<string, unknown> = {
         customer: customerId,
         mode: 'subscription',
@@ -186,43 +182,20 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
       // Adicionar cupom (já resolvido se era promotion code)
       if (finalCouponId) {
         sessionParams.discounts = [{ coupon: finalCouponId }]
-        console.log(`   ✅ Usando cupom ID: ${finalCouponId}`)
-        if (finalCouponId !== couponCode) {
-          console.log(
-            `   ℹ️ Código promocional "${couponCode}" convertido para cupom "${finalCouponId}"`,
-          )
-        }
       }
 
       session = await stripe.checkout.sessions.create(sessionParams)
-
-      console.log('✅ [checkout] Sessão criada com sucesso:', session.id)
-      console.log('   Session URL:', session.url)
-      if (finalCouponId) {
-        console.log(`   ✅ Cupom aplicado: ${finalCouponId}`)
-      }
     } catch (sessionError) {
-      console.error('❌ [checkout] Erro ao criar sessão:', sessionError)
-
       // Se o erro for de customer inválido, criar novo customer e tentar novamente
       const stripeSessionError = sessionError as {
         code?: string
         message?: string
         type?: string
       }
-
-      console.error('   Erro detalhado:', {
-        code: stripeSessionError.code,
-        message: stripeSessionError.message,
-        type: stripeSessionError.type,
-      })
       if (
         stripeSessionError.code === 'resource_missing' ||
         stripeSessionError.message?.includes('No such customer')
       ) {
-        console.log(
-          `⚠️ Customer ${customerId} inválido ao criar sessão, criando novo...`,
-        )
         // Limpar customerId inválido
         await prisma.user.update({
           where: { id: userId },
@@ -243,7 +216,6 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
           data: { stripeCustomerId: customerId },
         })
         // Tentar criar sessão novamente
-        // Usar Record<string, unknown> porque promotion_code não está no tipo do Stripe
         const retrySessionParams: Record<string, unknown> = {
           customer: customerId,
           mode: 'subscription',
@@ -290,10 +262,6 @@ export async function checkout(request: FastifyRequest, reply: FastifyReply) {
     // Se for erro do Stripe, retornar mais detalhes
     if (error && typeof error === 'object' && 'type' in error) {
       const stripeError = error as { type?: string; message?: string }
-      console.error('Stripe error details:', {
-        type: stripeError.type,
-        message: stripeError.message,
-      })
       return reply.status(500).send({
         message: 'Error creating checkout session',
         error: stripeError.message || 'Unknown Stripe error',
