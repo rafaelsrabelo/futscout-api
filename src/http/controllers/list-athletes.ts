@@ -65,8 +65,21 @@ export async function listAthletes(
       }),
     )
 
+    // Ordenar: premium primeiro, depois não-premium
+    // Dentro de cada grupo, ordenar por createdAt desc (mais recente primeiro)
+    const sortedAthletes = athletesWithFavorites.sort((a, b) => {
+      // Primeiro critério: premium vem antes de não-premium
+      if (a.isPremium !== b.isPremium) {
+        return a.isPremium ? -1 : 1 // Premium primeiro
+      }
+      // Segundo critério: se ambos têm mesmo status premium, ordenar por data (mais recente primeiro)
+      const dateA = new Date(a.createdAt).getTime()
+      const dateB = new Date(b.createdAt).getTime()
+      return dateB - dateA // Descendente (mais recente primeiro)
+    })
+
     return reply.status(200).send({
-      athletes: athletesWithFavorites,
+      athletes: sortedAthletes,
       pagination: {
         page: filters.page,
         limit: filters.limit,

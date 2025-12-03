@@ -40,8 +40,21 @@ export async function listFavorites(
       }),
     )
 
+    // Ordenar: premium primeiro, depois não-premium
+    // Dentro de cada grupo, ordenar por createdAt desc (mais recente primeiro)
+    const sortedFavorites = favoritesWithPremium.sort((a, b) => {
+      // Primeiro critério: premium vem antes de não-premium
+      if (a.athlete.isPremium !== b.athlete.isPremium) {
+        return a.athlete.isPremium ? -1 : 1 // Premium primeiro
+      }
+      // Segundo critério: se ambos têm mesmo status premium, ordenar por data de favorito (mais recente primeiro)
+      const dateA = new Date(a.createdAt).getTime()
+      const dateB = new Date(b.createdAt).getTime()
+      return dateB - dateA // Descendente (mais recente primeiro)
+    })
+
     return reply.status(200).send({
-      favorites: favoritesWithPremium,
+      favorites: sortedFavorites,
       pagination: {
         page,
         limit,
