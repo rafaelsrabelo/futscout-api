@@ -61,6 +61,36 @@ export async function publicGetAthlete(
       isUserPremium(athleteProfile.userId),
     ])
 
+    // Buscar todos os plays das partidas do atleta para contar goals e assists
+    const matchIds = allMatches.map((match) => match.id)
+    const allPlays = matchIds.length > 0
+      ? await Promise.all(
+          matchIds.map((matchId) =>
+            playRepository.findManyByMatchId(matchId),
+          ),
+        ).then((playsArrays) => playsArrays.flat())
+      : []
+
+    // Agrupar plays por matchId e contar goals e assists
+    const playsByMatch: Record<
+      string,
+      { goals: number; assists: number }
+    > = {}
+
+    for (const play of allPlays) {
+      if (!play.matchId) continue
+
+      if (!playsByMatch[play.matchId]) {
+        playsByMatch[play.matchId] = { goals: 0, assists: 0 }
+      }
+
+      if (play.playType === 'GOAL') {
+        playsByMatch[play.matchId].goals++
+      } else if (play.playType === 'ASSIST') {
+        playsByMatch[play.matchId].assists++
+      }
+    }
+
     // Agrupar partidas por competição/amistoso (mesmo formato do list-my-matches)
     const groupedMatches: Record<
       string,
@@ -99,6 +129,11 @@ export async function publicGetAthlete(
             startDate: Date | null
             endDate: Date | null
           } | null
+          goals: number
+          assists: number
+          timeOnField: number | null
+          matchDuration: number | null
+          playerPosition: 'STARTER' | 'SUBSTITUTE' | null
         }>
       }
     > = {}
@@ -140,6 +175,9 @@ export async function publicGetAthlete(
         }
       }
 
+      // Buscar goals e assists da partida
+      const matchStats = playsByMatch[match.id] || { goals: 0, assists: 0 }
+
       groupedMatches[key].matches.push({
         id: match.id,
         adversaryTeam: match.adversaryTeam,
@@ -178,6 +216,12 @@ export async function publicGetAthlete(
               endDate: competition.endDate || null,
             }
           : null,
+        // ⭐ Campos de performance adicionados
+        goals: matchStats.goals,
+        assists: matchStats.assists,
+        timeOnField: match.approximateTime ?? null,
+        matchDuration: match.matchDuration ?? null,
+        playerPosition: match.playerPosition ?? null,
       })
     }
 

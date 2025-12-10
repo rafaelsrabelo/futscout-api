@@ -73,47 +73,45 @@ export async function checkUsage(request: FastifyRequest, reply: FastifyReply) {
       })
     }
 
-    // TEMPORÁRIO: Limites de vídeos desabilitados durante desenvolvimento (não está em produção)
-    // TODO: Reativar quando for para produção
     // Detectar tipo de rota para aplicar limite correto
-    // const route = request.url.split('?')[0] // Remove query params
+    const route = request.url?.split('?')[0] || '' // Remove query params
     // Rotas standalone: /plays, /plays/with-url, /plays/direct-upload, /videos/upload-url
     // NÃO standalone: /matches/:id/plays (vídeos dentro de jogos)
-    // const isStandaloneVideoRoute =
-    //   (route.includes('/plays') && !route.includes('/matches/')) ||
-    //   route.includes('/videos/upload-url')
+    const isStandaloneVideoRoute =
+      (route.includes('/plays') && !route.includes('/matches/')) ||
+      route.includes('/videos/upload-url')
 
     // Verificar limites de vídeos standalone (lances sem partida)
-    // if (isStandaloneVideoRoute) {
-    //   if (
-    //     plan.monthlyLimitStandaloneVideos !== null &&
-    //     usage.standaloneVideosUsed >= plan.monthlyLimitStandaloneVideos
-    //   ) {
-    //     return reply.status(402).send({
-    //       message:
-    //         'Você atingiu o limite mensal de vídeos standalone. Faça upgrade do seu plano para continuar.',
-    //       limit: plan.monthlyLimitStandaloneVideos,
-    //       used: usage.standaloneVideosUsed,
-    //       planName: plan.name,
-    //     })
-    //   }
-    // }
+    if (isStandaloneVideoRoute) {
+      if (
+        plan.monthlyLimitStandaloneVideos !== null &&
+        usage.standaloneVideosUsed >= plan.monthlyLimitStandaloneVideos
+      ) {
+        return reply.status(402).send({
+          message:
+            'Você atingiu o limite mensal de vídeos standalone. Faça upgrade do seu plano para continuar.',
+          limit: plan.monthlyLimitStandaloneVideos,
+          used: usage.standaloneVideosUsed,
+          planName: plan.name,
+        })
+      }
+    }
 
     // Verificar limites de vídeos dentro de jogos (não limitado no FREE, só conta)
     // Este limite só se aplica se monthlyLimitVideos não for null
-    // if (
-    //   !isStandaloneVideoRoute &&
-    //   plan.monthlyLimitVideos !== null &&
-    //   usage.videosUsed >= plan.monthlyLimitVideos
-    // ) {
-    //   return reply.status(402).send({
-    //     message:
-    //       'Você atingiu o limite mensal de vídeos em partidas. Faça upgrade do seu plano para continuar.',
-    //     limit: plan.monthlyLimitVideos,
-    //     used: usage.videosUsed,
-    //     planName: plan.name,
-    //   })
-    // }
+    if (
+      !isStandaloneVideoRoute &&
+      plan.monthlyLimitVideos !== null &&
+      usage.videosUsed >= plan.monthlyLimitVideos
+    ) {
+      return reply.status(402).send({
+        message:
+          'Você atingiu o limite mensal de vídeos em partidas. Faça upgrade do seu plano para continuar.',
+        limit: plan.monthlyLimitVideos,
+        used: usage.videosUsed,
+        planName: plan.name,
+      })
+    }
 
     // Verificar limites de partidas
     if (
