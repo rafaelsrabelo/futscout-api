@@ -64,10 +64,10 @@ enum MatchResult {
 }
 
 enum MatchStatus {
-  SCHEDULED    // Partida agendada para o futuro
-  LIVE         // Partida em andamento
-  FINISHED     // Partida finalizada
-  CANCELLED    // Partida cancelada
+  SCHEDULED // Partida agendada para o futuro
+  LIVE // Partida em andamento
+  FINISHED // Partida finalizada
+  CANCELLED // Partida cancelada
 }
 
 enum AuthProvider {
@@ -110,7 +110,7 @@ enum PlayType {
   PENALTY
   PASS
   KEY_PASS
-  
+
   // Específicos para Goleiro
   PENALTY_SAVE
   ONE_ON_ONE_SAVE
@@ -121,7 +121,7 @@ enum PlayType {
   DISTRIBUTION
   GOAL_KICK
   THROW_OUT
-  
+
   // Específicos para Linha
   SHOT_BLOCKED
   CLEARANCE
@@ -132,52 +132,52 @@ enum PlayType {
   BACKHEEL
   VOLLLEY
   BICYCLE_KICK
-  
+
   // Situações Especiais
   OFFSIDE
   MISSED_SHOT
   SHOT_ON_TARGET
   SHOT_OFF_TARGET
-  
+
   // Compilações
-  BEST_MOMENTS  // Melhores momentos
+  BEST_MOMENTS // Melhores momentos
 }
 
 enum PlayClassification {
-  PHYSICAL  // Physical aspects: speed, strength, endurance
-  TACTICAL  // Tactical aspects: positioning, marking, coverage
-  MENTAL    // Mental aspects: concentration, decision making, pressure
+  PHYSICAL // Physical aspects: speed, strength, endurance
+  TACTICAL // Tactical aspects: positioning, marking, coverage
+  MENTAL // Mental aspects: concentration, decision making, pressure
   TECHNICAL // Technical aspects: ball control, passing, finishing
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String
-  password  String
-  role      UserRole? // Opcional - será definido após login social
-  provider  AuthProvider @default(CREDENTIALS)
-  providerId String?
-  emailVerified Boolean @default(false)
-  isActive  Boolean  @default(false)
-  isProfile Boolean  @default(false)
+  id               String       @id @default(uuid())
+  email            String       @unique
+  name             String
+  password         String
+  role             UserRole? // Opcional - será definido após login social
+  provider         AuthProvider @default(CREDENTIALS)
+  providerId       String?
+  emailVerified    Boolean      @default(false)
+  isActive         Boolean      @default(false)
+  isProfile        Boolean      @default(false)
   stripeCustomerId String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
-  athleteProfile AthleteProfile?
-  observerProfile ObserverProfile?
-  refreshTokens  RefreshToken[]
-  tokenBlacklist TokenBlacklist[]
+  athleteProfile    AthleteProfile?
+  observerProfile   ObserverProfile?
+  refreshTokens     RefreshToken[]
+  tokenBlacklist    TokenBlacklist[]
   verificationCodes VerificationCode[]
-  favorites      Favorite[]
-  teams          Team[]
-  savedSearches  SavedSearch[]
-  subscriptions  Subscription[]
-  usages         Usage[]
+  favorites         Favorite[]
+  teams             Team[]
+  savedSearches     SavedSearch[]
+  subscriptions     Subscription[]
+  usages            Usage[]
 
-  @@map("users")
   @@unique([provider, providerId])
+  @@map("users")
 }
 
 model RefreshToken {
@@ -193,7 +193,7 @@ model RefreshToken {
 
 model TokenBlacklist {
   id        String   @id @default(uuid())
-  token     String   @unique  // O JWT token completo
+  token     String   @unique // O JWT token completo
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime // Quando o token expira naturalmente
@@ -203,259 +203,260 @@ model TokenBlacklist {
 }
 
 model VerificationCode {
-  id        String   @id @default(uuid())
-  code      String   // Código de 6 dígitos
-  email     String   
-  userId    String?  // Opcional, caso o usuário ainda não esteja criado
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String   // "EMAIL_VERIFICATION", "PASSWORD_RESET", etc.
+  id        String    @id @default(uuid())
+  code      String // Código de 6 dígitos
+  email     String
+  userId    String? // Opcional, caso o usuário ainda não esteja criado
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String // "EMAIL_VERIFICATION", "PASSWORD_RESET", etc.
   expiresAt DateTime // Código expira em 15 minutos
   usedAt    DateTime? // Quando foi usado
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@map("verification_codes")
 }
 
 model AthleteProfile {
-  id             String        @id @default(uuid())
-  userId         String        @unique
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  cpf            String        @unique
-  gender         Gender
-  nickname       String?        @unique
-  profilePhoto   String?
-  birthDate      DateTime
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  instagramUrl   String?
-  twitterUrl     String?
-  youtubeUrl     String?
-  
-  height         Float         
-  weight         Float 
-  dominantFoot   DominantFoot
+  cpf          String   @unique
+  gender       Gender
+  nickname     String?  @unique
+  profilePhoto String?
+  birthDate    DateTime
+
+  instagramUrl String?
+  twitterUrl   String?
+  youtubeUrl   String?
+
+  height       Float
+  weight       Float
+  dominantFoot DominantFoot
 
   primaryPosition   Position
   secondaryPosition Position?
   currentClub       String?
   biography         String?
-  
-  hasManager        Boolean     @default(false)  // Possui empresário ou responsável
-  managerName       String?                      // Nome do empresário ou responsável
-  managerCompany    String?                      // Empresa do empresário ou responsável
-  managerContact    String?                      // Contato do empresário ou responsável
-  
+
+  hasManager     Boolean @default(false) // Possui empresário ou responsável
+  managerName    String? // Nome do empresário ou responsável
+  managerCompany String? // Empresa do empresário ou responsável
+  managerContact String? // Contato do empresário ou responsável
+
   // Acompanhamentos profissionais
-  hasNutritionist      Boolean     @default(false)  // Acompanhamento nutricional
-  hasPsychologist      Boolean     @default(false)  // Acompanhamento psicológico
-  hasPersonalTrainer   Boolean     @default(false)  // Treino personalizado com professor de educação física
-  
-  address           Address?
-  teams             AthleteTeam[]
-  teamHistory       TeamHistory[]
-  favorites         Favorite[]
-  matches           Match[]
-  plays             Play[]       // Lances sem partida
-  competitions      Competition[] // Competições criadas pelo atleta
-  
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  hasNutritionist    Boolean @default(false) // Acompanhamento nutricional
+  hasPsychologist    Boolean @default(false) // Acompanhamento psicológico
+  hasPersonalTrainer Boolean @default(false) // Treino personalizado com professor de educação física
+
+  address      Address?
+  teams        AthleteTeam[]
+  teamHistory  TeamHistory[]
+  favorites    Favorite[]
+  matches      Match[]
+  plays        Play[] // Lances sem partida
+  competitions Competition[] // Competições criadas pelo atleta
+  achievements Achievement[] // Títulos e conquistas do atleta
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("athlete_profiles")
 }
 
 model ObserverProfile {
-  id             String   @id @default(uuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  cpf            String   @unique
-  name           String
-  currentClub    String?  // Clube atual é opcional
-  phone          String   // Telefone de contato
-  profilePhoto   String?  // Foto de perfil
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  cpf          String  @unique
+  name         String
+  currentClub  String? // Clube atual é opcional
+  phone        String // Telefone de contato
+  profilePhoto String? // Foto de perfil
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("observer_profiles")
 }
 
 model Address {
-  id          String         @id @default(uuid())
-  athleteId   String         @unique
-  athlete     AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-  
-  zipCode     String        
-  street      String        
-  number      String        
-  complement  String?       
-  district    String        
-  city        String        
-  state       String
-  country     String         @default("Brasil")
-  
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id        String         @id @default(uuid())
+  athleteId String         @unique
+  athlete   AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  zipCode    String
+  street     String
+  number     String
+  complement String?
+  district   String
+  city       String
+  state      String
+  country    String  @default("Brasil")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("addresses")
 }
 
 model TeamHistory {
-  id          String         @id @default(uuid())
-  athleteId   String
-  athlete     AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-  
-  teamId      String
-  team        Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  
-  startDate   DateTime
-  endDate     DateTime?      // null se ainda joga no time
-  
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id        String         @id @default(uuid())
+  athleteId String
+  athlete   AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  startDate DateTime
+  endDate   DateTime? // null se ainda joga no time
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("team_history")
 }
 
 model Team {
-  id          String         @id @default(uuid())
+  id          String  @id @default(uuid())
   name        String
-  nickname    String?        // Nome popular/apelido (ex: "Palmeiras") - DEPRECATED: não usar mais
-  acronym     String?        // Sigla do time (opcional)
-  shieldPhoto String?        
-  isPrincipal Boolean        @default(false) // Indica se é o time principal do usuário
-  
+  nickname    String? // Nome popular/apelido (ex: "Palmeiras") - DEPRECATED: não usar mais
+  acronym     String? // Sigla do time (opcional)
+  shieldPhoto String?
+  isPrincipal Boolean @default(false) // Indica se é o time principal do usuário
+
   // Relacionamento com o atleta que criou o time
-  userId      String         
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Relacionamentos
   athletes    AthleteTeam[]
   teamHistory TeamHistory[]
-  matches     Match[]        // Partidas onde esse time jogou
-  
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  matches     Match[] // Partidas onde esse time jogou
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("teams")
 }
 
 model Competition {
-  id          String         @id @default(uuid())
-  name        String         // Nome da competição (ex: "Campeonato Cearense 2024")
-  description String?        // Descrição opcional
-  startDate   DateTime?      // Data de início
-  endDate     DateTime?      // Data de término
-  location    String?        // Local da competição
-  modality    Modality?      // Modalidade da competição
-  category    Category?      // Categoria da competição
-  
+  id          String    @id @default(uuid())
+  name        String // Nome da competição (ex: "Campeonato Cearense 2024")
+  description String? // Descrição opcional
+  startDate   DateTime? // Data de início
+  endDate     DateTime? // Data de término
+  location    String? // Local da competição
+  modality    Modality? // Modalidade da competição
+  category    Category? // Categoria da competição
+
   // Relacionamento com o atleta que criou a competição
-  athleteId   String
-  athlete     AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-  
+  athleteId String
+  athlete   AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
   // Relacionamentos
-  matches     Match[]        // Partidas da competição
-  
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  matches Match[] // Partidas da competição
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("competitions")
 }
 
 model AthleteTeam {
-  id        String         @id @default(uuid())
+  id        String @id @default(uuid())
   athleteId String
   teamId    String
-  
-  athlete   AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-  team      Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+
+  athlete AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  team    Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([athleteId, teamId])
   @@map("athlete_teams")
 }
 
 model Favorite {
-  id        String   @id @default(uuid())
+  id        String @id @default(uuid())
   userId    String
   athleteId String
-  
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  athlete   AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-  
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  athlete AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
   createdAt DateTime @default(now())
-  
+
   @@unique([userId, athleteId])
   @@map("favorites")
 }
 
 model Match {
-  id              String         @id @default(uuid())
-  athleteId       String
-  athlete         AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-  
-  myTeamId        String
-  myTeam          Team           @relation(fields: [myTeamId], references: [id])
-  adversaryTeam   String         
-  date            DateTime
-  modality        Modality
-  category        Category
-  location        String
-  streamUrl       String?
-  
+  id        String         @id @default(uuid())
+  athleteId String
+  athlete   AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  myTeamId      String
+  myTeam        Team     @relation(fields: [myTeamId], references: [id])
+  adversaryTeam String
+  date          DateTime
+  modality      Modality
+  category      Category
+  location      String
+  streamUrl     String?
+
   // Relacionamento com competição (opcional - se null, é amistoso)
-  competitionId  String?
-  competition    Competition?   @relation(fields: [competitionId], references: [id], onDelete: SetNull)
-  
-  status          MatchStatus    @default(SCHEDULED)
-  result          MatchResult    @default(NOT_FINISHED)
-  myTeamScore     Int?
-  adversaryScore  Int?
-  
-  playerPosition  PlayerPosition?  // Titular ou reserva (pode ser definido ao finalizar)
-  observations    String?
-  
-  matchDuration   Int?           // duração total da partida em minutos
-  approximateTime Int?           // tempo em minutos que o atleta jogou
-  photoUrl        String?
-  videoUrl        String?
-  youtubeUrl      String?        // link do YouTube da partida
-  performanceRating Int?         // nota de 1 a 5
-  
-  plays           Play[]
-  scout           Scout?
-  
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  competitionId String?
+  competition   Competition? @relation(fields: [competitionId], references: [id], onDelete: SetNull)
+
+  status         MatchStatus @default(SCHEDULED)
+  result         MatchResult @default(NOT_FINISHED)
+  myTeamScore    Int?
+  adversaryScore Int?
+
+  playerPosition PlayerPosition? // Titular ou reserva (pode ser definido ao finalizar)
+  observations   String?
+
+  matchDuration     Int? // duração total da partida em minutos
+  approximateTime   Int? // tempo em minutos que o atleta jogou
+  photoUrl          String?
+  videoUrl          String?
+  youtubeUrl        String? // link do YouTube da partida
+  performanceRating Int? // nota de 1 a 5
+
+  plays Play[]
+  scout Scout?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("matches")
 }
 
 model Play {
-  id              String   @id @default(uuid())
-  matchId         String?
-  match           Match?   @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  
+  id      String  @id @default(uuid())
+  matchId String?
+  match   Match?  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
   // Relacionamento com atleta (para lances sem partida)
-  athleteId       String?
-  athlete         AthleteProfile? @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-  
-  playType        PlayType
-  videoUrl        String?
-  thumbnailUrl    String?  // Thumbnail gerado automaticamente do vídeo
-  photoUrl        String?
-  rating          Int?     // nota de 1 a 5
-  observations    String?
-  
+  athleteId String?
+  athlete   AthleteProfile? @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  playType     PlayType
+  videoUrl     String?
+  thumbnailUrl String? // Thumbnail gerado automaticamente do vídeo
+  photoUrl     String?
+  rating       Int? // nota de 1 a 5
+  observations String?
+
   // Relacionamento com classificações
   classifications PlayClassifications[]
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([athleteId, videoUrl])
   @@index([matchId])
@@ -465,88 +466,88 @@ model Play {
 }
 
 model PlayClassifications {
-  id             String           @id @default(uuid())
+  id             String             @id @default(uuid())
   playId         String
   classification PlayClassification
-  
-  play           Play             @relation(fields: [playId], references: [id], onDelete: Cascade)
-  
-  createdAt      DateTime         @default(now())
+
+  play Play @relation(fields: [playId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
 
   @@unique([playId, classification]) // Evita classificação duplicada no mesmo play
   @@map("play_classifications")
 }
 
 model Scout {
-  id                    String         @id @default(uuid())
-  matchId               String         @unique
-  match                 Match          @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  
+  id      String @id @default(uuid())
+  matchId String @unique
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
   // Estatísticas gerais
-  totalPlays            Int            @default(0)
-  positiveActions       Int            @default(0)
-  negativeActions       Int            @default(0)
-  neutralActions        Int            @default(0)
-  
+  totalPlays      Int @default(0)
+  positiveActions Int @default(0)
+  negativeActions Int @default(0)
+  neutralActions  Int @default(0)
+
   // Estatísticas por categoria
-  goals                 Int            @default(0)
-  assists               Int            @default(0)
-  saves                 Int            @default(0)
-  defensiveActions      Int            @default(0)
-  tackles               Int            @default(0)
-  interceptions         Int            @default(0)
-  crosses               Int            @default(0)
-  dribbles              Int            @default(0)
-  fouls                 Int            @default(0)
-  yellowCards           Int            @default(0)
-  redCards              Int            @default(0)
-  
+  goals            Int @default(0)
+  assists          Int @default(0)
+  saves            Int @default(0)
+  defensiveActions Int @default(0)
+  tackles          Int @default(0)
+  interceptions    Int @default(0)
+  crosses          Int @default(0)
+  dribbles         Int @default(0)
+  fouls            Int @default(0)
+  yellowCards      Int @default(0)
+  redCards         Int @default(0)
+
   // Avaliação geral
-  overallRating         Float?         // média das notas dos plays
-  performanceNote       String?        // observações gerais
-  
+  overallRating   Float? // média das notas dos plays
+  performanceNote String? // observações gerais
+
   // Pontos fortes e fracos identificados
-  strengths             String?        // JSON array de strings
-  weaknesses            String?        // JSON array de strings
-  
+  strengths  String? // JSON array de strings
+  weaknesses String? // JSON array de strings
+
   // Metadados
-  generatedAt           DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
+  generatedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("scouts")
 }
 
 model SavedSearch {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  title       String   // "Zagueiros Canhotos Sub-15"
-  description String?  // Descrição opcional do filtro
-  
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title       String // "Zagueiros Canhotos Sub-15"
+  description String? // Descrição opcional do filtro
+
   // Filtros salvos (JSON com os critérios)
-  filters     Json     // { "primaryPosition": "DEFENDER", "dominantFoot": "LEFT", "category": "U15", ... }
-  
+  filters Json // { "primaryPosition": "DEFENDER", "dominantFoot": "LEFT", "category": "U15", ... }
+
   // Metadados
-  isActive    Boolean  @default(true)  // Permite desativar sem deletar
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive Boolean @default(true) // Permite desativar sem deletar
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("saved_searches")
 }
 
 model Plan {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  price       Int      // in cents
-  currency    String   @default("BRL")
-  monthlyLimitMatches Int?
-  monthlyLimitVideos  Int?  // Vídeos dentro de jogos (não limitado no FREE, só conta)
-  monthlyLimitStandaloneVideos Int?  // Vídeos standalone (lances sem partida)
-  isUnlimited Boolean  @default(false)
-  stripePriceId String?
-  createdAt   DateTime @default(now())
+  id                           String   @id @default(uuid())
+  name                         String   @unique
+  price                        Int // in cents
+  currency                     String   @default("BRL")
+  monthlyLimitMatches          Int?
+  monthlyLimitVideos           Int? // Vídeos dentro de jogos (não limitado no FREE, só conta)
+  monthlyLimitStandaloneVideos Int? // Vídeos standalone (lances sem partida)
+  isUnlimited                  Boolean  @default(false)
+  stripePriceId                String?
+  createdAt                    DateTime @default(now())
 
   subscriptions Subscription[]
 
@@ -554,30 +555,51 @@ model Plan {
 }
 
 model Subscription {
-  id                    String   @id @default(uuid())
-  userId                String
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  planId                String
-  plan                  Plan     @relation(fields: [planId], references: [id])
-  status                String   // active, canceled, past_due
-  currentPeriodEnd      DateTime
-  stripeSubscriptionId  String?
-  createdAt             DateTime @default(now())
+  id                   String   @id @default(uuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId               String
+  plan                 Plan     @relation(fields: [planId], references: [id])
+  status               String // active, canceled, past_due
+  currentPeriodEnd     DateTime
+  stripeSubscriptionId String?
+  createdAt            DateTime @default(now())
 
   @@map("subscriptions")
 }
 
 model Usage {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  month       Int
-  year        Int
-  videosUsed  Int      @default(0)  // Vídeos dentro de jogos (só conta, não limita)
-  standaloneVideosUsed Int @default(0)  // Vídeos standalone (lances sem partida)
-  matchesUsed Int      @default(0)
-  createdAt   DateTime @default(now())
+  id                   String   @id @default(uuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  month                Int
+  year                 Int
+  videosUsed           Int      @default(0) // Vídeos dentro de jogos (só conta, não limita)
+  standaloneVideosUsed Int      @default(0) // Vídeos standalone (lances sem partida)
+  matchesUsed          Int      @default(0)
+  createdAt            DateTime @default(now())
 
   @@unique([userId, month, year])
   @@map("usages")
+}
+
+model Achievement {
+  id        String         @id @default(uuid())
+  athleteId String
+  athlete   AthleteProfile @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  name     String // Nome do título (ex: "Campeonato Estadual", "Melhor Jogador")
+  category String // Categoria (ex: "U19", "Sub-17", "Profissional")
+  year     Int // Ano da conquista
+  type     AchievementType // COLECTIVE ou INDIVIDUAL
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("achievements")
+}
+
+enum AchievementType {
+  COLLECTIVE // Título coletivo (ex: campeonato com time)
+  INDIVIDUAL // Título individual (ex: melhor jogador, artilheiro)
 }

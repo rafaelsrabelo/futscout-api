@@ -1,4 +1,5 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
+import { PrismaAchievementRepository } from '../repositories/prisma/prisma-achievement-repository.js'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
 import { PrismaFavoriteRepository } from '../repositories/prisma/prisma-favorite-repository.js'
 import { GetMyAthleteProfileUseCase } from '../use-cases/get-my-athlete-profile.js'
@@ -12,6 +13,7 @@ export async function getMyAthleteProfile(
 
     const athleteProfileRepository = new PrismaAthleteProfileRepository()
     const favoriteRepository = new PrismaFavoriteRepository()
+    const achievementRepository = new PrismaAchievementRepository()
     const getMyAthleteProfileUseCase = new GetMyAthleteProfileUseCase(
       athleteProfileRepository,
     )
@@ -22,6 +24,9 @@ export async function getMyAthleteProfile(
     const favoritesCount = await favoriteRepository.countFavoritesByAthlete(
       profile.id,
     )
+
+    // Buscar achievements do atleta
+    const achievements = await achievementRepository.findByAthleteId(profile.id)
 
     return reply.status(200).send({
       athleteProfile: {
@@ -50,6 +55,15 @@ export async function getMyAthleteProfile(
         hasPersonalTrainer: profile.hasPersonalTrainer,
         address: profile.address,
         favorites: favoritesCount,
+        achievements: achievements.map((achievement) => ({
+          id: achievement.id,
+          name: achievement.name,
+          category: achievement.category,
+          year: achievement.year,
+          type: achievement.type,
+          createdAt: achievement.createdAt,
+          updatedAt: achievement.updatedAt,
+        })),
         createdAt: profile.createdAt,
         updatedAt: profile.updatedAt,
       },

@@ -9,6 +9,7 @@ import { getSubscription } from './controllers/billing/get-subscription.js'
 import { listPlans } from './controllers/billing/list-plans.js'
 import { portal } from './controllers/billing/portal.js'
 import { webhook } from './controllers/billing/webhook.js'
+import { createAchievement } from './controllers/create-achievement.js'
 import { createAthleteProfile } from './controllers/create-athlete-profile.js'
 import { createCompetition } from './controllers/create-competition.js'
 import { createMatch } from './controllers/create-match.js'
@@ -18,6 +19,7 @@ import { createSavedSearch } from './controllers/create-saved-search.js'
 import { createStandalonePlay } from './controllers/create-standalone-play.js'
 import { createTeam } from './controllers/create-team.js'
 import { deleteAccount } from './controllers/delete-account.js'
+import { deleteAchievement } from './controllers/delete-achievement.js'
 import { deleteCompetition } from './controllers/delete-competition.js'
 import { deleteMatch } from './controllers/delete-match.js'
 import { deletePlay } from './controllers/delete-play.js'
@@ -40,6 +42,7 @@ import { getObserverProfile } from './controllers/get-observer-profile.js'
 import { getProfile } from './controllers/get-profile.js'
 import { getScout } from './controllers/get-scout.js'
 import { getVideoFeed } from './controllers/get-video-feed.js'
+import { listAchievements } from './controllers/list-achievements.js'
 import { listAthletes } from './controllers/list-athletes.js'
 import { listFavorites } from './controllers/list-favorites.js'
 import { listMyCompetitions } from './controllers/list-my-competitions.js'
@@ -56,6 +59,7 @@ import { register } from './controllers/register.js'
 import { socialLogin } from './controllers/social-login.js'
 import { syncCurrentClub } from './controllers/sync-current-club.js'
 import { toggleFavorite } from './controllers/toggle-favorite.js'
+import { updateAchievement } from './controllers/update-achievement.js'
 import { updateCompetition } from './controllers/update-competition.js'
 import { updateMatch } from './controllers/update-match.js'
 import { updateObserverProfile } from './controllers/update-observer-profile.js'
@@ -112,6 +116,12 @@ export async function appRoutes(app: FastifyInstance) {
   // Favorite routes
   app.post('/athletes/:id/favorite', { onRequest: [verifyJwt] }, toggleFavorite)
   app.get('/athletes/favorites', { onRequest: [verifyJwt] }, listFavorites)
+
+  // Achievement routes (títulos e conquistas)
+  app.post('/achievements', { onRequest: [verifyJwt] }, createAchievement)
+  app.get('/achievements', { onRequest: [verifyJwt] }, listAchievements)
+  app.put('/achievements/:id', { onRequest: [verifyJwt] }, updateAchievement)
+  app.delete('/achievements/:id', { onRequest: [verifyJwt] }, deleteAchievement)
 
   // Competition routes
   app.post('/competitions', { onRequest: [verifyJwt] }, createCompetition)

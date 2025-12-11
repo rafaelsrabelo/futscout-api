@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import z from 'zod'
+import { PrismaAchievementRepository } from '../repositories/prisma/prisma-achievement-repository.js'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
 import { PrismaFavoriteRepository } from '../repositories/prisma/prisma-favorite-repository.js'
 import { PrismaMatchRepository } from '../repositories/prisma/prisma-match-repository.js'
@@ -41,6 +42,7 @@ export async function publicGetAthlete(
     const favoriteRepository = new PrismaFavoriteRepository()
     const matchRepository = new PrismaMatchRepository()
     const playRepository = new PrismaPlayRepository()
+    const achievementRepository = new PrismaAchievementRepository()
 
     // Buscar o perfil do atleta pelo ID
     const athleteProfile = await athleteProfileRepository.findById(id)
@@ -50,7 +52,7 @@ export async function publicGetAthlete(
     }
 
     // Buscar dados em paralelo (sem isFavorite, pois não há usuário autenticado)
-    const [favoritesCount, allMatches, videoFeed, isPremium] = await Promise.all([
+    const [favoritesCount, allMatches, videoFeed, isPremium, achievements] = await Promise.all([
       favoriteRepository.countFavoritesByAthlete(id),
       // Buscar todas as partidas do atleta (não apenas FINISHED)
       // Para perfil público, faz sentido mostrar todas as partidas
@@ -59,6 +61,8 @@ export async function publicGetAthlete(
       playRepository.findVideosByAthleteId(athleteProfile.id),
       // Verificar se o atleta é premium
       isUserPremium(athleteProfile.userId),
+      // Buscar achievements do atleta
+      achievementRepository.findByAthleteId(athleteProfile.id),
     ])
 
     // Buscar todos os plays das partidas do atleta para contar goals e assists
@@ -258,6 +262,15 @@ export async function publicGetAthlete(
         favorites: favoritesCount,
         isFavorite: false, // Always false for public access
         isPremium,
+        achievements: achievements.map((achievement) => ({
+          id: achievement.id,
+          name: achievement.name,
+          category: achievement.category,
+          year: achievement.year,
+          type: achievement.type,
+          createdAt: achievement.createdAt,
+          updatedAt: achievement.updatedAt,
+        })),
         finishedMatches: groupedArray,
         videoFeed: videoFeed.map((play: PlayData) => ({
           id: play.id,
