@@ -76,6 +76,10 @@ import { checkUsage } from './middlewares/check-usage.js'
 import { verifyJwt } from './middlewares/verify-jwt.js'
 
 export async function appRoutes(app: FastifyInstance) {
+  // Health check route
+  app.get('/health', async (request, reply) => {
+    return { status: 'ok' }
+  })
   // Public auth routes
   app.post('/auth/users', register)
   app.post('/auth/verify-email', verifyEmail)
