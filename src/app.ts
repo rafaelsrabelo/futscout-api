@@ -13,7 +13,11 @@ import {
   CompetitionNotFoundError,
 } from './http/use-cases/update-competition.js'
 
-export const app = fastify()
+export const app = fastify({
+  logger: {
+    level: env.NODE_ENV === 'production' ? 'info' : 'debug',
+  },
+})
 
 // Register multipart plugin for file uploads
 app.register(import('@fastify/multipart'), {
