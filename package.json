@@ -4,23 +4,28 @@
   "description": "FutScout API",
   "type": "module",
   "main": "index.js",
-  "scripts": {
-    "start:dev": "tsx watch src/server.ts",
-    "start": "tsx src/server.ts",
-    "build": "tsc src --out-dir build",
-    "lint": "eslint src --ext .ts,.tsx",
-    "lint:fix": "eslint src --ext .ts,.tsx --fix",
-    "format": "prettier --write src/**/*.{ts,tsx,js,jsx}",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "test:ui": "vitest --ui",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:setup": "./setup-db.sh",
-    "db:reset": "docker-compose down -v && npm run db:setup",
-    "db:migrate:deploy": "prisma migrate deploy",
-    "studio": "npx prisma studio"
-  },
+ "scripts": {
+  "dev": "tsx watch src/server.ts",
+
+  "build": "tsc",
+
+  "start": "node dist/server.js",
+
+  "lint": "eslint src --ext .ts",
+  "lint:fix": "eslint src --ext .ts --fix",
+  "format": "prettier --write src/**/*.ts",
+
+  "test": "vitest run",
+  "test:watch": "vitest",
+  "test:coverage": "vitest run --coverage",
+  "test:ui": "vitest --ui",
+
+  "db:seed": "tsx prisma/seed.ts",
+  "db:setup": "./setup-db.sh",
+  "db:reset": "docker-compose down -v && npm run db:setup",
+  "db:migrate:deploy": "prisma migrate deploy",
+  "studio": "npx prisma studio"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
