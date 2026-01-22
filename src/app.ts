@@ -34,6 +34,16 @@ app.register(import('@fastify/jwt'), {
   secret: env.JWT_SECRET,
 })
 
+// Root health check for Render - deve vir ANTES do registro das rotas
+app.get('/', async (request, reply) => {
+  return {
+    message: 'FutScout API',
+    version: '1.0.0',
+    status: 'online',
+    timestamp: new Date().toISOString(),
+  }
+})
+
 app.register(appRoutes, { prefix: '/api' })
 
 app.setErrorHandler((error, request, reply) => {

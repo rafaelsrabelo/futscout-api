@@ -76,15 +76,6 @@ import { checkUsage } from './middlewares/check-usage.js'
 import { verifyJwt } from './middlewares/verify-jwt.js'
 
 export async function appRoutes(app: FastifyInstance) {
-  // Root route
-  app.get('/', async (request, reply) => {
-    return {
-      message: 'FutScout API',
-      version: '1.0.0',
-      docs: '/api/health',
-    }
-  })
-
   // Health check route
   app.get('/health', async (request, reply) => {
     return { status: 'ok', timestamp: new Date().toISOString() }
