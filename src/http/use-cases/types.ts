@@ -14,7 +14,8 @@ export interface RegisterUseCaseResponse {
 }
 
 export interface AuthenticateUseCaseRequest {
-  email: string
+  email?: string
+  cpf?: string
   password: string
 }
 export interface AuthenticateUseCaseResponse {

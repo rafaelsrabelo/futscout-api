@@ -6,15 +6,36 @@ import { AuthenticateUseCase } from '../use-cases/authenticate.js'
 import { InvalidCredentialsError } from '../use-cases/errors/invalid-credentials-error.js'
 import { env } from '@/env/index.js'
 
+function normalizeCpf(raw: string): string {
+  return raw.replace(/\D/g, '').padStart(11, '0')
+}
+
+function resolveCredential(
+  input: string,
+): { email: string; cpf?: undefined } | { email?: undefined; cpf: string } {
+  if (input.includes('@')) return { email: input.trim().toLowerCase() }
+  return { cpf: normalizeCpf(input) }
+}
+
 export async function authenticate(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
-  const authenticateBodySchema = z.object({
-    email: z.string().email(),
-    password: z.string().min(6),
-  })
-  const { email, password } = authenticateBodySchema.parse(request.body)
+  const authenticateBodySchema = z
+    .object({
+      email: z.string().optional(),
+      cpf: z.string().optional(),
+      password: z.string().min(6),
+    })
+    .refine((d) => d.email || d.cpf, {
+      message: 'email ou cpf é obrigatório',
+      path: ['email'],
+    })
+
+  const body = authenticateBodySchema.parse(request.body)
+  const credential = body.cpf
+    ? { cpf: normalizeCpf(body.cpf) }
+    : resolveCredential(body.email!)
 
   try {
     const usersRepository = new PrismaUsersRepository()
@@ -22,8 +43,8 @@ export async function authenticate(
     const authenticateUseCase = new AuthenticateUseCase(usersRepository)
 
     const { user } = await authenticateUseCase.execute({
-      email,
-      password,
+      ...credential,
+      password: body.password,
     })
 
     // Generate access token (short-lived)

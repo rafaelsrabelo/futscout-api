@@ -11,9 +11,17 @@ export class AuthenticateUseCase {
 
   async execute({
     email,
+    cpf,
     password,
   }: AuthenticateUseCaseRequest): Promise<AuthenticateUseCaseResponse> {
-    const user = await this.usersRepository.findByEmail(email)
+    if (!email && !cpf) {
+      throw new InvalidCredentialsError()
+    }
+
+    const user = cpf
+      ? await this.usersRepository.findByCpf(cpf)
+      : await this.usersRepository.findByEmail(email!)
+
     if (!user) {
       throw new InvalidCredentialsError()
     }

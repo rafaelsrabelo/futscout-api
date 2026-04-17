@@ -15,6 +15,11 @@ export class InMemoryUsersRepository implements UsersRepository {
     return user
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async findByCpf(_cpf: string): Promise<User | null> {
+    return null
+  }
+
   async findById(userId: string): Promise<User | null> {
     const user = this.items.find((user) => user.id === userId)
 

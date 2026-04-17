@@ -4,6 +4,7 @@ import type { UserCreateInput } from 'generated/prisma/models.js'
 export interface UsersRepository {
   create(data: UserCreateInput): Promise<User>
   findByEmail(email: string): Promise<User | null>
+  findByCpf(cpf: string): Promise<User | null>
   findByProvider(
     provider: AuthProvider,
     providerId: string,
