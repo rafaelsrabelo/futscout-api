@@ -20,6 +20,7 @@
   "test:ui": "vitest --ui",
 
   "db:seed": "tsx prisma/seed.ts",
+  "db:import-atletas": "tsx scripts/importar-atletas.ts",
   "db:setup": "./setup-db.sh",
   "db:reset": "docker-compose down -v && npm run db:setup",
   "db:migrate:deploy": "prisma migrate deploy",

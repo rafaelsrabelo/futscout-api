@@ -4,3 +4,6 @@ build
 .env
 /generated/prisma
 /coverage
+/dist
+/scripts/*
+!/scripts/importar-atletas.ts
