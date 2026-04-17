@@ -154,6 +154,20 @@ function isYes(raw: string): boolean {
   return v === 'sim' || v === 's' || v === 'yes' || v === 'true' || v === '1'
 }
 
+function deriveAcronym(teamName: string): string {
+  const words = teamName
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+  if (words.length >= 2) {
+    return words
+      .map((w) => w[0]?.toUpperCase() ?? '')
+      .join('')
+      .slice(0, 5)
+  }
+  return teamName.replace(/\s+/g, '').toUpperCase().slice(0, 3) || 'TIME'
+}
+
 const cepCache = new Map<string, ViaCep>()
 
 async function lookupCep(cep: string): Promise<ViaCep> {
@@ -235,7 +249,12 @@ async function importAthlete(row: Row) {
 
     if (row.equipe) {
       const team = await tx.team.create({
-        data: { name: row.equipe, userId: user.id, isPrincipal: true },
+        data: {
+          name: row.equipe,
+          acronym: deriveAcronym(row.equipe),
+          userId: user.id,
+          isPrincipal: true,
+        },
       })
 
       await tx.athleteTeam.create({
