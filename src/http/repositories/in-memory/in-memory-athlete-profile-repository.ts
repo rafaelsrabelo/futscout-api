@@ -142,6 +142,11 @@ export class InMemoryAthleteProfileRepository
     })
   }
 
+  async countMany(filters: AthleteFilters): Promise<number> {
+    const items = await this.findMany(filters)
+    return items.length
+  }
+
   async findByNickname(nickname: string): Promise<AthleteProfile | null> {
     const athleteProfile = this.items.find((item) => item.nickname === nickname)
     return athleteProfile || null

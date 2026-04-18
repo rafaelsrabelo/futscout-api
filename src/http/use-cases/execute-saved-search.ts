@@ -1,5 +1,8 @@
 import type { SavedSearchRepository } from '../repositories/saved-search-repository.js'
-import type { AthleteProfileRepository } from '../repositories/athlete-profile-repository.js'
+import type {
+  AthleteFilters,
+  AthleteProfileRepository,
+} from '../repositories/athlete-profile-repository.js'
 
 interface ExecuteSavedSearchRequest {
   savedSearchId: string
@@ -65,13 +68,11 @@ export class ExecuteSavedSearchUseCase {
       limit,
     }
 
-    // Executar a busca
-    const athletes = await this.athleteProfileRepository.findMany(filters)
-
-    // Contar total (sem paginação)
-    const totalFilters = { ...savedFilters }
-    const allAthletes =
-      await this.athleteProfileRepository.findMany(totalFilters)
+    // Executar a busca e contar o total em paralelo
+    const [athletes, total] = await Promise.all([
+      this.athleteProfileRepository.findMany(filters),
+      this.athleteProfileRepository.countMany(savedFilters as AthleteFilters),
+    ])
 
     return {
       athletes: athletes.map((athlete) => ({
@@ -94,7 +95,7 @@ export class ExecuteSavedSearchUseCase {
         },
         createdAt: athlete.createdAt,
       })),
-      totalCount: allAthletes.length,
+      totalCount: total,
       searchTitle: savedSearch.title,
     }
   }

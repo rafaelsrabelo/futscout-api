@@ -98,7 +98,7 @@ export class PrismaAthleteProfileRepository
     return athleteProfile
   }
 
-  async findMany(filters: AthleteFilters) {
+  private buildWhere(filters: AthleteFilters) {
     const {
       gender,
       dominantFoot,
@@ -111,8 +111,6 @@ export class PrismaAthleteProfileRepository
       maxHeight,
       minWeight,
       maxWeight,
-      page = 1,
-      limit = 20,
     } = filters
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -146,6 +144,13 @@ export class PrismaAthleteProfileRepository
       if (maxWeight) where.weight.lte = maxWeight
     }
 
+    return where
+  }
+
+  async findMany(filters: AthleteFilters) {
+    const { page = 1, limit = 20 } = filters
+    const where = this.buildWhere(filters)
+
     const athletes = await prisma.athleteProfile.findMany({
       where,
       include: {
@@ -167,6 +172,11 @@ export class PrismaAthleteProfileRepository
     })
 
     return athletes
+  }
+
+  async countMany(filters: AthleteFilters) {
+    const where = this.buildWhere(filters)
+    return prisma.athleteProfile.count({ where })
   }
 
   async update(userId: string, data: UpdateAthleteProfileData) {

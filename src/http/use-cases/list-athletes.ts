@@ -37,6 +37,7 @@ interface ListAthletesUseCaseResponse {
     }
     createdAt: Date
   }>
+  total: number
 }
 
 export class ListAthletesUseCase {
@@ -45,9 +46,13 @@ export class ListAthletesUseCase {
   async execute(
     filters: ListAthletesUseCaseRequest,
   ): Promise<ListAthletesUseCaseResponse> {
-    const athletes = await this.athleteProfileRepository.findMany(filters)
+    const [athletes, total] = await Promise.all([
+      this.athleteProfileRepository.findMany(filters),
+      this.athleteProfileRepository.countMany(filters),
+    ])
 
     return {
+      total,
       athletes: athletes.map((athlete) => ({
         id: athlete.id,
         userId: athlete.userId,

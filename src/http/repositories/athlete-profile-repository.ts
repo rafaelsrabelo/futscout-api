@@ -63,6 +63,7 @@ export interface AthleteProfileRepository {
   findByUserId(userId: string): Promise<AthleteProfile | null>
   findByCpf(cpf: string): Promise<AthleteProfile | null>
   findMany(filters: AthleteFilters): Promise<AthleteProfileWithUser[]>
+  countMany(filters: AthleteFilters): Promise<number>
   findByNickname(nickname: string): Promise<AthleteProfile | null>
   update(
     userId: string,
