@@ -244,7 +244,6 @@ async function importRow(row: Row): Promise<ImportResult> {
       matchId: match.id,
       athleteId: athlete.id,
       playType: 'GOAL',
-      videoUrl: row.link || null,
       observations: IMPORT_MARKER,
     },
   })
