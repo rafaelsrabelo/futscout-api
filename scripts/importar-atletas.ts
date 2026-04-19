@@ -154,6 +154,37 @@ function isYes(raw: string): boolean {
   return v === 'sim' || v === 's' || v === 'yes' || v === 'true' || v === '1'
 }
 
+function baseNickname(fullName: string, cpf: string): string {
+  const firstName = fullName.trim().split(/\s+/)[0] ?? 'atleta'
+  const cleaned = firstName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z]/g, '')
+  const prefix = cleaned || 'atleta'
+  return `${prefix}${cpf.slice(0, 3)}`
+}
+
+async function findAvailableNickname(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  fullName: string,
+  cpf: string,
+  excludeAthleteId?: string,
+): Promise<string> {
+  const base = baseNickname(fullName, cpf)
+  const root = base.slice(0, base.length - 3)
+
+  for (let len = 3; len <= 11; len++) {
+    const candidate = `${root}${cpf.slice(0, len)}`
+    const existing = await tx.athleteProfile.findUnique({
+      where: { nickname: candidate },
+      select: { id: true },
+    })
+    if (!existing || existing.id === excludeAthleteId) return candidate
+  }
+  return `${root}${cpf}_${Math.random().toString(36).slice(2, 5)}`
+}
+
 function deriveAcronym(teamName: string): string {
   const words = teamName
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
@@ -190,11 +221,25 @@ async function importAthlete(row: Row) {
   if (cpf.length !== 11) throw new Error(`CPF inválido: ${row.cpf}`)
 
   const email = `${cpf}@${EMAIL_DOMAIN}`
+  const currentClub = row.equipe || null
 
-  const existingUser = await prisma.user.findUnique({ where: { email } })
-  const existingCpf = await prisma.athleteProfile.findUnique({ where: { cpf } })
-  if (existingUser || existingCpf) {
-    return { skipped: true, reason: 'já existe' }
+  const existingAthlete = await prisma.athleteProfile.findUnique({
+    where: { cpf },
+    select: { id: true },
+  })
+
+  if (existingAthlete) {
+    const nickname = await findAvailableNickname(
+      prisma,
+      row.nome,
+      cpf,
+      existingAthlete.id,
+    )
+    await prisma.athleteProfile.update({
+      where: { cpf },
+      data: { nickname, currentClub },
+    })
+    return { action: 'updated' as const }
   }
 
   const cep = normalizeCep(row.cep)
@@ -207,6 +252,8 @@ async function importAthlete(row: Row) {
   const passwordHash = await bcrypt.hash(cpf, 10)
 
   await prisma.$transaction(async (tx) => {
+    const nickname = await findAvailableNickname(tx, row.nome, cpf)
+
     const user = await tx.user.create({
       data: {
         name: row.nome,
@@ -223,6 +270,8 @@ async function importAthlete(row: Row) {
       data: {
         userId: user.id,
         cpf,
+        nickname,
+        currentClub,
         gender: mapGender(row.genero),
         birthDate: parseBirthDate(row.nascimento),
         height: parseDecimal(row.altura),
@@ -263,7 +312,7 @@ async function importAthlete(row: Row) {
     }
   })
 
-  return { skipped: false }
+  return { action: 'created' as const }
 }
 
 async function main() {
@@ -272,16 +321,16 @@ async function main() {
   console.log(`\n${rows.length} atletas encontrados\n`)
 
   let created = 0
-  let skipped = 0
+  let updated = 0
   const errors: { row: number; nome: string; cpf: string; error: string }[] = []
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
     try {
       const result = await importAthlete(row)
-      if (result.skipped) {
-        skipped++
-        console.log(`[${i + 1}/${rows.length}] ⏭  ${row.nome} — ${result.reason}`)
+      if (result.action === 'updated') {
+        updated++
+        console.log(`[${i + 1}/${rows.length}] ↻ ${row.nome} (atualizado)`)
       } else {
         created++
         console.log(`[${i + 1}/${rows.length}] ✓ ${row.nome}`)
@@ -294,9 +343,9 @@ async function main() {
   }
 
   console.log(`\n─── Resumo ───`)
-  console.log(`Criados : ${created}`)
-  console.log(`Pulados : ${skipped}`)
-  console.log(`Erros   : ${errors.length}`)
+  console.log(`Criados    : ${created}`)
+  console.log(`Atualizados: ${updated}`)
+  console.log(`Erros      : ${errors.length}`)
   if (errors.length > 0) {
     console.log(`\nLinhas com erro:`)
     for (const e of errors) console.log(`  L${e.row} ${e.nome} (${e.cpf}): ${e.error}`)
