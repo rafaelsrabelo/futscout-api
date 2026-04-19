@@ -8,3 +8,4 @@ build
 /scripts/*
 !/scripts/importar-atletas.ts
 !/scripts/normalizar-nomes-atletas.ts
+!/scripts/importar-partidas.ts
