@@ -7,3 +7,4 @@ build
 /dist
 /scripts/*
 !/scripts/importar-atletas.ts
+!/scripts/normalizar-nomes-atletas.ts
