@@ -254,6 +254,17 @@ export async function createMatch(
     })
   }
 
+  const athleteProfile = await athleteProfileRepository.findByUserId(
+    request.user.sub,
+  )
+
+  if (!athleteProfile) {
+    return reply.status(400).send({
+      message:
+        'Athlete profile not found. Please create your athlete profile first.',
+    })
+  }
+
   const createMatchUseCase = new CreateMatchUseCase(
     matchRepository,
     athleteProfileRepository,
@@ -280,7 +291,7 @@ export async function createMatch(
   }
 
   const match = await createMatchUseCase.execute({
-    athleteId: request.user.sub,
+    athleteProfileId: athleteProfile.id,
     myTeamId: finalMyTeamId,
     adversaryTeam,
     date,

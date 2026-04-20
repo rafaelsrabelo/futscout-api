@@ -57,6 +57,7 @@ function makeUser(id: string): User {
     isActive: true,
     isProfile: true,
     stripeCustomerId: null,
+    lastLoginAt: null,
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-01-01'),
   }

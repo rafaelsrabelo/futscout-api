@@ -20,8 +20,6 @@ export async function createStandalonePlay(
     const contentType = request.headers['content-type'] || ''
     const isMultipart = contentType.includes('multipart/form-data')
 
-    console.log('📦 Content-Type:', contentType)
-    console.log('📦 Is Multipart:', isMultipart)
 
     let playType: string
     let videoUrl: string | null = null
@@ -48,7 +46,6 @@ export async function createStandalonePlay(
       for await (const part of parts) {
         if (part.type === 'file') {
           if (part.fieldname === 'video') {
-            console.log('🎥 Processando upload de vídeo...')
             const { randomUUID } = await import('node:crypto')
             const { tmpdir } = await import('node:os')
             const { join } = await import('node:path')
@@ -94,7 +91,6 @@ export async function createStandalonePlay(
             const fileStats = await stat(tempInputPath)
             const filename = part.filename || 'video.mp4'
             const fileSizeMB = fileStats.size / (1024 * 1024)
-            console.log(
               `📊 Arquivo recebido: ${filename} (${fileSizeMB.toFixed(2)}MB)`,
             )
 
@@ -113,7 +109,6 @@ export async function createStandalonePlay(
 
             if (fileSizeMB >= 30 && fileSizeMB <= 90) {
               try {
-                console.log(
                   `🗜️ Comprimindo vídeo (${fileSizeMB.toFixed(2)}MB)...`,
                 )
                 const compressionService = new VideoCompressionService()
@@ -132,7 +127,6 @@ export async function createStandalonePlay(
                 if (compressedPath) {
                   await unlink(tempInputPath).catch(() => {})
                   finalVideoPath = compressedPath
-                  console.log('✅ Vídeo comprimido com sucesso!')
                 }
               } catch (error) {
                 console.warn(
@@ -142,7 +136,6 @@ export async function createStandalonePlay(
                 // Continua com o vídeo original
               }
             } else {
-              console.log(
                 `ℹ️ Vídeo ${fileSizeMB.toFixed(2)}MB fora do range de compressão (30-90MB), usando original`,
               )
             }
@@ -150,7 +143,6 @@ export async function createStandalonePlay(
             // Gerar thumbnail ANTES de fazer upload (usa arquivo diretamente, sem buffer!)
             let thumbnailUrl: string | null = null
             try {
-              console.log('🖼️ Gerando thumbnail...')
               const thumbnailService = new VideoThumbnailService()
               // Usar caminho do arquivo diretamente - NÃO carrega vídeo na memória!
               const thumbnailBuffer =
@@ -163,7 +155,6 @@ export async function createStandalonePlay(
                 filename,
               )
               thumbnailUrl = thumbnailResult.url
-              console.log('✅ Thumbnail gerado:', thumbnailUrl)
             } catch (error) {
               console.warn(
                 '⚠️ Não foi possível gerar thumbnail:',
@@ -182,7 +173,6 @@ export async function createStandalonePlay(
             videoUrl = uploadResult.url
             const finalSizeMB =
               (await stat(finalVideoPath)).size / (1024 * 1024)
-            console.log(
               `✅ Vídeo enviado: ${videoUrl} (${finalSizeMB.toFixed(2)}MB)`,
             )
 
@@ -386,7 +376,6 @@ export async function createStandalonePlay(
       athleteProfileRepository,
     )
 
-    console.log('💾 Salvando lance:', {
       playType,
       videoUrl,
       photoUrl,
@@ -411,7 +400,6 @@ export async function createStandalonePlay(
       await incrementStandaloneVideoUsage(request.user.sub)
     }
 
-    console.log('✅ Lance criado com sucesso:', {
       id: play.id,
       videoUrl: play.videoUrl,
       thumbnailUrl: play.thumbnailUrl,
@@ -419,11 +407,8 @@ export async function createStandalonePlay(
 
     // Gerar thumbnail automaticamente se vídeo foi enviado via JSON (upload direto) e não tem thumbnail
     if (videoUrl && !thumbnailUrl && !isMultipart) {
-      console.log(
         '🔄 [THUMBNAIL] Vídeo enviado via JSON (upload direto), gerando thumbnail em background...',
       )
-      console.log('🔄 [THUMBNAIL] Play ID:', play.id)
-      console.log('🔄 [THUMBNAIL] Video URL:', videoUrl)
 
       // Importar função de geração de thumbnail
       const { generateThumbnailAsync } = await import(
@@ -433,11 +418,9 @@ export async function createStandalonePlay(
       // Executar em background
       setTimeout(async () => {
         try {
-          console.log(
             '🚀 [THUMBNAIL] setTimeout executado, iniciando generateThumbnailAsync...',
           )
           await generateThumbnailAsync(play.id, videoUrl)
-          console.log(
             '✅ [THUMBNAIL] generateThumbnailAsync completou com sucesso',
           )
         } catch (error) {
@@ -453,7 +436,6 @@ export async function createStandalonePlay(
         }
       }, 0)
 
-      console.log(
         '📅 [THUMBNAIL] Geração de thumbnail agendada para background',
       )
     }

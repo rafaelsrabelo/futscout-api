@@ -132,6 +132,8 @@ export class SocialLoginUseCase {
       if (Object.keys(updates).length > 0) {
         user = await this.usersRepository.update(user.id, updates)
       }
+
+      await this.usersRepository.updateLastLoginAt(user.id)
     }
 
     return { user }

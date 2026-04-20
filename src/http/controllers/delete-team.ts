@@ -11,23 +11,19 @@ export async function deleteTeam(request: FastifyRequest, reply: FastifyReply) {
   const userId = request.user.sub
 
   try {
-    console.log('Delete team request - ID:', id, 'User:', userId)
 
     const prismaTeamRepository = new PrismaTeamRepository()
 
     // Verificar se o time existe e pertence ao usuário
     const team = await prismaTeamRepository.findById(id)
-    console.log('Found team:', team)
 
     if (!team) {
-      console.log('Team not found')
       return reply.status(404).send({
         message: 'Team not found',
       })
     }
 
     if (team.userId !== userId) {
-      console.log('Access denied - team belongs to user:', team.userId)
       return reply.status(403).send({
         message: 'You can only delete your own teams',
       })
@@ -43,9 +39,7 @@ export async function deleteTeam(request: FastifyRequest, reply: FastifyReply) {
 
     try {
       // Tentar deletar o time
-      console.log('Attempting to delete team with ID:', id)
       await prismaTeamRepository.delete(id)
-      console.log('Team deleted successfully')
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Database error when deleting team:', error)

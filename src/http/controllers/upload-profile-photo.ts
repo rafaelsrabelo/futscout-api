@@ -58,8 +58,6 @@ export async function uploadProfilePhoto(
       })
     }
 
-    console.log('📸 Iniciando upload de foto de perfil para Cloudflare R2...')
-    console.log(
       '📁 Arquivo recebido:',
       data.filename,
       'Tamanho:',
@@ -71,7 +69,6 @@ export async function uploadProfilePhoto(
     const cloudflareService = new CloudflareR2Service()
     const { url } = await cloudflareService.uploadImage(buffer, data.filename)
 
-    console.log('✅ Upload concluído. URL da foto:', url)
 
     // Atualizar o perfil do atleta com a nova URL da foto
     const updatedProfile = await athleteRepository.update(request.user.sub, {

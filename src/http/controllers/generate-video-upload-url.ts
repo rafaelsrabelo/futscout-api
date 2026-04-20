@@ -14,13 +14,11 @@ export async function generateVideoUploadUrl(
   try {
     const { filename, expiresIn } = generateUploadUrlSchema.parse(request.query)
 
-    console.log('📤 Gerando presigned URL para:', { filename, expiresIn })
 
     const r2Service = new CloudflareR2Service()
     const { uploadUrl, publicUrl, key } =
       await r2Service.generatePresignedUploadUrl(filename, expiresIn)
 
-    console.log('✅ Presigned URL gerada com sucesso')
 
     return reply.status(200).send({
       uploadUrl,

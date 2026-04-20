@@ -291,18 +291,19 @@
 
 ---
 
-- [ ] **BE-13** | `M` | `POST /api/admin/matches` — admin cria partida vinculada a qualquer atleta
+- [x] **BE-13** | `M` | `POST /api/admin/matches` — admin cria partida vinculada a qualquer atleta
 
   **Descrição:**
   Admin cria uma partida em nome de um atleta. Difere do `POST /api/matches` normal: recebe `athleteProfileId` explicitamente no body em vez de derivar de `request.user.sub`. Reutiliza o domínio de criação existente — refatorar `CreateMatchUseCase` para aceitar `athleteProfileId` diretamente e mover a resolução de `userId → athleteProfileId` para o controller do atleta.
 
   **Acceptance Criteria:**
-  - [ ] Rota `POST '/admin/matches'` com guard admin
-  - [ ] Body Zod: todos os campos de `POST /api/matches` + `athleteProfileId` (uuid, obrigatório)
-  - [ ] `CreateMatchUseCase` refatorado para receber `athleteProfileId` em vez de `userId` (mantém backwards-compat via controller de atleta que resolve antes de chamar)
-  - [ ] Retorna `201` com a match criada
-  - [ ] `404` se `athleteProfileId` não existe
-  - [ ] Fluxo normal `POST /api/matches` continua funcionando (regressão zero)
+  - [x] Rota `POST '/admin/matches'` com guard admin
+  - [x] Body Zod: todos os campos de `POST /api/matches` + `athleteProfileId` (uuid, obrigatório)
+  - [x] `CreateMatchUseCase` refatorado para receber `athleteProfileId` em vez de `userId` (athlete controller resolve `userId → athleteProfileId` via `findByUserId` antes de chamar o use case)
+  - [x] Retorna `201` com a match criada
+  - [x] `404` se `athleteProfileId` não existe
+  - [x] Fluxo normal `POST /api/matches` continua funcionando (controller atleta agora faz findByUserId → profile antes do use case)
+  - [x] Spec com 3 testes (athlete 404, cria pra atleta diferente do JWT, derive DRAW) — todos verdes
 
   **Files:**
   - `src/http/controllers/admin/create-match.ts` *(novo)*
@@ -511,19 +512,19 @@
 
 ---
 
-- [ ] **BE-16** | `M` | Rastrear `lastLoginAt` no `User`
+- [x] **BE-16** | `M` | Rastrear `lastLoginAt` no `User`
 
   **Descrição:**
   Adicionar coluna `lastLoginAt DateTime?` ao model `User` via migração Prisma. Atualizar esse campo em dois pontos: (1) após autenticação bem-sucedida em `AuthenticateUseCase` e `SocialLoginUseCase`; (2) após refresh bem-sucedido em `refresh-token` controller. Sem quebrar cache / custo de DB: só um `update` por login / refresh, não a cada request.
 
   **Acceptance Criteria:**
-  - [ ] Migração Prisma adiciona `lastLoginAt DateTime?` (default `null`) em `users`
-  - [ ] `prisma/schema.prisma` atualizado; `npx prisma generate` rodado
-  - [ ] `AuthenticateUseCase.execute` atualiza `lastLoginAt = new Date()` após autenticação ok
-  - [ ] `SocialLoginUseCase` idem
-  - [ ] Controller `refresh-token.ts` atualiza `lastLoginAt` após emissão do novo token
-  - [ ] `UsersRepository` ganha método `updateLastLoginAt(userId)` nas duas implementações
-  - [ ] Specs existentes de authenticate/register continuam verdes
+  - [x] Migração Prisma adiciona `lastLoginAt DateTime?` (default `null`) em `users` (`20260420193000_add_last_login_at`)
+  - [x] `prisma/schema.prisma` atualizado; `npx prisma generate` rodado
+  - [x] `AuthenticateUseCase.execute` atualiza `lastLoginAt = new Date()` após autenticação ok
+  - [x] `SocialLoginUseCase` idem (atualiza sempre que user existe pós-bootstrap)
+  - [x] Controller `refresh-token.ts` atualiza `lastLoginAt` após emissão do novo token
+  - [x] `UsersRepository` ganha método `updateLastLoginAt(userId)` nas duas implementações (Prisma + in-memory)
+  - [x] Specs existentes de authenticate continuam verdes (regressão zero)
 
   **Files:**
   - `prisma/schema.prisma`
@@ -539,16 +540,19 @@
 
 ---
 
-- [ ] **BE-17** | `M` | `GET /api/admin/dashboard/overview` — totais e counters de período
+- [x] **BE-17** | `M` | `GET /api/admin/dashboard/overview` — totais e counters de período
 
   **Descrição:**
   Retorna totais globais (snapshot) e contadores do último período (30d default). Alimenta os cards principais do dashboard admin.
 
+  **Nota de implementação:** Introduzida `DashboardRepository` (interface + Prisma + in-memory) para suportar todas as 4 tasks Phase 3 de forma testável. Método `getTotals()` roda 6 counts em paralelo; `countNewInPeriod()` roda 4 counts em paralelo.
+
   **Acceptance Criteria:**
-  - [ ] Rota `GET '/admin/dashboard/overview'` com guard admin
-  - [ ] Query opcional: `periodDays` (default 30, min 1, max 365)
-  - [ ] Resposta: `{ totals: { athletes, observers, matches, plays, achievements, activeSubscriptions }, period: { days, newAthletes, newObservers, newMatches, newPlays } }`
-  - [ ] Queries em paralelo (`Promise.all`) para reduzir latência
+  - [x] Rota `GET '/admin/dashboard/overview'` com guard admin
+  - [x] Query opcional: `periodDays` (default 30, min 1, max 365)
+  - [x] Resposta: `{ totals: { athletes, observers, matches, plays, achievements, activeSubscriptions }, period: { days, from, to, newAthletes, newObservers, newMatches, newPlays } }`
+  - [x] Queries em paralelo (`Promise.all`) para reduzir latência
+  - [x] Spec com 4 testes (empty, totals, period window, custom periodDays) — todos verdes
 
   **Files:**
   - `src/http/controllers/admin/dashboard-overview.ts` *(novo)*
@@ -560,17 +564,20 @@
 
 ---
 
-- [ ] **BE-18** | `M` | `GET /api/admin/dashboard/user-growth` — série temporal de cadastros
+- [x] **BE-18** | `M` | `GET /api/admin/dashboard/user-growth` — série temporal de cadastros
 
   **Descrição:**
   Retorna série temporal de novos cadastros (atletas, olheiros, total) agrupados por dia, semana ou mês. Usado no gráfico de crescimento do painel.
 
+  **Nota:** bucketização roda em memória a partir de uma única query `findMany` — simples e rápido para ranges até 365 dias. Truncation em UTC (`setUTCHours(0,0,0,0)`) pra evitar surpresas de timezone entre dev/prod.
+
   **Acceptance Criteria:**
-  - [ ] Rota `GET '/admin/dashboard/user-growth'` com guard admin
-  - [ ] Query Zod: `period` (`daily | weekly | monthly`, default `daily`), `from` (ISO date, default `hoje - 30d`), `to` (default `hoje`)
-  - [ ] Resposta: `{ period, from, to, series: [{ bucket: ISODate, newAthletes, newObservers, total }] }`
-  - [ ] Buckets vazios aparecem com `0` (não pula datas)
-  - [ ] Max range: 365 dias (retorna `400` se exceder)
+  - [x] Rota `GET '/admin/dashboard/user-growth'` com guard admin
+  - [x] Query Zod: `period` (`daily | weekly | monthly`, default `daily`), `from` (ISO date, default `hoje - 30d`), `to` (default `hoje`)
+  - [x] Resposta: `{ period, from, to, series: [{ bucket: ISODate, newAthletes, newObservers, total }] }`
+  - [x] Buckets vazios aparecem com `0` (não pula datas)
+  - [x] Max range: 365 dias (lança `RangeTooLargeError` → `400` com mensagem)
+  - [x] Spec com 4 testes (empty window, daily aggregation, range too large, monthly aggregation) — todos verdes
 
   **Files:**
   - `src/http/controllers/admin/dashboard-user-growth.ts` *(novo)*
@@ -582,16 +589,18 @@
 
 ---
 
-- [ ] **BE-19** | `M` | `GET /api/admin/dashboard/user-activity` — atividade e inatividade
+- [x] **BE-19** | `M` | `GET /api/admin/dashboard/user-activity` — atividade e inatividade
 
   **Descrição:**
   Retorna contadores de usuários por janela de atividade (baseado em `lastLoginAt`): ativo nos últimos 7/30/90 dias, inativo há 30+/90+ dias, nunca logou. Também retorna o total e o percentual de ativos.
 
   **Acceptance Criteria:**
-  - [ ] Rota `GET '/admin/dashboard/user-activity'` com guard admin
-  - [ ] Resposta: `{ total, activeLast7d, activeLast30d, activeLast90d, inactiveOver30d, inactiveOver90d, neverLoggedIn, activePercent30d }`
-  - [ ] Contadores separados por role (`ATHLETE`, `OBSERVER`, `ADMIN`) quando útil — decidir durante implementação
-  - [ ] Query em uma única passada (`CASE WHEN` agregado) para evitar N queries
+  - [x] Rota `GET '/admin/dashboard/user-activity'` com guard admin
+  - [x] Resposta: `{ total, activeLast7d, activeLast30d, activeLast90d, inactiveOver30d, inactiveOver90d, neverLoggedIn, activePercent30d }`
+  - [x] Queries em paralelo (`Promise.all` de 7 `count`s) — mais simples e igualmente performante que `CASE WHEN` dado o volume
+  - [x] Decidido **não** quebrar por role neste endpoint — a separação por role vive no BE-17 (`totals` agrega por role)
+  - [x] `activePercent30d` calculado no use case como `round((activeLast30d / total) * 100, 2)`
+  - [x] Spec com 3 testes (empty, windows distribution, percent) — todos verdes
 
   **Files:**
   - `src/http/controllers/admin/dashboard-user-activity.ts` *(novo)*
@@ -603,16 +612,17 @@
 
 ---
 
-- [ ] **BE-20** | `S` | `GET /api/admin/dashboard/inactivity-buckets` — distribuição de inatividade
+- [x] **BE-20** | `S` | `GET /api/admin/dashboard/inactivity-buckets` — distribuição de inatividade
 
   **Descrição:**
   Retorna distribuição dos usuários por "há quanto tempo não logam". Buckets: `0-7d`, `7-30d`, `30-90d`, `90-180d`, `180d+`, `never`. Alimenta o gráfico de retenção.
 
   **Acceptance Criteria:**
-  - [ ] Rota `GET '/admin/dashboard/inactivity-buckets'` com guard admin
-  - [ ] Resposta: `{ buckets: [{ label, minDays, maxDays, count }], total }`
-  - [ ] Labels e ranges são fixos no backend (não configuráveis via query)
-  - [ ] Consistente com `BE-19` (mesma base de cálculo via `lastLoginAt`)
+  - [x] Rota `GET '/admin/dashboard/inactivity-buckets'` com guard admin
+  - [x] Resposta: `{ buckets: [{ label, minDays, maxDays, count }], total }`
+  - [x] Labels e ranges são fixos no backend (não configuráveis via query)
+  - [x] Consistente com `BE-19` (mesma base de cálculo via `lastLoginAt`)
+  - [x] Spec com 2 testes (empty state, distribuição completa entre 6 buckets) — todos verdes
 
   **Files:**
   - `src/http/controllers/admin/dashboard-inactivity-buckets.ts` *(novo)*

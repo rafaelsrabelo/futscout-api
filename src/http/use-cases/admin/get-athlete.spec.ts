@@ -25,6 +25,7 @@ function makeUser(overrides: Partial<User> = {}): User {
     isActive: overrides.isActive ?? true,
     isProfile: true,
     stripeCustomerId: null,
+    lastLoginAt: null,
     createdAt: overrides.createdAt ?? new Date('2025-01-01'),
     updatedAt: new Date('2025-01-01'),
   }

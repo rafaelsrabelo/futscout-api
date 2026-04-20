@@ -87,6 +87,13 @@ export class PrismaUsersRepository implements UsersRepository {
     return user
   }
 
+  async updateLastLoginAt(userId: string) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { lastLoginAt: new Date() },
+    })
+  }
+
   async delete(userId: string) {
     await prisma.user.delete({
       where: { id: userId },

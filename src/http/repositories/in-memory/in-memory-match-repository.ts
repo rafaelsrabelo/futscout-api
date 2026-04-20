@@ -31,7 +31,49 @@ export class InMemoryMatchRepository implements MatchRepository {
   > = {}
 
   async create(data: Prisma.MatchCreateInput): Promise<Match> {
-    throw new Error('InMemoryMatchRepository.create: not implemented')
+    const d = data as Prisma.MatchCreateInput & {
+      athlete?: { connect?: { id?: string } }
+      myTeam?: { connect?: { id?: string } }
+      competition?: { connect?: { id?: string } }
+    }
+
+    const athleteId = d.athlete?.connect?.id
+    const myTeamId = d.myTeam?.connect?.id
+    if (!athleteId || !myTeamId) {
+      throw new Error('athlete.connect.id and myTeam.connect.id required')
+    }
+
+    const now = new Date()
+    const match: Match = {
+      id: `match-${this.items.length + 1}`,
+      athleteId,
+      myTeamId,
+      adversaryTeam: data.adversaryTeam as string,
+      date: data.date as Date,
+      modality: data.modality as Match['modality'],
+      category: data.category as Match['category'],
+      location: data.location as string,
+      streamUrl: (data.streamUrl as string | null) ?? null,
+      competitionId: d.competition?.connect?.id ?? null,
+      status: (data.status as Match['status']) ?? 'SCHEDULED',
+      result: (data.result as Match['result']) ?? 'NOT_FINISHED',
+      myTeamScore: (data.myTeamScore as number | null) ?? null,
+      adversaryScore: (data.adversaryScore as number | null) ?? null,
+      playerPosition:
+        (data.playerPosition as Match['playerPosition']) ?? null,
+      observations: (data.observations as string | null) ?? null,
+      matchDuration: (data.matchDuration as number | null) ?? null,
+      approximateTime: (data.approximateTime as number | null) ?? null,
+      photoUrl: (data.photoUrl as string | null) ?? null,
+      videoUrl: (data.videoUrl as string | null) ?? null,
+      youtubeUrl: (data.youtubeUrl as string | null) ?? null,
+      performanceRating:
+        (data.performanceRating as number | null) ?? null,
+      createdAt: now,
+      updatedAt: now,
+    }
+    this.items.push(match)
+    return match
   }
 
   async findById(id: string): Promise<Match | null> {

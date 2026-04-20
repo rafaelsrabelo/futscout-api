@@ -60,6 +60,8 @@ export async function refreshToken(
       newRefreshTokenExpiresAt,
     )
 
+    await usersRepository.updateLastLoginAt(user.id)
+
     return reply.status(200).send({
       accessToken: newAccessToken,
       refreshToken: newRefreshToken.token,

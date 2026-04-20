@@ -14,8 +14,6 @@ export async function updateUserRole(
   const { role } = updateUserRoleBodySchema.parse(request.body)
   const userId = request.user.sub
 
-  console.log('🔧 Update Role - userId:', userId)
-  console.log('🔧 Update Role - role:', role)
 
   try {
     const usersRepository = new PrismaUsersRepository()

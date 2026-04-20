@@ -77,8 +77,6 @@ export async function createPlayWithVideoUrl(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
-  console.log('🎯 [ENDPOINT] /plays/with-url foi chamado!')
-  console.log('🎯 [ENDPOINT] Request body:', JSON.stringify(request.body))
 
   try {
     const {
@@ -91,12 +89,6 @@ export async function createPlayWithVideoUrl(
       classifications,
     } = createPlayWithVideoUrlSchema.parse(request.body)
 
-    console.log('💾 [PLAY] ==========================================')
-    console.log('💾 [PLAY] Criando play com vídeo URL (upload direto)')
-    console.log('💾 [PLAY] Play Type:', play_type)
-    console.log('💾 [PLAY] Video URL:', video_url)
-    console.log('💾 [PLAY] Has Thumbnail (enviado):', !!thumbnail_url)
-    console.log('💾 [PLAY] ==========================================')
 
     const playRepository = new PrismaPlayRepository()
     const athleteProfileRepository = new PrismaAthleteProfileRepository()
@@ -119,36 +111,24 @@ export async function createPlayWithVideoUrl(
     // Incrementar contador de uso de vídeos standalone
     await incrementStandaloneVideoUsage(request.user.sub)
 
-    console.log('✅ Play criado com sucesso (upload direto):', {
       id: play.id,
       videoUrl: play.videoUrl,
     })
 
     // Gerar thumbnail automaticamente de forma assíncrona (não bloqueia a resposta)
-    console.log('🔍 [THUMBNAIL] Verificando condições para gerar thumbnail...')
-    console.log('🔍 [THUMBNAIL] video_url existe?', !!video_url)
-    console.log('🔍 [THUMBNAIL] thumbnail_url existe?', !!thumbnail_url)
-    console.log(
       '🔍 [THUMBNAIL] Condição (video_url && !thumbnail_url):',
       !!(video_url && !thumbnail_url),
     )
 
     if (video_url && !thumbnail_url) {
-      console.log('🔄 [THUMBNAIL] ==========================================')
-      console.log('🔄 [THUMBNAIL] INICIANDO GERAÇÃO DE THUMBNAIL EM BACKGROUND')
-      console.log('🔄 [THUMBNAIL] Play ID:', play.id)
-      console.log('🔄 [THUMBNAIL] Video URL:', video_url)
-      console.log('🔄 [THUMBNAIL] ==========================================')
 
       // Executar de forma não bloqueante mas garantida
       // Usar setTimeout com delay 0 para garantir execução após a resposta
       setTimeout(async () => {
         try {
-          console.log(
             '🚀 [THUMBNAIL] setTimeout executado, iniciando generateThumbnailAsync...',
           )
           await generateThumbnailAsync(play.id, video_url)
-          console.log(
             '✅ [THUMBNAIL] generateThumbnailAsync completou com sucesso',
           )
         } catch (error) {
@@ -166,15 +146,12 @@ export async function createPlayWithVideoUrl(
       }, 0)
 
       // Log adicional para confirmar que foi agendado
-      console.log(
         '📅 [THUMBNAIL] Geração de thumbnail agendada para background (setTimeout)',
       )
     } else if (thumbnail_url) {
-      console.log(
         '✅ [THUMBNAIL] Thumbnail já fornecido pelo frontend, pulando geração',
       )
     } else {
-      console.log(
         '⚠️ [THUMBNAIL] Sem vídeo para gerar thumbnail (video_url não existe)',
       )
     }
@@ -214,29 +191,19 @@ export async function generateThumbnailAsync(
   videoUrl: string,
 ): Promise<void> {
   const startTime = Date.now()
-  console.log('🚀 [THUMBNAIL] ==========================================')
-  console.log('🚀 [THUMBNAIL] INICIANDO GERAÇÃO DE THUMBNAIL')
-  console.log('🚀 [THUMBNAIL] Play ID:', playId)
-  console.log('🚀 [THUMBNAIL] Video URL:', videoUrl)
-  console.log('🚀 [THUMBNAIL] ==========================================')
 
   try {
     // Aguardar alguns segundos para garantir que o vídeo está disponível no R2
     // R2 pode levar alguns segundos para tornar o arquivo acessível após upload
-    console.log(
       '⏳ [THUMBNAIL] Aguardando 3 segundos para garantir disponibilidade do vídeo no R2...',
     )
     await new Promise((resolve) => setTimeout(resolve, 3000))
-    console.log('✅ [THUMBNAIL] Aguardou 3 segundos, tentando baixar vídeo...')
 
-    console.log('🖼️ [THUMBNAIL] Iniciando geração para play:', playId)
-    console.log('🖼️ [THUMBNAIL] Video URL:', videoUrl.substring(0, 100))
 
     const thumbnailService = new VideoThumbnailService()
     const r2Service = new CloudflareR2Service()
 
     // Gerar thumbnail a partir da URL do vídeo
-    console.log('🖼️ [THUMBNAIL] Chamando generateThumbnailFromUrl...')
     const thumbnailBuffer = await thumbnailService.generateThumbnailFromUrl(
       videoUrl,
       1, // Frame no segundo 1
@@ -246,7 +213,6 @@ export async function generateThumbnailAsync(
       throw new Error('Thumbnail buffer está vazio')
     }
 
-    console.log(
       '🖼️ [THUMBNAIL] Thumbnail gerado, tamanho:',
       thumbnailBuffer.length,
       'bytes',
@@ -254,7 +220,6 @@ export async function generateThumbnailAsync(
 
     // Extrair nome do arquivo do vídeo para nomear o thumbnail
     const videoFilename = videoUrl.split('/').pop() || `video_${Date.now()}.mp4`
-    console.log('🖼️ [THUMBNAIL] Fazendo upload do thumbnail para R2...')
 
     // Upload do thumbnail para R2
     const thumbnailResult = await r2Service.uploadThumbnail(
@@ -262,7 +227,6 @@ export async function generateThumbnailAsync(
       videoFilename,
     )
 
-    console.log(
       '🖼️ [THUMBNAIL] Thumbnail enviado para R2:',
       thumbnailResult.url,
     )
@@ -274,12 +238,6 @@ export async function generateThumbnailAsync(
     })
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2)
-    console.log('✅ [THUMBNAIL] ==========================================')
-    console.log('✅ [THUMBNAIL] THUMBNAIL GERADO E SALVO COM SUCESSO!')
-    console.log('✅ [THUMBNAIL] Play ID:', playId)
-    console.log('✅ [THUMBNAIL] Thumbnail URL:', thumbnailResult.url)
-    console.log('✅ [THUMBNAIL] Duração:', `${duration}s`)
-    console.log('✅ [THUMBNAIL] ==========================================')
   } catch (error) {
     const duration = ((Date.now() - startTime) / 1000).toFixed(2)
     console.error('❌ [THUMBNAIL] ==========================================')

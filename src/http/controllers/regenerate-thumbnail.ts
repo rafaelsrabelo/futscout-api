@@ -19,7 +19,6 @@ export async function regenerateThumbnail(
   try {
     const { playId } = regenerateThumbnailSchema.parse(request.params)
 
-    console.log('🔄 Regenerando thumbnail para play:', playId)
 
     // Buscar o play
     const play = await prisma.play.findUnique({
@@ -54,7 +53,6 @@ export async function regenerateThumbnail(
     const thumbnailService = new VideoThumbnailService()
     const r2Service = new CloudflareR2Service()
 
-    console.log('🖼️ Gerando thumbnail de:', play.videoUrl.substring(0, 80))
     const thumbnailBuffer = await thumbnailService.generateThumbnailFromUrl(
       play.videoUrl,
       1,
@@ -80,7 +78,6 @@ export async function regenerateThumbnail(
       data: { thumbnailUrl: thumbnailResult.url },
     })
 
-    console.log('✅ Thumbnail regenerado com sucesso:', thumbnailResult.url)
 
     return reply.status(200).send({
       message: 'Thumbnail regenerado com sucesso!',

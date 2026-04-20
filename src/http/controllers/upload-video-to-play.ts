@@ -115,7 +115,6 @@ export async function uploadVideoToPlay(
     // Validar tamanho do arquivo
     const fileStats = await stat(tempInputPath)
     const fileSizeMB = fileStats.size / (1024 * 1024)
-    console.log(`📊 Arquivo recebido: ${filename} (${fileSizeMB.toFixed(2)}MB)`)
 
     if (fileStats.size > 100 * 1024 * 1024) {
       await unlink(tempInputPath).catch(() => {})
@@ -131,7 +130,6 @@ export async function uploadVideoToPlay(
 
     if (fileSizeMB >= 30 && fileSizeMB <= 90) {
       try {
-        console.log(`🗜️ Comprimindo vídeo (${fileSizeMB.toFixed(2)}MB)...`)
         const compressionService = new VideoCompressionService()
         // Usar arquivo diretamente (já está salvo em disco, não precisa de stream)
         const compressedPath = await compressionService.compressVideoFile(
@@ -150,7 +148,6 @@ export async function uploadVideoToPlay(
         if (compressedPath) {
           await unlink(tempInputPath).catch(() => {})
           finalVideoPath = compressedPath
-          console.log('✅ Vídeo comprimido com sucesso!')
         }
       } catch (error) {
         console.warn(
@@ -158,10 +155,6 @@ export async function uploadVideoToPlay(
           error instanceof Error ? error.message : error,
         )
       }
-    } else {
-      console.log(
-        `ℹ️ Vídeo ${fileSizeMB.toFixed(2)}MB fora do range de compressão (30-90MB), usando original`,
-      )
     }
 
     // Gerar thumbnail ANTES de fazer upload (usa arquivo diretamente, sem buffer!)
@@ -183,17 +176,12 @@ export async function uploadVideoToPlay(
     }
 
     // Upload usando stream (não carrega na memória!)
-    console.time('upload-to-r2')
     const uploadStream = createReadStream(finalVideoPath)
     const uploadResult = await r2Service.uploadVideoFromStream(
       uploadStream,
       filename,
     )
-    console.timeEnd('upload-to-r2')
     const finalSizeMB = (await stat(finalVideoPath)).size / (1024 * 1024)
-    console.log(
-      `✅ Vídeo enviado: ${uploadResult.url} (${finalSizeMB.toFixed(2)}MB)`,
-    )
 
     // Limpar arquivo temporário
     await unlink(finalVideoPath).catch(() => {})

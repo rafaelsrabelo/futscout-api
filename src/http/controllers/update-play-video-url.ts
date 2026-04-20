@@ -78,7 +78,6 @@ export async function updatePlayVideoUrl(
     let finalThumbnailUrl = thumbnail_url || null
     if (!thumbnail_url && video_url) {
       try {
-        console.log('🖼️ Gerando thumbnail automaticamente para o vídeo...')
         const thumbnailService = new VideoThumbnailService()
         const r2Service = new CloudflareR2Service()
 
@@ -95,7 +94,6 @@ export async function updatePlayVideoUrl(
           filename,
         )
         finalThumbnailUrl = thumbnailResult.url
-        console.log('✅ Thumbnail gerado com sucesso:', finalThumbnailUrl)
       } catch (error) {
         console.warn('⚠️ Erro ao gerar thumbnail automaticamente:', error)
         // Continua sem thumbnail se falhar

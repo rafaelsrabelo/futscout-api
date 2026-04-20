@@ -11,24 +11,15 @@ import type { CompetitionRepository } from '../repositories/competition-reposito
 import type { MatchRepository } from '../repositories/match-repository.js'
 
 interface CreateMatchRequest {
-  athleteId: string
+  athleteProfileId: string
   myTeamId: string
   adversaryTeam: string
   date: Date
-  modality?:
-    | Modality // Opcional se competitionId for fornecido
-    | undefined // Opcional se competitionId for fornecido
-  category?:
-    | Category // Opcional se competitionId for fornecido
-    | undefined // Opcional se competitionId for fornecido
-  location?:
-    | string // Opcional se competitionId for fornecido
-    | undefined // Opcional se competitionId for fornecido
+  modality?: Modality | undefined
+  category?: Category | undefined
+  location?: string | undefined
   streamUrl?: string | null | undefined
-  competitionId?:
-    | string
-    | null // Se null, é amistoso
-    | undefined // Se null, é amistoso
+  competitionId?: string | null | undefined
   status?: MatchStatus | undefined
   result?: MatchResult | undefined
   myTeamScore?: number | null | undefined
@@ -60,16 +51,14 @@ export class CreateMatchUseCase {
   ) {}
 
   async execute(request: CreateMatchRequest): Promise<Match> {
-    // Verificar se o atleta tem um perfil criado
-    const athleteProfile = await this.athleteProfileRepository.findByUserId(
-      request.athleteId,
+    const athleteProfile = await this.athleteProfileRepository.findById(
+      request.athleteProfileId,
     )
 
     if (!athleteProfile) {
       throw new AthleteProfileNotFoundError()
     }
 
-    // Se competitionId for fornecido, buscar a competição para preencher campos faltantes
     let finalModality: Modality | undefined = request.modality
     let finalCategory: Category | undefined = request.category
     let finalLocation: string | undefined = request.location
@@ -80,7 +69,6 @@ export class CreateMatchUseCase {
       )
 
       if (competition) {
-        // Preencher com valores da competição se não foram fornecidos
         if (!finalModality && competition.modality) {
           finalModality = competition.modality
         }
@@ -93,7 +81,6 @@ export class CreateMatchUseCase {
       }
     }
 
-    // Validar que os campos obrigatórios estão preenchidos
     if (!finalModality) {
       throw new Error(
         'modality is required. Provide it in the request or ensure the competition has a modality.',
@@ -110,7 +97,6 @@ export class CreateMatchUseCase {
       )
     }
 
-    // Calcular o resultado automaticamente baseado no placar
     let calculatedResult: MatchResult = request.result || 'NOT_FINISHED'
 
     if (
@@ -130,7 +116,7 @@ export class CreateMatchUseCase {
 
     const match = await this.matchRepository.create({
       athlete: {
-        connect: { id: athleteProfile.id },
+        connect: { id: request.athleteProfileId },
       },
       myTeam: {
         connect: { id: request.myTeamId },

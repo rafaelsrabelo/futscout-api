@@ -32,6 +32,8 @@ export class AuthenticateUseCase {
       throw new InvalidCredentialsError()
     }
 
+    await this.usersRepository.updateLastLoginAt(user.id)
+
     return { user }
   }
 }

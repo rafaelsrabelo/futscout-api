@@ -2,6 +2,11 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { addPlay } from './controllers/add-play.js'
 import { addTeamHistory } from './controllers/add-team-history.js'
 import { addPlayToMatchAdmin } from './controllers/admin/add-play-to-match.js'
+import { createMatchAdmin } from './controllers/admin/create-match.js'
+import { dashboardOverviewAdmin } from './controllers/admin/dashboard-overview.js'
+import { dashboardInactivityBucketsAdmin } from './controllers/admin/dashboard-inactivity-buckets.js'
+import { dashboardUserActivityAdmin } from './controllers/admin/dashboard-user-activity.js'
+import { dashboardUserGrowthAdmin } from './controllers/admin/dashboard-user-growth.js'
 import { generateVideoUploadUrlAdmin } from './controllers/admin/generate-video-upload-url.js'
 import { getAthleteAdmin } from './controllers/admin/get-athlete.js'
 import { getMatchAdmin } from './controllers/admin/get-match.js'
@@ -285,6 +290,26 @@ export async function appRoutes(app: FastifyInstance) {
     searchAdmin,
   )
   app.get(
+    '/admin/dashboard/overview',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    dashboardOverviewAdmin,
+  )
+  app.get(
+    '/admin/dashboard/user-growth',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    dashboardUserGrowthAdmin,
+  )
+  app.get(
+    '/admin/dashboard/user-activity',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    dashboardUserActivityAdmin,
+  )
+  app.get(
+    '/admin/dashboard/inactivity-buckets',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    dashboardInactivityBucketsAdmin,
+  )
+  app.get(
     '/admin/athletes',
     { onRequest: [verifyJwt, verifyAdmin] },
     listAthletesAdmin,
@@ -318,6 +343,11 @@ export async function appRoutes(app: FastifyInstance) {
     '/admin/matches',
     { onRequest: [verifyJwt, verifyAdmin] },
     listMatchesAdmin,
+  )
+  app.post(
+    '/admin/matches',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    createMatchAdmin,
   )
   app.get(
     '/admin/matches/:id',

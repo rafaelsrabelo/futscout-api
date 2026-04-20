@@ -162,6 +162,7 @@ model User {
   isActive         Boolean      @default(false)
   isProfile        Boolean      @default(false)
   stripeCustomerId String?
+  lastLoginAt      DateTime?
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 

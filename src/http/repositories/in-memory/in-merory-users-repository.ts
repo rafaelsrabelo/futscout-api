@@ -88,6 +88,7 @@ export class InMemoryUsersRepository implements UsersRepository {
       isActive: data.isActive ?? true,
       isProfile: data.isProfile ?? false,
       stripeCustomerId: data.stripeCustomerId ?? null,
+      lastLoginAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -95,6 +96,13 @@ export class InMemoryUsersRepository implements UsersRepository {
     this.items.push(user)
 
     return user
+  }
+
+  async updateLastLoginAt(userId: string): Promise<void> {
+    const user = this.items.find((u) => u.id === userId)
+    if (!user) return
+    user.lastLoginAt = new Date()
+    user.updatedAt = new Date()
   }
 
   async updateProfile(userId: string, isProfile: boolean): Promise<User> {
