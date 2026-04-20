@@ -1,4 +1,4 @@
-import type { User } from 'generated/prisma/client.js'
+import type { AuthProvider, User, UserRole } from 'generated/prisma/client.js'
 import type { UsersRepository } from '../users-repository.js'
 import type { UserCreateInput } from 'generated/prisma/models.js'
 
@@ -29,16 +29,65 @@ export class InMemoryUsersRepository implements UsersRepository {
     return user
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async create(data: UserCreateInput) {
-    const user = {
+  async findFirstByRole(role: UserRole): Promise<User | null> {
+    const user = this.items.find((user) => user.role === role)
+
+    if (!user) {
+      return null
+    }
+    return user
+  }
+
+  async findByProvider(
+    provider: AuthProvider,
+    providerId: string,
+  ): Promise<User | null> {
+    const user = this.items.find(
+      (user) => user.provider === provider && user.providerId === providerId,
+    )
+
+    if (!user) {
+      return null
+    }
+    return user
+  }
+
+  async update(userId: string, data: Partial<User>): Promise<User> {
+    const userIndex = this.items.findIndex((user) => user.id === userId)
+
+    if (userIndex === -1) {
+      throw new Error('User not found')
+    }
+
+    const user = this.items[userIndex]!
+    Object.assign(user, data, { updatedAt: new Date() })
+
+    return user
+  }
+
+  async delete(userId: string): Promise<void> {
+    const userIndex = this.items.findIndex((user) => user.id === userId)
+
+    if (userIndex === -1) {
+      return
+    }
+
+    this.items.splice(userIndex, 1)
+  }
+
+  async create(data: UserCreateInput): Promise<User> {
+    const user: User = {
       id: `user-${this.items.length + 1}`,
       name: data.name,
       email: data.email,
       password: data.password,
-      role: data.role!,
-      isActive: true,
-      isProfile: false,
+      role: data.role ?? null,
+      provider: data.provider ?? 'CREDENTIALS',
+      providerId: data.providerId ?? null,
+      emailVerified: data.emailVerified ?? false,
+      isActive: data.isActive ?? true,
+      isProfile: data.isProfile ?? false,
+      stripeCustomerId: data.stripeCustomerId ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
     }

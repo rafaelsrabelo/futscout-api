@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { addPlay } from './controllers/add-play.js'
 import { addTeamHistory } from './controllers/add-team-history.js'
+import { verifyAdminSession } from './controllers/admin/verify-admin-session.js'
 import { authenticate } from './controllers/authenticate.js'
 import { checkPriceIdMatch } from './controllers/billing/check-price-id-match.js'
 import { checkout } from './controllers/billing/checkout.js'
@@ -73,6 +74,7 @@ import { uploadVideoToPlay } from './controllers/upload-video-to-play.js'
 import { verifyEmail } from './controllers/verify-email.js'
 
 import { checkUsage } from './middlewares/check-usage.js'
+import { verifyAdmin } from './middlewares/verify-admin.js'
 import { verifyJwt } from './middlewares/verify-jwt.js'
 
 export async function appRoutes(app: FastifyInstance) {
@@ -254,6 +256,13 @@ export async function appRoutes(app: FastifyInstance) {
     '/athletes/sync-current-club',
     { onRequest: [verifyJwt] },
     syncCurrentClub,
+  )
+
+  // Admin routes
+  app.get(
+    '/admin/auth/verify',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    verifyAdminSession,
   )
 
   // Billing routes

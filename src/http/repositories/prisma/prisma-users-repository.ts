@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma.js'
-import type { AuthProvider, User } from 'generated/prisma/client.js'
+import type { AuthProvider, User, UserRole } from 'generated/prisma/client.js'
 import type { UserCreateInput } from 'generated/prisma/models.js'
 import type { UsersRepository } from '../users-repository.js'
 
@@ -47,6 +47,14 @@ export class PrismaUsersRepository implements UsersRepository {
   async findById(userId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
+    })
+
+    return user
+  }
+
+  async findFirstByRole(role: UserRole) {
+    const user = await prisma.user.findFirst({
+      where: { role },
     })
 
     return user
