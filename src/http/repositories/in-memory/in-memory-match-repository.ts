@@ -10,6 +10,7 @@ import type {
   AdminMatchDetail,
   AdminMatchFilters,
   AdminMatchListItem,
+  AdminMatchSearchResult,
   AdminPagination,
   MatchRepository,
 } from '../match-repository.js'
@@ -240,6 +241,46 @@ export class InMemoryMatchRepository implements MatchRepository {
     })
 
     return { items, total }
+  }
+
+  async searchByTerm(
+    term: string,
+    limit: number,
+  ): Promise<AdminMatchSearchResult[]> {
+    const trimmed = term.trim().toLowerCase()
+    if (trimmed.length < 2) return []
+
+    const matches = this.items.filter((m) => {
+      if (m.adversaryTeam.toLowerCase().includes(trimmed)) return true
+      const athlete = this.athletesById[m.athleteId]
+      if (!athlete) return false
+      return (
+        athlete.nickname?.toLowerCase().includes(trimmed) ||
+        athlete.user.name.toLowerCase().includes(trimmed)
+      )
+    })
+
+    matches.sort((a, b) => {
+      const d = b.date.getTime() - a.date.getTime()
+      if (d !== 0) return d
+      return b.createdAt.getTime() - a.createdAt.getTime()
+    })
+
+    return matches.slice(0, limit).map((m) => {
+      const athlete = this.athletesById[m.athleteId]
+      return {
+        id: m.id,
+        date: m.date,
+        adversaryTeam: m.adversaryTeam,
+        myTeamScore: m.myTeamScore,
+        adversaryScore: m.adversaryScore,
+        athlete: {
+          id: athlete?.id ?? m.athleteId,
+          name: athlete?.user.name ?? 'Unknown',
+          profilePhoto: athlete?.profilePhoto ?? null,
+        },
+      }
+    })
   }
 
   async findByIdForAdmin(id: string): Promise<AdminMatchDetail | null> {

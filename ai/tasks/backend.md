@@ -630,19 +630,22 @@
 
 ---
 
-- [ ] **BE-21** | `M` | `GET /api/admin/search` — busca global unificada
+- [x] **BE-21** | `M` | `GET /api/admin/search` — busca global unificada
 
   **Descrição:**
-  Endpoint único de busca que varre atletas e partidas ao mesmo tempo. Retorna resultados agrupados por tipo, com poucos itens por grupo (para autocomplete / spotlight). Match em: `athlete.name`, `athlete.nickname`, `athlete.slug`, `user.email` para atletas; `match.adversaryTeam` e `match.athleteProfile.name/nickname` para partidas. Ordenação: mais recentes primeiro dentro de cada grupo.
+  Endpoint único de busca que varre atletas e partidas ao mesmo tempo. Retorna resultados agrupados por tipo, com poucos itens por grupo (para autocomplete / spotlight). Match em: `user.name`, `athlete.nickname`, `user.email` para atletas; `match.adversaryTeam` e `match.athlete.{nickname, user.name}` para partidas. Ordenação: mais recentes primeiro dentro de cada grupo.
+
+  **Nota:** `slug` não existe no schema — o payload de atleta usa `name` (do user), `nickname`, `profilePhoto`, `primaryPosition`, `currentClub`.
 
   **Acceptance Criteria:**
-  - [ ] Rota `GET '/admin/search'` com guard admin
-  - [ ] Query Zod: `q` (string, min 2, obrigatória), `limit` (int, default 5, max 20 por grupo)
-  - [ ] Resposta `200`: `{ athletes: [{ id, name, slug, photoUrl, position, currentClub }], matches: [{ id, date, adversaryTeam, myTeamScore, adversaryScore, athlete: { id, name, photoUrl } }] }`
-  - [ ] `q` com menos de 2 chars → `400` com mensagem clara
-  - [ ] Busca case-insensitive (ILIKE) e acentos-insensitive se viável com a collation padrão do Postgres (não quebrar se não for)
-  - [ ] As duas buscas rodam em paralelo (`Promise.all`) para manter latência baixa
-  - [ ] Sem filtros adicionais — esse endpoint é só para o campo "buscar geral"; filtros vivem em `BE-07` / `BE-10`
+  - [x] Rota `GET '/admin/search'` com guard admin
+  - [x] Query Zod: `q` (string, min 2, obrigatória), `limit` (int, default 5, max 20 por grupo)
+  - [x] Resposta `200`: `{ athletes: [{ id, name, nickname, profilePhoto, primaryPosition, currentClub }], matches: [{ id, date, adversaryTeam, myTeamScore, adversaryScore, athlete: { id, name, profilePhoto } }] }`
+  - [x] `q` com menos de 2 chars → `400` com mensagem clara
+  - [x] Busca case-insensitive (ILIKE com `mode: 'insensitive'`)
+  - [x] As duas buscas rodam em paralelo (`Promise.all`) para manter latência baixa
+  - [x] Sem filtros adicionais — esse endpoint é só para o campo "buscar geral"; filtros vivem em `BE-07` / `BE-10`
+  - [x] Spec com 4 testes (empty, atleta por name/nickname/email, match por adversary team + athlete context, limit) — todos verdes
 
   **Files:**
   - `src/http/controllers/admin/search.ts` *(novo)*

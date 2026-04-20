@@ -1,6 +1,7 @@
 import type { Address, AthleteProfile, User } from 'generated/prisma/client.js'
 import type {
   AdminAthleteFilters,
+  AdminAthleteSearchResult,
   AdminPagination,
   AthleteAdminDetail,
   AthleteAdminSubscriptionView,
@@ -379,6 +380,47 @@ export class InMemoryAthleteProfileRepository
 
     this.items[athleteProfileIndex] = updatedProfile
     return updatedProfile
+  }
+
+  async searchByTerm(
+    term: string,
+    limit: number,
+  ): Promise<AdminAthleteSearchResult[]> {
+    const trimmed = term.trim().toLowerCase()
+    if (trimmed.length < 2) return []
+
+    const results: AdminAthleteSearchResult[] = []
+
+    for (const profile of this.items) {
+      const user = this.users.find((u) => u.id === profile.userId)
+      if (!user) continue
+
+      const matches =
+        profile.nickname?.toLowerCase().includes(trimmed) ||
+        user.name.toLowerCase().includes(trimmed) ||
+        user.email.toLowerCase().includes(trimmed)
+
+      if (matches) {
+        results.push({
+          id: profile.id,
+          name: user.name,
+          nickname: profile.nickname,
+          profilePhoto: profile.profilePhoto,
+          primaryPosition: profile.primaryPosition,
+          currentClub: profile.currentClub,
+        })
+      }
+    }
+
+    results.sort((a, b) => {
+      const pa = this.items.find((i) => i.id === a.id)
+      const pb = this.items.find((i) => i.id === b.id)
+      return (
+        (pb?.updatedAt.getTime() ?? 0) - (pa?.updatedAt.getTime() ?? 0)
+      )
+    })
+
+    return results.slice(0, limit)
   }
 
   // Helper method for tests

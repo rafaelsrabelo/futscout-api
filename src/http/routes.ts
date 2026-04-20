@@ -13,6 +13,7 @@ import { listAthletesAdmin } from './controllers/admin/list-athletes.js'
 import { linkMatchAthleteAdmin } from './controllers/admin/link-match-athlete.js'
 import { listMatchPlaysAdmin } from './controllers/admin/list-match-plays.js'
 import { listMatchesAdmin } from './controllers/admin/list-matches.js'
+import { searchAdmin } from './controllers/admin/search.js'
 import { updateMatchResultAdmin } from './controllers/admin/update-match-result.js'
 import { updatePlayVideoUrlAdmin } from './controllers/admin/update-play-video-url.js'
 import { verifyAdminSession } from './controllers/admin/verify-admin-session.js'
@@ -277,6 +278,11 @@ export async function appRoutes(app: FastifyInstance) {
     '/admin/auth/verify',
     { onRequest: [verifyJwt, verifyAdmin] },
     verifyAdminSession,
+  )
+  app.get(
+    '/admin/search',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    searchAdmin,
   )
   app.get(
     '/admin/athletes',

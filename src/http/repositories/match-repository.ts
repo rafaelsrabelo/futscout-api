@@ -67,6 +67,20 @@ export interface MatchRepository {
     pagination: AdminPagination,
   ): Promise<{ items: AdminGlobalMatchListItem[]; total: number }>
   findByIdForAdmin(id: string): Promise<AdminMatchDetail | null>
+  searchByTerm(term: string, limit: number): Promise<AdminMatchSearchResult[]>
+}
+
+export interface AdminMatchSearchResult {
+  id: string
+  date: Date
+  adversaryTeam: string
+  myTeamScore: number | null
+  adversaryScore: number | null
+  athlete: {
+    id: string
+    name: string
+    profilePhoto: string | null
+  }
 }
 
 export type AdminMatchDetail = Match & {

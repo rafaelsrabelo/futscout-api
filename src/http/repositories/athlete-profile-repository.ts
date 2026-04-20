@@ -125,6 +125,15 @@ export interface PlaysByTypeEntry {
   count: number
 }
 
+export interface AdminAthleteSearchResult {
+  id: string
+  name: string
+  nickname: string | null
+  profilePhoto: string | null
+  primaryPosition: 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD'
+  currentClub: string | null
+}
+
 export interface AthleteProfileRepository {
   create(data: CreateAthleteProfileData): Promise<AthleteProfile>
   findById(id: string): Promise<AthleteProfileWithUser | null>
@@ -141,6 +150,7 @@ export interface AthleteProfileRepository {
     athleteProfileId: string,
   ): Promise<PlaysByTypeEntry[]>
   findByNickname(nickname: string): Promise<AthleteProfile | null>
+  searchByTerm(term: string, limit: number): Promise<AdminAthleteSearchResult[]>
   update(
     userId: string,
     data: UpdateAthleteProfileData,

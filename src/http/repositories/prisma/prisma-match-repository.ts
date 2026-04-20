@@ -6,6 +6,7 @@ import type {
   AdminMatchDetail,
   AdminMatchFilters,
   AdminMatchListItem,
+  AdminMatchSearchResult,
   AdminPagination,
   MatchRepository,
 } from '../match-repository.js'
@@ -299,6 +300,58 @@ export class PrismaMatchRepository implements MatchRepository {
         primaryPosition: athlete.primaryPosition,
       },
     }
+  }
+
+  async searchByTerm(
+    term: string,
+    limit: number,
+  ): Promise<AdminMatchSearchResult[]> {
+    const trimmed = term.trim()
+    if (trimmed.length < 2) return []
+
+    const rows = await prisma.match.findMany({
+      where: {
+        OR: [
+          { adversaryTeam: { contains: trimmed, mode: 'insensitive' } },
+          {
+            athlete: {
+              OR: [
+                { nickname: { contains: trimmed, mode: 'insensitive' } },
+                {
+                  user: {
+                    name: { contains: trimmed, mode: 'insensitive' },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+      include: {
+        athlete: {
+          select: {
+            id: true,
+            profilePhoto: true,
+            user: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+      take: limit,
+    })
+
+    return rows.map((r) => ({
+      id: r.id,
+      date: r.date,
+      adversaryTeam: r.adversaryTeam,
+      myTeamScore: r.myTeamScore,
+      adversaryScore: r.adversaryScore,
+      athlete: {
+        id: r.athlete.id,
+        name: r.athlete.user.name,
+        profilePhoto: r.athlete.profilePhoto,
+      },
+    }))
   }
 
   async findByAthleteIdAndStatus(

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma.js'
 import type {
   AdminAthleteFilters,
+  AdminAthleteSearchResult,
   AdminPagination,
   AthleteAdminDetail,
   AthleteProfileRepository,
@@ -75,6 +76,38 @@ export class PrismaAthleteProfileRepository
     })
 
     return athleteProfile
+  }
+
+  async searchByTerm(
+    term: string,
+    limit: number,
+  ): Promise<AdminAthleteSearchResult[]> {
+    const trimmed = term.trim()
+    if (trimmed.length < 2) return []
+
+    const rows = await prisma.athleteProfile.findMany({
+      where: {
+        OR: [
+          { nickname: { contains: trimmed, mode: 'insensitive' } },
+          { user: { name: { contains: trimmed, mode: 'insensitive' } } },
+          { user: { email: { contains: trimmed, mode: 'insensitive' } } },
+        ],
+      },
+      include: {
+        user: { select: { name: true } },
+      },
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+      take: limit,
+    })
+
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.user.name,
+      nickname: r.nickname,
+      profilePhoto: r.profilePhoto,
+      primaryPosition: r.primaryPosition,
+      currentClub: r.currentClub,
+    }))
   }
 
   async findByNickname(nickname: string) {
