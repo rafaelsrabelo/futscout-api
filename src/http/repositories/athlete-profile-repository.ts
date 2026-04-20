@@ -57,6 +57,33 @@ export type AthleteProfileWithUser = AthleteProfile & {
   user: Pick<User, 'id' | 'name' | 'role' | 'isActive'>
 }
 
+export interface AdminAthleteFilters {
+  q?: string
+  gender?: 'MALE' | 'FEMALE' | 'OTHER'
+  primaryPosition?: 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD'
+  dominantFoot?: 'RIGHT' | 'LEFT'
+  currentClub?: string
+  hasManager?: boolean
+  minAge?: number
+  maxAge?: number
+  minHeight?: number
+  maxHeight?: number
+  minWeight?: number
+  maxWeight?: number
+}
+
+export interface AdminPagination {
+  page: number
+  pageSize: number
+}
+
+export type AthleteProfileAdminListItem = AthleteProfile & {
+  user: Pick<
+    User,
+    'id' | 'name' | 'email' | 'emailVerified' | 'isActive' | 'createdAt'
+  >
+}
+
 export interface AthleteProfileRepository {
   create(data: CreateAthleteProfileData): Promise<AthleteProfile>
   findById(id: string): Promise<AthleteProfileWithUser | null>
@@ -64,6 +91,10 @@ export interface AthleteProfileRepository {
   findByCpf(cpf: string): Promise<AthleteProfile | null>
   findMany(filters: AthleteFilters): Promise<AthleteProfileWithUser[]>
   countMany(filters: AthleteFilters): Promise<number>
+  findManyForAdmin(
+    filters: AdminAthleteFilters,
+    pagination: AdminPagination,
+  ): Promise<{ items: AthleteProfileAdminListItem[]; total: number }>
   findByNickname(nickname: string): Promise<AthleteProfile | null>
   update(
     userId: string,

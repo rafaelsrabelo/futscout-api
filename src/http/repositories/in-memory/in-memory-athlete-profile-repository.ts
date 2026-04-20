@@ -1,5 +1,8 @@
 import type { AthleteProfile, User } from 'generated/prisma/client.js'
 import type {
+  AdminAthleteFilters,
+  AdminPagination,
+  AthleteProfileAdminListItem,
   AthleteProfileRepository,
   CreateAthleteProfileData,
   AthleteFilters,
@@ -66,6 +69,11 @@ export class InMemoryAthleteProfileRepository
 
   async findByUserId(userId: string): Promise<AthleteProfile | null> {
     const athleteProfile = this.items.find((item) => item.userId === userId)
+    return athleteProfile || null
+  }
+
+  async findByCpf(cpf: string): Promise<AthleteProfile | null> {
+    const athleteProfile = this.items.find((item) => item.cpf === cpf)
     return athleteProfile || null
   }
 
@@ -145,6 +153,114 @@ export class InMemoryAthleteProfileRepository
   async countMany(filters: AthleteFilters): Promise<number> {
     const items = await this.findMany(filters)
     return items.length
+  }
+
+  private applyAdminFilters(
+    items: AthleteProfile[],
+    filters: AdminAthleteFilters,
+  ): AthleteProfile[] {
+    let filtered = items
+
+    if (filters.gender) {
+      filtered = filtered.filter((item) => item.gender === filters.gender)
+    }
+    if (filters.dominantFoot) {
+      filtered = filtered.filter(
+        (item) => item.dominantFoot === filters.dominantFoot,
+      )
+    }
+    if (filters.primaryPosition) {
+      filtered = filtered.filter(
+        (item) => item.primaryPosition === filters.primaryPosition,
+      )
+    }
+    if (filters.hasManager !== undefined) {
+      filtered = filtered.filter(
+        (item) => item.hasManager === filters.hasManager,
+      )
+    }
+    if (filters.currentClub) {
+      const needle = filters.currentClub.toLowerCase()
+      filtered = filtered.filter((item) =>
+        item.currentClub?.toLowerCase().includes(needle),
+      )
+    }
+    if (filters.minHeight !== undefined) {
+      filtered = filtered.filter((item) => item.height >= filters.minHeight!)
+    }
+    if (filters.maxHeight !== undefined) {
+      filtered = filtered.filter((item) => item.height <= filters.maxHeight!)
+    }
+    if (filters.minWeight !== undefined) {
+      filtered = filtered.filter((item) => item.weight >= filters.minWeight!)
+    }
+    if (filters.maxWeight !== undefined) {
+      filtered = filtered.filter((item) => item.weight <= filters.maxWeight!)
+    }
+
+    if (filters.minAge !== undefined || filters.maxAge !== undefined) {
+      const today = new Date()
+      if (filters.minAge !== undefined) {
+        const maxBirthDate = new Date(today)
+        maxBirthDate.setFullYear(today.getFullYear() - filters.minAge)
+        filtered = filtered.filter((item) => item.birthDate <= maxBirthDate)
+      }
+      if (filters.maxAge !== undefined) {
+        const minBirthDateExclusive = new Date(today)
+        minBirthDateExclusive.setFullYear(
+          today.getFullYear() - (filters.maxAge + 1),
+        )
+        filtered = filtered.filter(
+          (item) => item.birthDate > minBirthDateExclusive,
+        )
+      }
+    }
+
+    if (filters.q) {
+      const needle = filters.q.toLowerCase()
+      filtered = filtered.filter((item) => {
+        const user = this.users.find((u) => u.id === item.userId)
+        return (
+          item.nickname?.toLowerCase().includes(needle) ||
+          user?.name.toLowerCase().includes(needle) ||
+          user?.email.toLowerCase().includes(needle)
+        )
+      })
+    }
+
+    return filtered
+  }
+
+  async findManyForAdmin(
+    filters: AdminAthleteFilters,
+    pagination: AdminPagination,
+  ): Promise<{ items: AthleteProfileAdminListItem[]; total: number }> {
+    const filtered = this.applyAdminFilters(this.items, filters)
+
+    const sorted = [...filtered].sort(
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+    )
+
+    const { page, pageSize } = pagination
+    const start = (page - 1) * pageSize
+    const paged = sorted.slice(start, start + pageSize)
+
+    const items: AthleteProfileAdminListItem[] = paged.map((profile) => {
+      const user = this.users.find((u) => u.id === profile.userId)
+      return {
+        ...profile,
+        user: {
+          id: user?.id ?? '',
+          name: user?.name ?? '',
+          email: user?.email ?? '',
+          emailVerified: user?.emailVerified ?? false,
+          isActive: user?.isActive ?? true,
+          createdAt: user?.createdAt ?? new Date(0),
+        },
+      }
+    })
+
+    return { items, total: filtered.length }
   }
 
   async findByNickname(nickname: string): Promise<AthleteProfile | null> {
