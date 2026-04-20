@@ -169,16 +169,18 @@
 
 ---
 
-- [ ] **BE-08** | `M` | `GET /api/admin/athletes/:id` — detalhe completo do atleta
+- [x] **BE-08** | `M` | `GET /api/admin/athletes/:id` — detalhe completo do atleta
 
   **Descrição:**
   Retorna o perfil completo de um atleta junto com contadores agregados: total de partidas, total de lances por tipo (goals, assists, etc.), total de conquistas, total de times no histórico, status da assinatura atual, `lastLoginAt`, `emailVerified`. Essa tela no admin é a "página de configurações do atleta".
 
+  **Nota de implementação:** `phone` não existe em `User`; `lastLoginAt` permanece ausente até BE-16. Contadores entregues: `matches`, `plays`, `achievements`, `teamHistory` (via `_count` do Prisma) + `playsByType` (via `groupBy`).
+
   **Acceptance Criteria:**
-  - [ ] Rota `GET '/admin/athletes/:id'` com guard admin
-  - [ ] Param `id` é o `athleteProfile.id` (validado como uuid pelo Zod)
-  - [ ] Resposta inclui: `profile` (todos os campos), `user` (email, phone, cpf, role, emailVerified, isActive, createdAt, lastLoginAt), `counters` (matches, plays por PlayType, achievements, teams), `subscription` (plan name, status, currentPeriodEnd)
-  - [ ] Retorna `404` quando o atleta não existe
+  - [x] Rota `GET '/admin/athletes/:id'` com guard admin
+  - [x] Param `id` é o `athleteProfile.id` (validado como uuid pelo Zod)
+  - [x] Resposta inclui: `profile` (todos os campos), `address`, `user` (email, role, emailVerified, isActive, createdAt), `counts` (matches, plays, achievements, teamHistory) + `playsByType`, `subscription` (plan name/price/currency/isUnlimited, status, currentPeriodEnd) ou `null`
+  - [x] Retorna `404` quando o atleta não existe
 
   **Files:**
   - `src/http/controllers/admin/get-athlete.ts` *(novo)*

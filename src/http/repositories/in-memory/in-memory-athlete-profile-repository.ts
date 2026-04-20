@@ -1,20 +1,46 @@
-import type { AthleteProfile, User } from 'generated/prisma/client.js'
+import type { Address, AthleteProfile, User } from 'generated/prisma/client.js'
 import type {
   AdminAthleteFilters,
   AdminPagination,
+  AthleteAdminDetail,
+  AthleteAdminSubscriptionView,
   AthleteProfileAdminListItem,
   AthleteProfileRepository,
   CreateAthleteProfileData,
   AthleteFilters,
   AthleteProfileWithUser,
+  PlaysByTypeEntry,
   UpdateAthleteProfileData,
 } from '../athlete-profile-repository.js'
+
+interface InMemoryPlay {
+  id: string
+  athleteId: string | null
+  matchId: string | null
+  playType: string
+}
+
+interface InMemoryMatch {
+  id: string
+  athleteId: string
+}
+
+interface InMemorySubscription {
+  userId: string
+  view: AthleteAdminSubscriptionView
+}
 
 export class InMemoryAthleteProfileRepository
   implements AthleteProfileRepository
 {
   public items: AthleteProfile[] = []
   public users: User[] = []
+  public addresses: Address[] = []
+  public plays: InMemoryPlay[] = []
+  public matches: InMemoryMatch[] = []
+  public achievementsByAthlete: Record<string, number> = {}
+  public teamHistoryByAthlete: Record<string, number> = {}
+  public subscriptions: InMemorySubscription[] = []
 
   async create(data: CreateAthleteProfileData): Promise<AthleteProfile> {
     const athleteProfile: AthleteProfile = {
@@ -229,6 +255,71 @@ export class InMemoryAthleteProfileRepository
     }
 
     return filtered
+  }
+
+  async findByIdForAdmin(id: string): Promise<AthleteAdminDetail | null> {
+    const profile = this.items.find((item) => item.id === id)
+    if (!profile) return null
+
+    const user = this.users.find((u) => u.id === profile.userId)
+    if (!user) return null
+
+    const address = this.addresses.find((a) => a.athleteId === id) ?? null
+
+    const subscription =
+      this.subscriptions.find((s) => s.userId === user.id)?.view ?? null
+
+    const matchesCount = this.matches.filter((m) => m.athleteId === id).length
+    const matchIds = new Set(
+      this.matches.filter((m) => m.athleteId === id).map((m) => m.id),
+    )
+    const playsCount = this.plays.filter(
+      (p) => p.athleteId === id || (p.matchId && matchIds.has(p.matchId)),
+    ).length
+
+    return {
+      profile,
+      address,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        emailVerified: user.emailVerified,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+      },
+      subscription,
+      counts: {
+        matches: matchesCount,
+        plays: playsCount,
+        achievements: this.achievementsByAthlete[id] ?? 0,
+        teamHistory: this.teamHistoryByAthlete[id] ?? 0,
+      },
+    }
+  }
+
+  async countPlaysByTypeForAthlete(
+    athleteProfileId: string,
+  ): Promise<PlaysByTypeEntry[]> {
+    const matchIds = new Set(
+      this.matches
+        .filter((m) => m.athleteId === athleteProfileId)
+        .map((m) => m.id),
+    )
+
+    const relevant = this.plays.filter(
+      (p) =>
+        p.athleteId === athleteProfileId ||
+        (p.matchId && matchIds.has(p.matchId)),
+    )
+
+    const countsByType = new Map<string, number>()
+    for (const play of relevant) {
+      countsByType.set(play.playType, (countsByType.get(play.playType) ?? 0) + 1)
+    }
+
+    return Array.from(countsByType, ([type, count]) => ({ type, count }))
   }
 
   async findManyForAdmin(

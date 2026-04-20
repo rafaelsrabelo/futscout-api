@@ -2,9 +2,11 @@ import { prisma } from '@/lib/prisma.js'
 import type {
   AdminAthleteFilters,
   AdminPagination,
+  AthleteAdminDetail,
   AthleteProfileRepository,
   CreateAthleteProfileData,
   AthleteFilters,
+  PlaysByTypeEntry,
   UpdateAthleteProfileData,
 } from '../athlete-profile-repository.js'
 
@@ -270,6 +272,104 @@ export class PrismaAthleteProfileRepository
     ])
 
     return { items, total }
+  }
+
+  async findByIdForAdmin(id: string): Promise<AthleteAdminDetail | null> {
+    const profile = await prisma.athleteProfile.findUnique({
+      where: { id },
+      include: {
+        address: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            emailVerified: true,
+            isActive: true,
+            createdAt: true,
+            subscriptions: {
+              where: { status: 'active' },
+              orderBy: { currentPeriodEnd: 'desc' },
+              take: 1,
+              include: {
+                plan: {
+                  select: {
+                    id: true,
+                    name: true,
+                    price: true,
+                    currency: true,
+                    isUnlimited: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            matches: true,
+            plays: true,
+            achievements: true,
+            teamHistory: true,
+          },
+        },
+      },
+    })
+
+    if (!profile) {
+      return null
+    }
+
+    const { user, address, _count, ...profileOnly } = profile
+    const [activeSubscription] = user.subscriptions
+
+    return {
+      profile: profileOnly,
+      address,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        emailVerified: user.emailVerified,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+      },
+      subscription: activeSubscription
+        ? {
+            status: activeSubscription.status,
+            currentPeriodEnd: activeSubscription.currentPeriodEnd,
+            plan: activeSubscription.plan,
+          }
+        : null,
+      counts: {
+        matches: _count.matches,
+        plays: _count.plays,
+        achievements: _count.achievements,
+        teamHistory: _count.teamHistory,
+      },
+    }
+  }
+
+  async countPlaysByTypeForAthlete(
+    athleteProfileId: string,
+  ): Promise<PlaysByTypeEntry[]> {
+    const rows = await prisma.play.groupBy({
+      by: ['playType'],
+      where: {
+        OR: [
+          { athleteId: athleteProfileId },
+          { match: { athleteId: athleteProfileId } },
+        ],
+      },
+      _count: { _all: true },
+    })
+
+    return rows.map((row) => ({
+      type: row.playType,
+      count: row._count._all,
+    }))
   }
 
   async update(userId: string, data: UpdateAthleteProfileData) {

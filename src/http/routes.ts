@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { addPlay } from './controllers/add-play.js'
 import { addTeamHistory } from './controllers/add-team-history.js'
+import { getAthleteAdmin } from './controllers/admin/get-athlete.js'
 import { listAthletesAdmin } from './controllers/admin/list-athletes.js'
 import { verifyAdminSession } from './controllers/admin/verify-admin-session.js'
 import { authenticate } from './controllers/authenticate.js'
@@ -269,6 +270,11 @@ export async function appRoutes(app: FastifyInstance) {
     '/admin/athletes',
     { onRequest: [verifyJwt, verifyAdmin] },
     listAthletesAdmin,
+  )
+  app.get(
+    '/admin/athletes/:id',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    getAthleteAdmin,
   )
 
   // Billing routes

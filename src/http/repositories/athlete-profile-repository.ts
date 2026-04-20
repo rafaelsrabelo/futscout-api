@@ -1,4 +1,4 @@
-import type { AthleteProfile, User } from 'generated/prisma/client.js'
+import type { Address, AthleteProfile, User } from 'generated/prisma/client.js'
 import type { AthleteProfileCreateInput } from 'generated/prisma/models/AthleteProfile.js'
 
 export type CreateAthleteProfileData = Omit<
@@ -84,6 +84,47 @@ export type AthleteProfileAdminListItem = AthleteProfile & {
   >
 }
 
+export interface AthleteAdminSubscriptionView {
+  status: string
+  currentPeriodEnd: Date
+  plan: {
+    id: string
+    name: string
+    price: number
+    currency: string
+    isUnlimited: boolean
+  }
+}
+
+export interface AthleteAdminCounts {
+  matches: number
+  plays: number
+  achievements: number
+  teamHistory: number
+}
+
+export interface AthleteAdminDetail {
+  profile: AthleteProfile
+  address: Address | null
+  user: Pick<
+    User,
+    | 'id'
+    | 'name'
+    | 'email'
+    | 'role'
+    | 'emailVerified'
+    | 'isActive'
+    | 'createdAt'
+  >
+  subscription: AthleteAdminSubscriptionView | null
+  counts: AthleteAdminCounts
+}
+
+export interface PlaysByTypeEntry {
+  type: string
+  count: number
+}
+
 export interface AthleteProfileRepository {
   create(data: CreateAthleteProfileData): Promise<AthleteProfile>
   findById(id: string): Promise<AthleteProfileWithUser | null>
@@ -95,6 +136,10 @@ export interface AthleteProfileRepository {
     filters: AdminAthleteFilters,
     pagination: AdminPagination,
   ): Promise<{ items: AthleteProfileAdminListItem[]; total: number }>
+  findByIdForAdmin(id: string): Promise<AthleteAdminDetail | null>
+  countPlaysByTypeForAthlete(
+    athleteProfileId: string,
+  ): Promise<PlaysByTypeEntry[]>
   findByNickname(nickname: string): Promise<AthleteProfile | null>
   update(
     userId: string,
