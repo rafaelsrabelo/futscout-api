@@ -91,8 +91,6 @@ export async function createStandalonePlay(
             const fileStats = await stat(tempInputPath)
             const filename = part.filename || 'video.mp4'
             const fileSizeMB = fileStats.size / (1024 * 1024)
-              `📊 Arquivo recebido: ${filename} (${fileSizeMB.toFixed(2)}MB)`,
-            )
 
             if (fileStats.size > 100 * 1024 * 1024) {
               await unlink(tempInputPath).catch(() => {})
@@ -109,8 +107,6 @@ export async function createStandalonePlay(
 
             if (fileSizeMB >= 30 && fileSizeMB <= 90) {
               try {
-                  `🗜️ Comprimindo vídeo (${fileSizeMB.toFixed(2)}MB)...`,
-                )
                 const compressionService = new VideoCompressionService()
                 // Usar arquivo diretamente (já está salvo em disco, não precisa de stream)
                 const compressedPath =
@@ -135,9 +131,6 @@ export async function createStandalonePlay(
                 )
                 // Continua com o vídeo original
               }
-            } else {
-                `ℹ️ Vídeo ${fileSizeMB.toFixed(2)}MB fora do range de compressão (30-90MB), usando original`,
-              )
             }
 
             // Gerar thumbnail ANTES de fazer upload (usa arquivo diretamente, sem buffer!)
@@ -171,10 +164,6 @@ export async function createStandalonePlay(
             )
             console.timeEnd('upload-to-r2')
             videoUrl = uploadResult.url
-            const finalSizeMB =
-              (await stat(finalVideoPath)).size / (1024 * 1024)
-              `✅ Vídeo enviado: ${videoUrl} (${finalSizeMB.toFixed(2)}MB)`,
-            )
 
             // Limpar arquivos temporários
             await unlink(finalVideoPath).catch(() => {})
@@ -376,14 +365,6 @@ export async function createStandalonePlay(
       athleteProfileRepository,
     )
 
-      playType,
-      videoUrl,
-      photoUrl,
-      thumbnailUrl,
-      hasVideo: !!videoUrl,
-      hasThumbnail: !!thumbnailUrl,
-    })
-
     const play = await createStandalonePlayUseCase.execute({
       userId: request.user.sub,
       playType: playType as PlayType,
@@ -400,16 +381,8 @@ export async function createStandalonePlay(
       await incrementStandaloneVideoUsage(request.user.sub)
     }
 
-      id: play.id,
-      videoUrl: play.videoUrl,
-      thumbnailUrl: play.thumbnailUrl,
-    })
-
     // Gerar thumbnail automaticamente se vídeo foi enviado via JSON (upload direto) e não tem thumbnail
     if (videoUrl && !thumbnailUrl && !isMultipart) {
-        '🔄 [THUMBNAIL] Vídeo enviado via JSON (upload direto), gerando thumbnail em background...',
-      )
-
       // Importar função de geração de thumbnail
       const { generateThumbnailAsync } = await import(
         './create-play-with-video-url.js'
@@ -418,11 +391,7 @@ export async function createStandalonePlay(
       // Executar em background
       setTimeout(async () => {
         try {
-            '🚀 [THUMBNAIL] setTimeout executado, iniciando generateThumbnailAsync...',
-          )
           await generateThumbnailAsync(play.id, videoUrl)
-            '✅ [THUMBNAIL] generateThumbnailAsync completou com sucesso',
-          )
         } catch (error) {
           console.error(
             '❌ [CRITICAL] Erro ao gerar thumbnail em background:',
@@ -435,9 +404,6 @@ export async function createStandalonePlay(
           )
         }
       }, 0)
-
-        '📅 [THUMBNAIL] Geração de thumbnail agendada para background',
-      )
     }
 
     return reply.status(201).send({ play })

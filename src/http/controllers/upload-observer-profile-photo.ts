@@ -59,15 +59,6 @@ export async function uploadObserverProfilePhoto(
       })
     }
 
-      '📸 Iniciando upload de foto de perfil do observador para Cloudflare R2...',
-    )
-      '📁 Arquivo recebido:',
-      data.filename,
-      'Tamanho:',
-      buffer.length,
-      'bytes',
-    )
-
     // Upload para Cloudflare R2
     const cloudflareService = new CloudflareR2Service()
     const { url } = await cloudflareService.uploadImage(buffer, data.filename)

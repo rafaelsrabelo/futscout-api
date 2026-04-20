@@ -58,13 +58,6 @@ export async function uploadProfilePhoto(
       })
     }
 
-      '📁 Arquivo recebido:',
-      data.filename,
-      'Tamanho:',
-      buffer.length,
-      'bytes',
-    )
-
     // Upload para Cloudflare R2
     const cloudflareService = new CloudflareR2Service()
     const { url } = await cloudflareService.uploadImage(buffer, data.filename)

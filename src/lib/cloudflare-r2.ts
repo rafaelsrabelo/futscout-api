@@ -191,14 +191,6 @@ export class CloudflareR2Service {
 
       const publicUrl = `${this.publicBaseUrl}/${key}`
 
-      console.log('🔗 Presigned URL gerada:', {
-        uploadUrl: `${uploadUrl.substring(0, 100)}...`,
-        publicUrl,
-        key,
-        endpoint: r2Endpoint,
-        bucket: this.bucketName,
-      })
-
       return {
         uploadUrl,
         publicUrl,
@@ -270,7 +262,6 @@ export class CloudflareR2Service {
 
       // Construir URL pública
       const publicUrl = `${this.publicBaseUrl}/${uniqueFilename}`
-      console.log('✅ Image uploaded successfully:', publicUrl)
 
       return { url: publicUrl }
     } catch (error) {
