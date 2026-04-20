@@ -1,4 +1,13 @@
-import type { TeamHistory, Prisma } from '../../../generated/prisma/client.js'
+import type { Prisma, TeamHistory } from '../../../generated/prisma/client.js'
+
+export type TeamHistoryWithTeam = TeamHistory & {
+  team: {
+    id: string
+    name: string
+    acronym: string | null
+    shieldPhoto: string | null
+  }
+}
 
 export interface TeamHistoryRepository {
   create(data: Prisma.TeamHistoryCreateInput): Promise<TeamHistory>
@@ -8,4 +17,7 @@ export interface TeamHistoryRepository {
   delete(id: string): Promise<void>
   findCurrentTeams(athleteId: string): Promise<TeamHistory[]>
   findFormerTeams(athleteId: string): Promise<TeamHistory[]>
+  findManyWithTeamByAthlete(
+    athleteProfileId: string,
+  ): Promise<TeamHistoryWithTeam[]>
 }

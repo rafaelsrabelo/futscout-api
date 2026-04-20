@@ -198,17 +198,18 @@
 
 ---
 
-- [ ] **BE-09** | `M` | `GET /api/admin/athletes/:athleteId/matches` — histórico de partidas do atleta
+- [x] **BE-09** | `M` | `GET /api/admin/athletes/:athleteId/matches` — histórico de partidas do atleta
 
   **Descrição:**
   Lista paginada de partidas de um atleta específico com filtros: `competitionId`, `status`, `result`, `from`, `to` (date range). Retorna dados suficientes para a aba "Histórico de Partidas" da tela do atleta (time adversário, placar, data, status, número de lances).
 
   **Acceptance Criteria:**
-  - [ ] Rota `GET '/admin/athletes/:athleteId/matches'` com guard admin
-  - [ ] Filtros via query: `page`, `pageSize`, `competitionId`, `status`, `result`, `from`, `to`
-  - [ ] Ordenação default: `date desc`
-  - [ ] Cada item inclui: `id`, `date`, `adversaryTeam`, `myTeamScore`, `adversaryScore`, `status`, `result`, `playsCount`, `competition.name` quando aplicável
-  - [ ] Retorna `404` se o atleta não existe
+  - [x] Rota `GET '/admin/athletes/:athleteId/matches'` com guard admin
+  - [x] Filtros via query: `page`, `pageSize`, `competitionId`, `status`, `result`, `from`, `to`
+  - [x] Ordenação default: `date desc` (secundária `createdAt desc`)
+  - [x] Cada item inclui: `id`, `date`, `adversaryTeam`, `myTeamScore`, `adversaryScore`, `status`, `result`, `playsCount` (via `_count.plays`), `competition: { id, name } | null`
+  - [x] Retorna `404` se o atleta não existe
+  - [x] Spec com 6 testes (atleta inexistente, vazio, filtros, paginação) — todos verdes
 
   **Files:**
   - `src/http/controllers/admin/list-athlete-matches.ts` *(novo)*
@@ -348,6 +349,151 @@
   - `src/http/routes.ts`
 
   **Depends on:** `BE-03`
+
+---
+
+- [x] **BE-22** | `M` | `POST /api/admin/matches/:matchId/plays` — admin cria lance em partida de qualquer atleta
+
+  **Descrição:**
+  Admin registra um lance em partida de qualquer atleta, sem o check de ownership que existe em `POST /matches/:id/plays` (hoje `AddPlayToMatchUseCase` resolve `userId → athleteProfile` e rejeita se `match.athleteId !== athleteProfile.id`). Refatorar o use case para receber `athleteProfileId` diretamente; o controller admin deriva `athleteProfileId` de `match.athleteId` e o controller comum (fluxo do atleta) passa a resolver `userId → athleteProfileId` antes de chamar o use case.
+
+  **Nota de implementação:** A transação de criação de lance + classificações foi movida de dentro do use case para `PlayRepository.createWithClassifications(input)` (novo método em ambas as impls Prisma e in-memory), mantendo o use case puro e testável. Os error classes `MatchNotFoundError` / `MatchNotBelongsToAthleteError` passaram a ser importados de `get-match.ts` (únicos já registrados no error handler de `app.ts`) — corrige bug latente onde o handler caía em 500 por identidade de classe divergente. Novas in-memory repos: `InMemoryPlayRepository`, `InMemoryMatchRepository` (métodos não usados ficam como stubs `throw new Error('not implemented')`).
+
+  **Acceptance Criteria:**
+  - [x] Rota `POST '/admin/matches/:matchId/plays'` com `{ onRequest: [verifyJwt, verifyAdmin] }` (sem `checkUsage`)
+  - [x] Params Zod: `matchId` (uuid)
+  - [x] Body Zod: `playType` (enum `PlayType`), `videoUrl?` (url), `thumbnailUrl?` (url), `photoUrl?` (url), `rating?` (int 1–5), `observations?`, `classifications?` (array `PlayClassification`)
+  - [x] `AddPlayToMatchUseCase` refatorado: assinatura passa a ser `{ matchId, athleteProfileId, ... }` (remove `userId`); controller `add-play.ts` (atleta) resolve `userId → athleteProfileId` antes de chamar o use case — regressão zero nas specs existentes
+  - [x] Controller admin busca a `match` por id, extrai `match.athleteId`, passa para o use case — não faz resolução via `userId`
+  - [x] Admin **não** consome contador de uso (`incrementVideoUsage` NÃO é chamado no fluxo admin — o admin corrigindo dados não deve consumir a cota do atleta)
+  - [x] `404` quando a `match` não existe
+  - [x] Geração de thumbnail async quando `videoUrl` presente e `thumbnailUrl` ausente (reaproveitar `generateThumbnailAsync`)
+  - [x] Retorna `201 { play }` incluindo `classifications`
+  - [x] Regressão zero confirmada: suíte pré-BE-22 tinha 5 falhas pré-existentes (register + create-athlete-profile — sem relação com plays/admin); pós-BE-22 mantém exatamente essas 5 + 3 novos passando da spec admin
+  - [x] Nova spec `admin/add-play-to-match.spec.ts`: (1) admin cria lance em partida de atleta diferente do `sub` do JWT; (2) `404` se match não existe; (3) `classifications` persistidas na mesma transação
+
+  **Files:**
+  - `src/http/controllers/admin/add-play-to-match.ts` *(novo)*
+  - `src/http/use-cases/add-play-to-match.ts` — refatorar assinatura (remove `userId`, aceita `athleteProfileId`)
+  - `src/http/controllers/add-play.ts` — adaptar para resolver `userId → athleteProfileId` antes do use case
+  - `src/http/use-cases/admin/add-play-to-match.spec.ts` *(novo)*
+  - `src/http/routes.ts`
+
+  **Depends on:** `BE-03`, `BE-11` (útil para o admin descobrir a match no frontend; não bloqueia)
+
+---
+
+- [x] **BE-23** | `M` | `GET /api/admin/videos/upload-url` + `PUT /api/admin/plays/:id/video-url` — admin anexa vídeo a lance
+
+  **Descrição:**
+  Duas rotas que replicam o fluxo de upload direto para R2 (ver `generate-video-upload-url.ts` + `update-play-video-url.ts`) **sem** o check de ownership. Admin gera presigned PUT URL, frontend envia vídeo direto para R2, admin chama `PUT /admin/plays/:id/video-url` com a URL final para persistir no play — que pode pertencer a qualquer atleta. Usado tanto para (a) criar lance já com vídeo via fluxo de duas etapas, quanto (b) anexar/substituir vídeo em lance existente.
+
+  **Acceptance Criteria:**
+  - [x] Rota `GET '/admin/videos/upload-url'` com guard admin, Zod idêntico ao de `generate-video-upload-url.ts` (`filename`, `expiresIn` default 3600, max 3600)
+  - [x] Reaproveita `CloudflareR2Service.generatePresignedUploadUrl` — resposta idêntica (`uploadUrl`, `publicUrl`, `key`, `expiresIn`, `instructions`)
+  - [x] Rota `PUT '/admin/plays/:id/video-url'` com guard admin
+  - [x] Params Zod: `id` (uuid do play)
+  - [x] Body Zod: `videoUrl` (url, obrigatório), `thumbnailUrl?` (url)
+  - [x] Busca play por id via `PlayRepository.findById`; `404` se não existir
+  - [x] Atualiza `play.videoUrl` e `play.thumbnailUrl` atomicamente via `PlayRepository.updateVideoUrl(id, videoUrl, thumbnailUrl)` (método novo nas duas implementações)
+  - [x] Se `videoUrl` presente e `thumbnailUrl` ausente, dispara `generateThumbnailAsync(playId, videoUrl)` em background (setTimeout 0, não bloqueia resposta)
+  - [x] Admin **não** consome `incrementVideoUsage` (mesmo raciocínio de BE-22)
+  - [x] Nenhum ownership check: admin pode anexar vídeo a play de qualquer atleta
+  - [x] Resposta `200 { play }` com o play atualizado
+  - [x] Spec `admin/update-play-video-url.spec.ts`: (1) admin anexa vídeo a play de outro atleta; (2) `404` se play não existe; (3) thumbnail fornecido no body é persistido sem disparar geração async — 3/3 verdes
+
+  **Files:**
+  - `src/http/controllers/admin/generate-video-upload-url.ts` *(novo)*
+  - `src/http/controllers/admin/update-play-video-url.ts` *(novo)*
+  - `src/http/use-cases/admin/update-play-video-url.ts` *(novo)*
+  - `src/http/use-cases/admin/update-play-video-url.spec.ts` *(novo)*
+  - `src/http/repositories/play-repository.ts` — garantir `findById(id)` e `updateVideoUrl(id, videoUrl, thumbnailUrl?)`
+  - `src/http/repositories/prisma/prisma-play-repository.ts`
+  - `src/http/repositories/in-memory/in-memory-play-repository.ts`
+  - `src/http/routes.ts`
+
+  **Depends on:** `BE-03`, `BE-22` (opcional — ambos podem sair em paralelo; depender só de BE-03)
+
+---
+
+- [x] **BE-24** | `M` | `GET /api/admin/athletes/:athleteId/plays` — lances do atleta (tab "Lances")
+
+  **Descrição:**
+  Lista paginada de lances de um atleta, com filtros para o admin identificar rapidamente lances sem vídeo (que serão alvo de BE-23 para anexação), lances por tipo, e lances de uma partida específica. Cada item inclui contexto da partida (se houver) para navegação cruzada.
+
+  **Acceptance Criteria:**
+  - [x] Rota `GET '/admin/athletes/:athleteId/plays'` com `{ onRequest: [verifyJwt, verifyAdmin] }`
+  - [x] Params Zod: `athleteId` (uuid)
+  - [x] Query Zod: `page` (default 1), `pageSize` (default 20, max 100), `hasVideo` (boolean), `playType` (enum `PlayType`), `matchId` (uuid), `from` (ISO date), `to` (ISO date)
+  - [x] `404` quando o atleta não existe
+  - [x] Ordenação default: `createdAt desc`
+  - [x] Resposta: `{ items, page, pageSize, total, hasMore }`
+  - [x] Cada `item`: `id`, `playType`, `videoUrl`, `thumbnailUrl`, `photoUrl`, `rating`, `observations`, `classifications`, `createdAt`, `match: { id, date, adversaryTeam } | null`
+  - [x] Spec cobre: (1) atleta inexistente (404); (2) lista vazia; (3) filtro `hasVideo=true/false`; (4) filtro `playType` + match context; (5) paginação — 5/5 verdes
+
+  **Files:**
+  - `src/http/controllers/admin/list-athlete-plays.ts` *(novo)*
+  - `src/http/use-cases/admin/list-athlete-plays.ts` *(novo)*
+  - `src/http/use-cases/admin/list-athlete-plays.spec.ts` *(novo)*
+  - `src/http/repositories/play-repository.ts` — adicionar `findManyByAthleteForAdmin(athleteProfileId, filters, pagination)`
+  - `src/http/repositories/prisma/prisma-play-repository.ts`
+  - `src/http/repositories/in-memory/in-memory-play-repository.ts`
+  - `src/http/routes.ts`
+
+  **Depends on:** `BE-03`, `BE-08` (existência do atleta)
+
+---
+
+- [x] **BE-25** | `S` | `GET /api/admin/athletes/:athleteId/achievements` — conquistas do atleta (tab "Conquistas")
+
+  **Descrição:**
+  Lista paginada de conquistas (títulos coletivos e individuais) de um atleta com filtros por `type` (`COLLECTIVE | INDIVIDUAL`) e `year`. Alimenta a aba "Conquistas" da tela de detalhe do atleta no admin.
+
+  **Acceptance Criteria:**
+  - [x] Rota `GET '/admin/athletes/:athleteId/achievements'` com guard admin
+  - [x] Query Zod: `page` (default 1), `pageSize` (default 20, max 100), `type` (`COLLECTIVE | INDIVIDUAL`), `year` (int >= 1900)
+  - [x] Ordenação default: `year desc, createdAt desc`
+  - [x] Resposta: `{ items, page, pageSize, total, hasMore }`
+  - [x] Cada `item`: `id`, `name`, `category`, `year`, `type`, `createdAt`
+  - [x] `404` se atleta não existe
+  - [x] Spec cobre: (1) atleta inexistente; (2) lista vazia; (3) ordenação por ano + filtros `type` e `year` — 3/3 verdes
+
+  **Files:**
+  - `src/http/controllers/admin/list-athlete-achievements.ts` *(novo)*
+  - `src/http/use-cases/admin/list-athlete-achievements.ts` *(novo)*
+  - `src/http/use-cases/admin/list-athlete-achievements.spec.ts` *(novo)*
+  - `src/http/repositories/achievement-repository.ts` — adicionar `findManyByAthleteForAdmin(athleteProfileId, filters, pagination)`
+  - `src/http/repositories/prisma/prisma-achievement-repository.ts`
+  - `src/http/repositories/in-memory/in-memory-achievement-repository.ts` *(novo)*
+  - `src/http/routes.ts`
+
+  **Depends on:** `BE-03`, `BE-08`
+
+---
+
+- [x] **BE-26** | `S` | `GET /api/admin/athletes/:athleteId/team-history` — histórico de times (tab "Times")
+
+  **Descrição:**
+  Lista do histórico de times do atleta com dados completos do time (nome, sigla, escudo). Separa visualmente atual (`endDate === null`) de anteriores via ordenação. Alimenta a aba "Times" / "Carreira" do painel admin.
+
+  **Acceptance Criteria:**
+  - [x] Rota `GET '/admin/athletes/:athleteId/team-history'` com guard admin
+  - [x] Sem paginação (conjunto naturalmente pequeno); retorna array ordenado por `startDate desc` (atual no topo)
+  - [x] Resposta: `{ items: [{ id, startDate, endDate, team: { id, name, acronym, shieldPhoto } }], currentTeam: {...} | null }`
+  - [x] `currentTeam` é o item com `endDate === null` (ou null se todos têm endDate)
+  - [x] `404` se atleta não existe
+  - [x] Spec cobre: (1) atleta inexistente; (2) atleta sem histórico; (3) múltiplos times ordenados + currentTeam correto; (4) tudo com endDate → currentTeam null — 4/4 verdes
+
+  **Files:**
+  - `src/http/controllers/admin/list-athlete-team-history.ts` *(novo)*
+  - `src/http/use-cases/admin/list-athlete-team-history.ts` *(novo)*
+  - `src/http/use-cases/admin/list-athlete-team-history.spec.ts` *(novo)*
+  - `src/http/repositories/team-history-repository.ts` — adicionar `findManyWithTeamByAthlete(athleteProfileId)`
+  - `src/http/repositories/prisma/prisma-team-history-repository.ts`
+  - `src/http/repositories/in-memory/in-memory-team-history-repository.ts` *(novo)*
+  - `src/http/routes.ts`
+
+  **Depends on:** `BE-03`, `BE-08`
 
 ---
 

@@ -2,7 +2,10 @@ import type {
   TeamHistory,
   Prisma,
 } from '../../../../generated/prisma/client.js'
-import type { TeamHistoryRepository } from '../team-history-repository.js'
+import type {
+  TeamHistoryRepository,
+  TeamHistoryWithTeam,
+} from '../team-history-repository.js'
 import { prisma } from '../../../lib/prisma.js'
 
 export class PrismaTeamHistoryRepository implements TeamHistoryRepository {
@@ -73,6 +76,26 @@ export class PrismaTeamHistoryRepository implements TeamHistoryRepository {
         startDate: 'desc',
       },
     })
+  }
+
+  async findManyWithTeamByAthlete(
+    athleteProfileId: string,
+  ): Promise<TeamHistoryWithTeam[]> {
+    const rows = await prisma.teamHistory.findMany({
+      where: { athleteId: athleteProfileId },
+      include: {
+        team: {
+          select: {
+            id: true,
+            name: true,
+            acronym: true,
+            shieldPhoto: true,
+          },
+        },
+      },
+      orderBy: [{ startDate: 'desc' }],
+    })
+    return rows
   }
 
   async findFormerTeams(athleteId: string): Promise<TeamHistory[]> {

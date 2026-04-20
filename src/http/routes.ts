@@ -1,8 +1,17 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { addPlay } from './controllers/add-play.js'
 import { addTeamHistory } from './controllers/add-team-history.js'
+import { addPlayToMatchAdmin } from './controllers/admin/add-play-to-match.js'
+import { generateVideoUploadUrlAdmin } from './controllers/admin/generate-video-upload-url.js'
 import { getAthleteAdmin } from './controllers/admin/get-athlete.js'
+import { getMatchAdmin } from './controllers/admin/get-match.js'
+import { listAthleteAchievementsAdmin } from './controllers/admin/list-athlete-achievements.js'
+import { listAthleteMatchesAdmin } from './controllers/admin/list-athlete-matches.js'
+import { listAthletePlaysAdmin } from './controllers/admin/list-athlete-plays.js'
+import { listAthleteTeamHistoryAdmin } from './controllers/admin/list-athlete-team-history.js'
 import { listAthletesAdmin } from './controllers/admin/list-athletes.js'
+import { listMatchesAdmin } from './controllers/admin/list-matches.js'
+import { updatePlayVideoUrlAdmin } from './controllers/admin/update-play-video-url.js'
 import { verifyAdminSession } from './controllers/admin/verify-admin-session.js'
 import { authenticate } from './controllers/authenticate.js'
 import { checkPriceIdMatch } from './controllers/billing/check-price-id-match.js'
@@ -84,7 +93,7 @@ export async function appRoutes(app: FastifyInstance) {
   app.get('/health', async (request, reply) => {
     return { status: 'ok', timestamp: new Date().toISOString() }
   })
-  
+
   // Public auth routes
   app.post('/auth/users', register)
   app.post('/auth/verify-email', verifyEmail)
@@ -275,6 +284,51 @@ export async function appRoutes(app: FastifyInstance) {
     '/admin/athletes/:id',
     { onRequest: [verifyJwt, verifyAdmin] },
     getAthleteAdmin,
+  )
+  app.get(
+    '/admin/athletes/:athleteId/matches',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    listAthleteMatchesAdmin,
+  )
+  app.get(
+    '/admin/athletes/:athleteId/plays',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    listAthletePlaysAdmin,
+  )
+  app.get(
+    '/admin/athletes/:athleteId/achievements',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    listAthleteAchievementsAdmin,
+  )
+  app.get(
+    '/admin/athletes/:athleteId/team-history',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    listAthleteTeamHistoryAdmin,
+  )
+  app.get(
+    '/admin/matches',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    listMatchesAdmin,
+  )
+  app.get(
+    '/admin/matches/:id',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    getMatchAdmin,
+  )
+  app.post(
+    '/admin/matches/:matchId/plays',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    addPlayToMatchAdmin,
+  )
+  app.get(
+    '/admin/videos/upload-url',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    generateVideoUploadUrlAdmin,
+  )
+  app.put(
+    '/admin/plays/:id/video-url',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    updatePlayVideoUrlAdmin,
   )
 
   // Billing routes

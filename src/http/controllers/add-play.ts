@@ -81,15 +81,26 @@ export async function addPlay(request: FastifyRequest, reply: FastifyReply) {
   const playRepository = new PrismaPlayRepository()
   const matchRepository = new PrismaMatchRepository()
   const athleteProfileRepository = new PrismaAthleteProfileRepository()
+
+  const athleteProfile = await athleteProfileRepository.findByUserId(
+    request.user.sub,
+  )
+
+  if (!athleteProfile) {
+    return reply.status(400).send({
+      message:
+        'Athlete profile not found. Please create your athlete profile first.',
+    })
+  }
+
   const addPlayToMatchUseCase = new AddPlayToMatchUseCase(
     playRepository,
     matchRepository,
-    athleteProfileRepository,
   )
 
   const play = await addPlayToMatchUseCase.execute({
     matchId: id,
-    userId: request.user.sub,
+    athleteProfileId: athleteProfile.id,
     playType,
     videoUrl: videoUrl || null,
     photoUrl: photoUrl || null,
