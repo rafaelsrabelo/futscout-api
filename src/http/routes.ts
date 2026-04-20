@@ -10,7 +10,10 @@ import { listAthleteMatchesAdmin } from './controllers/admin/list-athlete-matche
 import { listAthletePlaysAdmin } from './controllers/admin/list-athlete-plays.js'
 import { listAthleteTeamHistoryAdmin } from './controllers/admin/list-athlete-team-history.js'
 import { listAthletesAdmin } from './controllers/admin/list-athletes.js'
+import { linkMatchAthleteAdmin } from './controllers/admin/link-match-athlete.js'
+import { listMatchPlaysAdmin } from './controllers/admin/list-match-plays.js'
 import { listMatchesAdmin } from './controllers/admin/list-matches.js'
+import { updateMatchResultAdmin } from './controllers/admin/update-match-result.js'
 import { updatePlayVideoUrlAdmin } from './controllers/admin/update-play-video-url.js'
 import { verifyAdminSession } from './controllers/admin/verify-admin-session.js'
 import { authenticate } from './controllers/authenticate.js'
@@ -314,6 +317,21 @@ export async function appRoutes(app: FastifyInstance) {
     '/admin/matches/:id',
     { onRequest: [verifyJwt, verifyAdmin] },
     getMatchAdmin,
+  )
+  app.get(
+    '/admin/matches/:id/plays',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    listMatchPlaysAdmin,
+  )
+  app.patch(
+    '/admin/matches/:id/result',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    updateMatchResultAdmin,
+  )
+  app.post(
+    '/admin/matches/:id/link-athlete',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    linkMatchAthleteAdmin,
   )
   app.post(
     '/admin/matches/:matchId/plays',

@@ -51,7 +51,39 @@ export class InMemoryMatchRepository implements MatchRepository {
   }
 
   async update(id: string, data: Prisma.MatchUpdateInput): Promise<Match> {
-    throw new Error('InMemoryMatchRepository.update: not implemented')
+    const match = this.items.find((m) => m.id === id)
+    if (!match) throw new Error('Match not found')
+
+    const applyScalar = <K extends keyof Match>(
+      key: K,
+      value: unknown,
+    ): void => {
+      if (value === undefined) return
+      if (value === null) {
+        ;(match as Match)[key] = null as Match[K]
+        return
+      }
+      if (typeof value === 'object' && 'set' in (value as object)) {
+        ;(match as Match)[key] = (value as { set: Match[K] }).set
+        return
+      }
+      ;(match as Match)[key] = value as Match[K]
+    }
+
+    applyScalar('myTeamScore', data.myTeamScore)
+    applyScalar('adversaryScore', data.adversaryScore)
+    applyScalar('result', data.result)
+    applyScalar('status', data.status)
+
+    // Handle athlete: { connect: { id } } nested shape
+    const athleteData = (data as { athlete?: { connect?: { id?: string } } })
+      .athlete
+    if (athleteData?.connect?.id) {
+      match.athleteId = athleteData.connect.id
+    }
+
+    match.updatedAt = new Date()
+    return match
   }
 
   async delete(id: string): Promise<void> {

@@ -222,17 +222,20 @@
 
 ---
 
-- [ ] **BE-10** | `M` | `GET /api/admin/matches` — busca global de partidas
+- [x] **BE-10** | `M` | `GET /api/admin/matches` — busca global de partidas
 
   **Descrição:**
-  Lista paginada que atravessa todos os atletas. Admin busca partidas filtrando por nome do jogador (`q` → ILIKE em `athleteProfile.name/nickname`), posição (`position`), filtros avançados (date range, competition, result, status, idade do atleta). É o endpoint por trás da "busca de partida" no painel.
+  Lista paginada que atravessa todos os atletas. Admin busca partidas filtrando por nome do jogador (`q` → ILIKE em `athleteProfile.nickname` e `user.name`/`user.email`), posição (`primaryPosition`), filtros avançados (date range, competition, result, status, idade do atleta). É o endpoint por trás da "busca de partida" no painel.
+
+  **Nota:** `slug` não existe no schema atual — o payload usa `nickname` + `profilePhoto` + `primaryPosition` como contexto do atleta em cada item.
 
   **Acceptance Criteria:**
-  - [ ] Rota `GET '/admin/matches'` com guard admin
-  - [ ] Query params: `page`, `pageSize`, `q`, `athleteId`, `position`, `minAge`, `maxAge`, `competitionId`, `status`, `result`, `from`, `to`
-  - [ ] Resposta `{ items, page, pageSize, total, hasMore }`
-  - [ ] Cada item inclui o atleta dono (`athleteProfile: { id, name, slug, photoUrl, position }`) para o frontend poder identificar de relance
-  - [ ] Ordenação default: `date desc`, secundária por `createdAt desc`
+  - [x] Rota `GET '/admin/matches'` com guard admin
+  - [x] Query params: `page`, `pageSize`, `q`, `athleteId`, `primaryPosition`, `minAge`, `maxAge`, `competitionId`, `status`, `result`, `from`, `to`
+  - [x] Resposta `{ items, page, pageSize, total, hasMore }`
+  - [x] Cada item inclui o atleta dono: `athleteProfile: { id, name, nickname, profilePhoto, primaryPosition }`
+  - [x] Ordenação default: `date desc`, secundária por `createdAt desc`
+  - [x] Spec com 5 testes (empty, q filter, position filter, athlete context, paginação) — todos verdes
 
   **Files:**
   - `src/http/controllers/admin/list-matches.ts` *(novo)*
@@ -247,15 +250,16 @@
 
 ---
 
-- [ ] **BE-11** | `S` | `GET /api/admin/matches/:id` — detalhe da partida
+- [x] **BE-11** | `S` | `GET /api/admin/matches/:id` — detalhe da partida
 
   **Descrição:**
   Retorna a partida completa sem o filtro de ownership (admin vê qualquer partida). Inclui atleta dono, time próprio, competição, placar, status, resultado, duração, observações.
 
   **Acceptance Criteria:**
-  - [ ] Rota `GET '/admin/matches/:id'` com guard admin
-  - [ ] Resposta inclui: match completo + `athleteProfile` resumido + `myTeam` + `competition` (quando existir) + contador de lances
-  - [ ] `404` quando não existe
+  - [x] Rota `GET '/admin/matches/:id'` com guard admin
+  - [x] Resposta inclui: match completo + `athleteProfile` resumido + `myTeam` + `competition` (quando existir) + `playsCount`
+  - [x] `404` quando não existe
+  - [x] Spec com 2 testes (404 + detalhe completo) — todos verdes
 
   **Files:**
   - `src/http/controllers/admin/get-match.ts` *(novo)*
@@ -266,15 +270,17 @@
 
 ---
 
-- [ ] **BE-12** | `S` | `GET /api/admin/matches/:id/plays` — lances da partida
+- [x] **BE-12** | `S` | `GET /api/admin/matches/:id/plays` — lances da partida
 
   **Descrição:**
-  Lista todos os lances de uma partida, ordenados por minuto ascendente (ou `createdAt` quando `minute` é `null`). Útil para a tela "ver lance da partida" do admin.
+  Lista todos os lances de uma partida. Schema não tem `minute`, então ordenação é por `createdAt asc`.
 
   **Acceptance Criteria:**
-  - [ ] Rota `GET '/admin/matches/:id/plays'` com guard admin
-  - [ ] Retorna array de plays com: `id`, `type`, `minute`, `description`, `videoUrl`, `thumbnailUrl`, `createdAt`
-  - [ ] Ordenação: `minute asc nulls last`, depois `createdAt asc`
+  - [x] Rota `GET '/admin/matches/:id/plays'` com guard admin
+  - [x] `404` se match não existe
+  - [x] Retorna array de plays com: `id`, `playType`, `videoUrl`, `thumbnailUrl`, `photoUrl`, `rating`, `observations`, `classifications`, `createdAt`
+  - [x] Ordenação: `createdAt asc`
+  - [x] Spec com 3 testes (404, empty, filtragem por matchId) — todos verdes
 
   **Files:**
   - `src/http/controllers/admin/list-match-plays.ts` *(novo)*
@@ -309,17 +315,18 @@
 
 ---
 
-- [ ] **BE-14** | `S` | `PATCH /api/admin/matches/:id/result` — admin edita resultado/placar
+- [x] **BE-14** | `S` | `PATCH /api/admin/matches/:id/result` — admin edita resultado/placar
 
   **Descrição:**
   Endpoint focado em corrigir placar e resultado de uma partida existente. Recalcula `result` automaticamente a partir de `myTeamScore` vs `adversaryScore` quando não fornecido explicitamente. Admin também pode forçar `status = 'FINISHED'` via este endpoint.
 
   **Acceptance Criteria:**
-  - [ ] Rota `PATCH '/admin/matches/:id/result'` com guard admin
-  - [ ] Body Zod: `myTeamScore?` (int ≥ 0), `adversaryScore?` (int ≥ 0), `result?` (enum `MatchResult`), `status?` (enum `MatchStatus`)
-  - [ ] Se `result` não for enviado e ambos os scores existem, calcula automaticamente
-  - [ ] `404` se a partida não existe
-  - [ ] Não exige ownership — admin pode editar qualquer partida
+  - [x] Rota `PATCH '/admin/matches/:id/result'` com guard admin
+  - [x] Body Zod: `myTeamScore?` (int ≥ 0), `adversaryScore?` (int ≥ 0), `result?` (enum `MatchResult`), `status?` (enum `MatchStatus`)
+  - [x] Se `result` não for enviado e ambos os scores existem, calcula automaticamente (WIN/LOSS/DRAW)
+  - [x] `404` se a partida não existe
+  - [x] Não exige ownership — admin pode editar qualquer partida
+  - [x] Spec com 4 testes (404, derive win/loss/draw, explicit result, force status) — todos verdes
 
   **Files:**
   - `src/http/controllers/admin/update-match-result.ts` *(novo)*
@@ -331,16 +338,17 @@
 
 ---
 
-- [ ] **BE-15** | `S` | `POST /api/admin/matches/:id/link-athlete` — reatribuir partida a outro atleta
+- [x] **BE-15** | `S` | `POST /api/admin/matches/:id/link-athlete` — reatribuir partida a outro atleta
 
   **Descrição:**
-  Corrige vínculo errado: partida foi criada para o atleta X mas deveria pertencer ao atleta Y. Atualiza `match.athleteProfileId` atomicamente.
+  Corrige vínculo errado: partida foi criada para o atleta X mas deveria pertencer ao atleta Y. Atualiza `match.athleteId` atomicamente via `athlete.connect`.
 
   **Acceptance Criteria:**
-  - [ ] Rota `POST '/admin/matches/:id/link-athlete'` com guard admin
-  - [ ] Body: `athleteProfileId` (uuid, obrigatório)
-  - [ ] `404` se a match ou o novo atleta não existem
-  - [ ] Retorna a match atualizada
+  - [x] Rota `POST '/admin/matches/:id/link-athlete'` com guard admin
+  - [x] Body: `athleteProfileId` (uuid, obrigatório)
+  - [x] `404` se a match ou o novo atleta não existem
+  - [x] Retorna a match atualizada
+  - [x] Spec com 3 testes (match 404, athlete 404, reatribuição ok) — todos verdes
 
   **Files:**
   - `src/http/controllers/admin/link-match-athlete.ts` *(novo)*
