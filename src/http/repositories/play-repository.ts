@@ -58,6 +58,7 @@ export interface PlayRepository {
     videoUrl: string,
     thumbnailUrl?: string | null,
   ): Promise<Play>
+  clearVideo(id: string): Promise<Play>
   update(id: string, data: Prisma.PlayUpdateInput): Promise<Play>
   delete(id: string): Promise<void>
 }

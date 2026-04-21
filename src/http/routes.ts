@@ -3,6 +3,7 @@ import { addPlay } from './controllers/add-play.js'
 import { addTeamHistory } from './controllers/add-team-history.js'
 import { addPlayToMatchAdmin } from './controllers/admin/add-play-to-match.js'
 import { createMatchAdmin } from './controllers/admin/create-match.js'
+import { deletePlayAdmin } from './controllers/admin/delete-play.js'
 import { dashboardOverviewAdmin } from './controllers/admin/dashboard-overview.js'
 import { dashboardInactivityBucketsAdmin } from './controllers/admin/dashboard-inactivity-buckets.js'
 import { dashboardUserActivityAdmin } from './controllers/admin/dashboard-user-activity.js'
@@ -18,6 +19,7 @@ import { listAthletesAdmin } from './controllers/admin/list-athletes.js'
 import { linkMatchAthleteAdmin } from './controllers/admin/link-match-athlete.js'
 import { listMatchPlaysAdmin } from './controllers/admin/list-match-plays.js'
 import { listMatchesAdmin } from './controllers/admin/list-matches.js'
+import { removePlayVideoAdmin } from './controllers/admin/remove-play-video.js'
 import { searchAdmin } from './controllers/admin/search.js'
 import { updateMatchResultAdmin } from './controllers/admin/update-match-result.js'
 import { updatePlayVideoUrlAdmin } from './controllers/admin/update-play-video-url.js'
@@ -383,6 +385,16 @@ export async function appRoutes(app: FastifyInstance) {
     '/admin/plays/:id/video-url',
     { onRequest: [verifyJwt, verifyAdmin] },
     updatePlayVideoUrlAdmin,
+  )
+  app.delete(
+    '/admin/plays/:id/video-url',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    removePlayVideoAdmin,
+  )
+  app.delete(
+    '/admin/plays/:id',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    deletePlayAdmin,
   )
 
   // Billing routes

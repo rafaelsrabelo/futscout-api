@@ -153,6 +153,17 @@ export class InMemoryPlayRepository implements PlayRepository {
     return play
   }
 
+  async clearVideo(id: string): Promise<Play> {
+    const play = this.items.find((p) => p.id === id)
+    if (!play) {
+      throw new Error('Play not found')
+    }
+    play.videoUrl = null
+    play.thumbnailUrl = null
+    play.updatedAt = new Date()
+    return play
+  }
+
   async delete(id: string): Promise<void> {
     this.items = this.items.filter((p) => p.id !== id)
   }

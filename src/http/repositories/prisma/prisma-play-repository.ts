@@ -116,6 +116,16 @@ export class PrismaPlayRepository implements PlayRepository {
     })
   }
 
+  async clearVideo(id: string): Promise<Play> {
+    return prisma.play.update({
+      where: { id },
+      data: {
+        videoUrl: null,
+        thumbnailUrl: null,
+      },
+    })
+  }
+
   async delete(id: string): Promise<void> {
     await prisma.play.delete({
       where: { id },
