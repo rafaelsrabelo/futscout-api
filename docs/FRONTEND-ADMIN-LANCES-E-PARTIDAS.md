@@ -9,6 +9,21 @@ Todos os endpoints abaixo exigem `Authorization: Bearer <accessToken>` com `role
 
 ---
 
+## ⚠️ Breaking change (2026-04-20) — envelopes removidos
+
+Os 6 endpoints abaixo **deixaram de envelopar** a resposta em `{ match: ... }` / `{ play: ... }` e passam a devolver o objeto direto, alinhando com `GET /admin/athletes/:id` e todo o restante do admin:
+
+- `GET /api/admin/matches/:id`
+- `POST /api/admin/matches` (admin)
+- `PATCH /api/admin/matches/:id/result`
+- `POST /api/admin/matches/:id/link-athlete`
+- `POST /api/admin/matches/:matchId/plays`
+- `PUT /api/admin/plays/:id/video-url`
+
+Frontend precisa remover qualquer `response.match` / `response.play` nesses 6 fetches — ler direto o corpo da resposta.
+
+---
+
 ## 📍 Mapa rápido de endpoints
 
 ### Lista e detalhe do atleta
@@ -157,7 +172,7 @@ Content-Type: application/json
 **Resposta (201):**
 
 ```json
-{ "play": { "id": "uuid-play", "playType": "GOAL", "videoUrl": "...", "classifications": [...] } }
+{ "id": "uuid-play", "playType": "GOAL", "videoUrl": "...", "classifications": [...] }
 ```
 
 **Comportamento:**
@@ -225,7 +240,7 @@ Content-Type: application/json
 **Resposta (200):**
 
 ```json
-{ "play": { "id": "uuid-play", "videoUrl": "...", "thumbnailUrl": null, "updatedAt": "..." } }
+{ "id": "uuid-play", "videoUrl": "...", "thumbnailUrl": null, "updatedAt": "..." }
 ```
 
 **Comportamento:**
@@ -299,7 +314,7 @@ GET /api/admin/matches?q=ronaldo&primaryPosition=FORWARD&status=FINISHED
 GET /api/admin/matches/:id
 ```
 
-**Resposta (200):** match completo + `athleteProfile` + `myTeam` + `competition` + `playsCount`.
+**Resposta (200):** objeto `Match` direto (sem envelope), com `athleteProfile`, `myTeam`, `competition` e `playsCount` no nível raiz.
 
 ### Passo 3 — Ver lances daquela partida
 

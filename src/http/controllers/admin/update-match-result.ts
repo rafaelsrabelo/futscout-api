@@ -30,7 +30,7 @@ export async function updateMatchResultAdmin(
 
   try {
     const match = await useCase.execute({ matchId: id, ...body })
-    return reply.status(200).send({ match })
+    return reply.status(200).send(match)
   } catch (error) {
     if (error instanceof MatchNotFoundError) {
       return reply.status(404).send({ message: 'Partida não encontrada.' })

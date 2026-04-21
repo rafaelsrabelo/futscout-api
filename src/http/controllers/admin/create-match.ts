@@ -95,7 +95,7 @@ export async function createMatchAdmin(
       performanceRating: body.performanceRating ?? null,
     })
 
-    return reply.status(201).send({ match })
+    return reply.status(201).send(match)
   } catch (error) {
     if (error instanceof AthleteProfileNotFoundError) {
       return reply.status(404).send({ message: 'Atleta não encontrado.' })

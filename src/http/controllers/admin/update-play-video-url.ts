@@ -45,7 +45,7 @@ export async function updatePlayVideoUrlAdmin(
       }, 0)
     }
 
-    return reply.status(200).send({ play })
+    return reply.status(200).send(play)
   } catch (error) {
     if (error instanceof PlayNotFoundError) {
       return reply.status(404).send({ message: error.message })

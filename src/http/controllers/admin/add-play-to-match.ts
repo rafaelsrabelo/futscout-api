@@ -109,5 +109,5 @@ export async function addPlayToMatchAdmin(
     }, 0)
   }
 
-  return reply.status(201).send({ play })
+  return reply.status(201).send(play)
 }
