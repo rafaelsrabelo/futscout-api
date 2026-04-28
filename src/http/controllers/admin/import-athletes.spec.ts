@@ -115,15 +115,20 @@ describe('parseCsv', () => {
 describe('parseBirthDate', () => {
   it('parses ISO date string', () => {
     // Date-only ISO string é interpretado como UTC midnight — usar getUTC* para evitar desvio de timezone
-    const d = parseBirthDate('2005-03-15')
+    const d = parseBirthDate('2005-03-15')!
     expect(d.getUTCFullYear()).toBe(2005)
     expect(d.getUTCMonth()).toBe(2) // 0-indexed
     expect(d.getUTCDate()).toBe(15)
   })
 
   it('parses datetime string from Excel export', () => {
-    const d = parseBirthDate('2005-03-15 00:00:00')
+    const d = parseBirthDate('2005-03-15 00:00:00')!
     expect(d.getFullYear()).toBe(2005)
+  })
+
+  it('returns null for empty string', () => {
+    expect(parseBirthDate('')).toBeNull()
+    expect(parseBirthDate('   ')).toBeNull()
   })
 
   it('throws on invalid date', () => {
@@ -144,6 +149,11 @@ describe('parseDecimal', () => {
     expect(parseDecimal(' 72.5 ')).toBe(72.5)
   })
 
+  it('returns null for empty string', () => {
+    expect(parseDecimal('')).toBeNull()
+    expect(parseDecimal('   ')).toBeNull()
+  })
+
   it('throws on non-numeric value', () => {
     expect(() => parseDecimal('abc')).toThrow('Número inválido')
   })
@@ -160,7 +170,7 @@ describe('mapGender', () => {
     ['F', 'FEMALE'],
     ['f', 'FEMALE'],
     ['Outro', 'OTHER'],
-    ['', 'OTHER'],
+    ['', null],
   ])('"%s" → %s', (input, expected) => {
     expect(mapGender(input)).toBe(expected)
   })
@@ -174,6 +184,7 @@ describe('mapDominantFoot', () => {
     ['Direito', 'RIGHT'],
     ['direito', 'RIGHT'],
     ['D', 'RIGHT'],
+    ['', null],
   ])('"%s" → %s', (input, expected) => {
     expect(mapDominantFoot(input)).toBe(expected)
   })
@@ -192,7 +203,7 @@ describe('mapPosition', () => {
     ['forward', 'FORWARD'],
     ['Meia', 'MIDFIELDER'],
     ['volante', 'MIDFIELDER'],
-    ['', 'MIDFIELDER'],
+    ['', null],
   ])('"%s" → %s', (input, expected) => {
     expect(mapPosition(input)).toBe(expected)
   })

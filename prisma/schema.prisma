@@ -223,20 +223,20 @@ model AthleteProfile {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   cpf          String   @unique
-  gender       Gender
+  gender       Gender?
   nickname     String?  @unique
   profilePhoto String?
-  birthDate    DateTime
+  birthDate    DateTime?
 
   instagramUrl String?
   twitterUrl   String?
   youtubeUrl   String?
 
-  height       Float
-  weight       Float
-  dominantFoot DominantFoot
+  height       Float?
+  weight       Float?
+  dominantFoot DominantFoot?
 
-  primaryPosition   Position
+  primaryPosition   Position?
   secondaryPosition Position?
   currentClub       String?
   biography         String?

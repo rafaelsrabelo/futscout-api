@@ -111,31 +111,36 @@ function normalizeCep(raw: string): string {
   return raw.replace(/\D/g, '').padStart(8, '0')
 }
 
-export function parseBirthDate(raw: string): Date {
+export function parseBirthDate(raw: string): Date | null {
+  if (!raw.trim()) return null
   const iso = raw.includes(' ') ? raw.replace(' ', 'T') : raw
   const date = new Date(iso)
   if (isNaN(date.getTime())) throw new Error(`Data inválida: ${raw}`)
   return date
 }
 
-export function parseDecimal(raw: string): number {
+export function parseDecimal(raw: string): number | null {
+  if (!raw.trim()) return null
   const value = parseFloat(raw.replace(',', '.').trim())
   if (isNaN(value)) throw new Error(`Número inválido: ${raw}`)
   return value
 }
 
-export function mapGender(raw: string): 'MALE' | 'FEMALE' | 'OTHER' {
+export function mapGender(raw: string): 'MALE' | 'FEMALE' | 'OTHER' | null {
+  if (!raw.trim()) return null
   const v = raw.toLowerCase().trim()
   if (v.startsWith('masc') || v === 'm') return 'MALE'
   if (v.startsWith('fem') || v === 'f') return 'FEMALE'
   return 'OTHER'
 }
 
-export function mapDominantFoot(raw: string): 'RIGHT' | 'LEFT' {
+export function mapDominantFoot(raw: string): 'RIGHT' | 'LEFT' | null {
+  if (!raw.trim()) return null
   return raw.toLowerCase().trim().startsWith('esq') ? 'LEFT' : 'RIGHT'
 }
 
-export function mapPosition(raw: string): 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD' {
+export function mapPosition(raw: string): 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD' | null {
+  if (!raw.trim()) return null
   const v = raw.toLowerCase().trim()
   if (v.includes('goleiro') || v.includes('goalkeeper')) return 'GOALKEEPER'
   if (v.includes('zagu') || v.includes('lateral') || v.includes('defensor') || v.includes('defender'))
@@ -228,8 +233,9 @@ async function importAthlete(row: Row) {
     return { action: 'updated' as const }
   }
 
-  const cep = normalizeCep(row.cep)
-  const endereco = await lookupCep(cep)
+  const hasCep = row.cep.trim().length > 0
+  const cep = hasCep ? normalizeCep(row.cep) : null
+  const endereco = cep ? await lookupCep(cep) : null
 
   const passwordHash = await bcrypt.hash(cpf, 10)
 
@@ -266,17 +272,19 @@ async function importAthlete(row: Row) {
       },
     })
 
-    await tx.address.create({
-      data: {
-        athleteId: athlete.id,
-        zipCode: cep,
-        street: endereco.logradouro ?? 'Não informado',
-        number: row.numero || 'S/N',
-        district: endereco.bairro ?? 'Não informado',
-        city: endereco.localidade ?? 'Não informado',
-        state: endereco.uf ?? 'CE',
-      },
-    })
+    if (cep && endereco) {
+      await tx.address.create({
+        data: {
+          athleteId: athlete.id,
+          zipCode: cep,
+          street: endereco.logradouro ?? 'Não informado',
+          number: row.numero || 'S/N',
+          district: endereco.bairro ?? 'Não informado',
+          city: endereco.localidade ?? 'Não informado',
+          state: endereco.uf ?? 'CE',
+        },
+      })
+    }
 
     if (row.equipe) {
       const team = await tx.team.create({
