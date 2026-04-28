@@ -604,3 +604,15 @@ enum AchievementType {
   COLLECTIVE // Título coletivo (ex: campeonato com time)
   INDIVIDUAL // Título individual (ex: melhor jogador, artilheiro)
 }
+
+model ImportLog {
+  id         String   @id @default(uuid())
+  total      Int
+  created    Int
+  updated    Int
+  errorCount Int
+  errors     Json     // array de { row, nome, cpf, error }
+  createdAt  DateTime @default(now())
+
+  @@map("import_logs")
+}

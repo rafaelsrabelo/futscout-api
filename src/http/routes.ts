@@ -11,6 +11,7 @@ import { dashboardUserGrowthAdmin } from './controllers/admin/dashboard-user-gro
 import { generateVideoUploadUrlAdmin } from './controllers/admin/generate-video-upload-url.js'
 import { getAthleteAdmin } from './controllers/admin/get-athlete.js'
 import { importAthletesAdmin } from './controllers/admin/import-athletes.js'
+import { listImportLogsAdmin } from './controllers/admin/list-import-logs.js'
 import { getMatchAdmin } from './controllers/admin/get-match.js'
 import { listAthleteAchievementsAdmin } from './controllers/admin/list-athlete-achievements.js'
 import { listAthleteMatchesAdmin } from './controllers/admin/list-athlete-matches.js'
@@ -321,6 +322,11 @@ export async function appRoutes(app: FastifyInstance) {
     '/admin/athletes/import',
     { onRequest: [verifyJwt, verifyAdmin], config: { timeout: 300_000 } },
     importAthletesAdmin,
+  )
+  app.get(
+    '/admin/athletes/import/logs',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    listImportLogsAdmin,
   )
   app.get(
     '/admin/athletes/:id',

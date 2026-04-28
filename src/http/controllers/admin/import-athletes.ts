@@ -379,5 +379,9 @@ export async function importAthletesAdmin(request: FastifyRequest, reply: Fastif
     })
   }
 
+  await prisma.importLog.create({
+    data: { total: rows.length, created, updated, errorCount: errors.length, errors },
+  })
+
   return reply.status(200).send({ created, updated, errors, total: rows.length })
 }
