@@ -14,6 +14,8 @@ export async function editAthleteProfile(
     name: z.string().min(2).max(100).optional(), // Nome do usuário
     nickname: z.string().min(2).max(50).optional(),
     profilePhoto: z.string().url().optional(),
+    // Gênero é editável — atletas importados começam com gender=null
+    gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
     birthDate: z.string().datetime().optional(), // Data de nascimento editável
     instagramUrl: z.string().url().optional(),
     twitterUrl: z.string().url().optional(),

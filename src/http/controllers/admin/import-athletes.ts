@@ -278,7 +278,8 @@ async function importAthlete(row: Row) {
         password: passwordHash,
         role: 'ATHLETE',
         isActive: true,
-        isProfile: true,
+        // Perfil esqueleto criado pelo import — atleta precisa completar no primeiro acesso
+        isProfile: false,
         emailVerified: false,
       },
     })

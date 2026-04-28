@@ -11,6 +11,7 @@ interface EditAthleteProfileUseCaseRequest {
   name?: string | undefined // Nome do usuário
   nickname?: string | undefined
   profilePhoto?: string | undefined
+  gender?: 'MALE' | 'FEMALE' | 'OTHER' | undefined
   birthDate?: string | undefined // Data de nascimento editável
   instagramUrl?: string | undefined
   twitterUrl?: string | undefined
@@ -31,7 +32,7 @@ interface EditAthleteProfileUseCaseRequest {
     | 'FORWARD'
     | null
     | undefined
-  currentClub?: string | undefined
+  currentClub?: string | null | undefined
   biography?: string | undefined
   hasManager?: boolean | undefined
   managerName?: string | null | undefined
@@ -188,11 +189,26 @@ export class EditAthleteProfileUseCase {
 
     // Return updated profile with address included
     const updatedProfile = await this.athleteProfileRepository.findByUserId(userId)
-    
+
     if (!updatedProfile) {
       throw new Error('Athlete profile not found after update')
     }
-    
+
+    // Promove User.isProfile = true quando o perfil tem todos os campos obrigatórios
+    // preenchidos. Atletas importados nascem com isProfile=false e perfil esqueleto;
+    // ao completarem aqui, viram "perfil pronto" e saem do redirect de obrigatoriedade.
+    const isComplete =
+      updatedProfile.birthDate !== null &&
+      updatedProfile.gender !== null &&
+      updatedProfile.primaryPosition !== null &&
+      updatedProfile.height !== null &&
+      updatedProfile.weight !== null &&
+      updatedProfile.dominantFoot !== null
+
+    if (isComplete) {
+      await this.usersRepository.updateProfile(userId, true)
+    }
+
     return {
       athleteProfile: updatedProfile,
     }
