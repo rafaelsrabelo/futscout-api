@@ -110,7 +110,22 @@ export class CreateAthleteProfileUseCase {
       data.userId,
     )
     if (existingProfile) {
-      throw new Error('User already has an athlete profile')
+      // Atletas importados nascem com perfil esqueleto (cpf+nickname only).
+      // Se algum dos 6 campos obrigatórios está null, é esqueleto — completa via
+      // update em vez de erro. Se já está completo, é tentativa de duplicar.
+      const isSkeleton =
+        existingProfile.birthDate === null ||
+        existingProfile.gender === null ||
+        existingProfile.primaryPosition === null ||
+        existingProfile.height === null ||
+        existingProfile.weight === null ||
+        existingProfile.dominantFoot === null
+
+      if (!isSkeleton) {
+        throw new Error('User already has an athlete profile')
+      }
+
+      return this.completeSkeletonProfile(data, existingProfile.id)
     }
 
     // Verificar se o CPF já existe
@@ -254,6 +269,117 @@ export class CreateAthleteProfileUseCase {
         }
       }
       throw error
+    }
+  }
+
+  // Completa um perfil esqueleto (atleta importado pela planilha admin).
+  // O perfil já existe — atualiza com os dados que o atleta preencheu no wizard.
+  // Não toca em cpf nem cria duplicação de CPF (perfil é o mesmo).
+  private async completeSkeletonProfile(
+    data: CreateAthleteProfileUseCaseRequest,
+    profileId: string,
+  ): Promise<CreateAthleteProfileUseCaseResponse> {
+    if (data.nickname) {
+      const existingNickname =
+        await this.athleteProfileRepository.findByNickname(data.nickname)
+      if (existingNickname && existingNickname.id !== profileId) {
+        throw new Error('Nickname already exists')
+      }
+    }
+
+    let team = null
+    let currentClub: string | null | undefined = data.currentClub
+    if (data.team && this.teamRepository) {
+      if (data.team.isPrincipal) {
+        await this.teamRepository.unsetPrincipalTeams(data.userId)
+      }
+      team = await this.teamRepository.create({
+        name: data.team.name,
+        acronym: data.team.acronym || null,
+        shieldPhoto: data.team.shieldPhoto || null,
+        isPrincipal: data.team.isPrincipal,
+        userId: data.userId,
+      })
+      if (data.team.isPrincipal) {
+        currentClub = team.name
+      }
+    }
+
+    const athleteProfile = await this.athleteProfileRepository.update(
+      data.userId,
+      {
+        gender: data.gender,
+        nickname: data.nickname ?? undefined,
+        profilePhoto: data.profilePhoto ?? undefined,
+        birthDate: data.birthDate,
+        instagramUrl: data.instagramUrl ?? undefined,
+        twitterUrl: data.twitterUrl ?? undefined,
+        youtubeUrl: data.youtubeUrl ?? undefined,
+        height: data.height,
+        weight: data.weight,
+        dominantFoot: data.dominantFoot,
+        primaryPosition: data.primaryPosition,
+        secondaryPosition: data.secondaryPosition ?? null,
+        currentClub: currentClub ?? null,
+        biography: data.biography ?? undefined,
+        hasManager: data.hasManager ?? false,
+        managerName: data.managerName ?? null,
+        managerCompany: data.managerCompany ?? null,
+        managerContact: data.managerContact ?? null,
+        hasNutritionist: data.hasNutritionist ?? false,
+        hasPsychologist: data.hasPsychologist ?? false,
+        hasPersonalTrainer: data.hasPersonalTrainer ?? false,
+      },
+    )
+
+    if (
+      data.zipCode &&
+      data.street &&
+      data.number &&
+      data.district &&
+      data.city &&
+      data.state &&
+      data.country
+    ) {
+      const existingAddress = await this.addressRepository.findByAthleteId(profileId)
+      const addressPayload = {
+        zipCode: data.zipCode,
+        street: data.street,
+        number: data.number,
+        district: data.district,
+        city: data.city,
+        state: data.state,
+        country: data.country,
+        ...(data.complement !== undefined ? { complement: data.complement } : {}),
+      }
+      if (existingAddress) {
+        await this.addressRepository.update(profileId, addressPayload)
+      } else {
+        await this.addressRepository.create({
+          athleteId: profileId,
+          ...addressPayload,
+        })
+      }
+    }
+
+    await this.usersRepository.updateProfile(data.userId, true)
+    await this.usersRepository.update(data.userId, { name: data.name })
+
+    return {
+      athleteProfile: {
+        id: athleteProfile.id,
+        userId: athleteProfile.userId,
+        cpf: athleteProfile.cpf,
+        gender: athleteProfile.gender,
+        nickname: athleteProfile.nickname,
+        height: athleteProfile.height,
+        weight: athleteProfile.weight,
+        dominantFoot: athleteProfile.dominantFoot,
+        primaryPosition: athleteProfile.primaryPosition,
+        currentClub: athleteProfile.currentClub,
+        createdAt: athleteProfile.createdAt,
+      },
+      team,
     }
   }
 }

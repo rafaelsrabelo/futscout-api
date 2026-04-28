@@ -11,6 +11,7 @@ export type CreateAthleteProfileData = Omit<
 export type UpdateAthleteProfileData = {
   nickname?: string
   profilePhoto?: string
+  gender?: 'MALE' | 'FEMALE' | 'OTHER'
   birthDate?: string // Data de nascimento editável
   instagramUrl?: string
   twitterUrl?: string
