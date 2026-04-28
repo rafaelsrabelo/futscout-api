@@ -227,9 +227,26 @@ async function prefetchCeps(rows: Row[], concurrency = 20): Promise<void> {
   }
 }
 
+function friendlyPrismaError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err)
+  if (msg.includes('Null constraint violation')) {
+    const match = msg.match(/\(`([^`]+)`\)/)
+    const field = match?.[1] ?? 'campo desconhecido'
+    return `Campo obrigatório ausente: ${field} (migração pendente no banco)`
+  }
+  if (msg.includes('Unique constraint') || msg.includes('P2002')) {
+    if (msg.includes('email')) return 'E-mail já cadastrado'
+    if (msg.includes('cpf')) return 'CPF já cadastrado'
+    if (msg.includes('nickname')) return 'Nickname já em uso'
+    return 'Registro duplicado'
+  }
+  if (msg.includes('P2003')) return 'Referência inválida (registro relacionado não encontrado)'
+  return msg.split('\n').filter(Boolean)[0] ?? msg
+}
+
 async function importAthlete(row: Row) {
   const cpf = normalizeCpf(row.cpf)
-  if (!isValidCpf(cpf)) throw new Error(`CPF inválido: ${row.cpf}`)
+  if (!isValidCpf(cpf)) throw new Error(`CPF inválido: ${cpf}`)
 
   const currentClub = row.equipe || null
 
@@ -352,8 +369,12 @@ export async function importAthletesAdmin(request: FastifyRequest, reply: Fastif
       if (result.status === 'fulfilled') {
         result.value.action === 'updated' ? updated++ : created++
       } else {
-        const message = result.reason instanceof Error ? result.reason.message : String(result.reason)
-        errors.push({ row: i + j + 2, nome: row.nome, cpf: row.cpf, error: message })
+        errors.push({
+          row: i + j + 2,
+          nome: row.nome,
+          cpf: normalizeCpf(row.cpf),
+          error: friendlyPrismaError(result.reason),
+        })
       }
     })
   }
