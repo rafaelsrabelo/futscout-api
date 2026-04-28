@@ -136,24 +136,18 @@ Considere:
       throw new Error('No response from OpenAI')
     }
 
-    console.log('OpenAI raw response:', response)
-
     // Tentar extrair JSON da resposta
     let jsonResponse
     try {
       // Primeiro tentar parsear diretamente
       jsonResponse = JSON.parse(response.trim())
     } catch (parseError) {
-      console.log('Direct parse failed, trying regex extraction...')
       // Se falhar, tentar extrair JSON usando regex mais robusta
       const jsonMatch = response.match(/\{[\s\S]*?\}(?=\s*$|$)/s)
       if (jsonMatch) {
         try {
           jsonResponse = JSON.parse(jsonMatch[0])
         } catch (regexError) {
-          console.error('Failed to parse JSON from regex match:', regexError)
-          console.error('Regex match result:', jsonMatch[0])
-
           // Fallback: criar resposta básica
           return {
             performanceNote:
@@ -164,8 +158,6 @@ Considere:
           }
         }
       } else {
-        console.error('No JSON found in response:', response)
-
         // Fallback: criar resposta básica
         return {
           performanceNote:
@@ -184,8 +176,6 @@ Considere:
       !jsonResponse.weaknesses ||
       !jsonResponse.recommendations
     ) {
-      console.error('Invalid response structure:', jsonResponse)
-
       // Fallback com dados parciais
       return {
         performanceNote:

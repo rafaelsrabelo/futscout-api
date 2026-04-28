@@ -36,7 +36,6 @@ app.register(import('@fastify/jwt'), {
 
 // Root health check for Render - deve vir ANTES do registro das rotas
 app.get('/', async (request, reply) => {
-  console.log('🔍 Root route called!')
   return {
     message: 'FutScout API',
     version: '1.0.0',
@@ -45,14 +44,7 @@ app.get('/', async (request, reply) => {
   }
 })
 
-console.log('📝 Registering appRoutes with prefix /api')
 app.register(appRoutes, { prefix: '/api' })
-
-// Log all registered routes after ready
-app.ready(() => {
-  console.log('🎯 Registered routes:')
-  console.log(app.printRoutes())
-})
 
 app.setErrorHandler((error, request, reply) => {
   if (error instanceof ZodError) {

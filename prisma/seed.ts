@@ -175,10 +175,8 @@ function generateFakeAddress() {
 }
 
 async function main() {
-  console.log('🌱 Iniciando seed do banco de dados...')
 
   // Criar times
-  console.log('⚽ Criando times...')
   const teams = []
   for (const teamData of teamsData) {
     const team = await prisma.team.create({
@@ -186,10 +184,8 @@ async function main() {
     })
     teams.push(team)
   }
-  console.log(`✅ ${teams.length} times criados`)
 
   // Criar usuários e perfis
-  console.log('👥 Criando usuários e perfis de atletas...')
   const users = []
 
   const usedNicknames = new Set<string>()
@@ -283,19 +279,11 @@ async function main() {
       }
     }
 
-    console.log(`✅ Usuário ${i + 1}/50 criado: ${fullName}`)
   }
 
-  console.log('🎉 Seed concluído com sucesso!')
-  console.log('📊 Estatísticas:')
-  console.log(`   - ${teams.length} times criados`)
-  console.log(`   - ${users.length} usuários criados`)
-  console.log(`   - ${users.length} perfis de atletas criados`)
-  console.log(`   - ${users.length} endereços criados`)
 
   // Contar relacionamentos atleta-time
   const athleteTeamCount = await prisma.athleteTeam.count()
-  console.log(`   - ${athleteTeamCount} relacionamentos atleta-time criados`)
 }
 
 main()

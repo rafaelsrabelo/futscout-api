@@ -138,25 +138,14 @@ export class VideoThumbnailService {
 
       if (key) {
         try {
-          console.log('📥 Tentando baixar vídeo via API do R2 (key:', key, ')')
           videoStream = await r2Service.downloadVideoStream(key)
-          console.log('✅ Vídeo baixado via API do R2')
         } catch (error) {
-          console.log(
-            '⚠️ Erro ao baixar via API do R2, tentando via URL pública...',
-            error instanceof Error ? error.message : String(error),
-          )
           videoStream = null
         }
       }
 
       // Se falhar via API, tentar via URL pública
       if (!videoStream) {
-        console.log(
-          '📥 Baixando vídeo via URL pública:',
-          videoUrl.substring(0, 80),
-        )
-
         // Timeout de 2 minutos para download
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 120000)
@@ -200,15 +189,12 @@ export class VideoThumbnailService {
       const { pipeline } = await import('node:stream/promises')
       const writeStream = createWriteStream(videoPath)
       await pipeline(videoStream, writeStream)
-      console.log('✅ Vídeo baixado e salvo com sucesso')
 
       // Gerar thumbnail
-      console.log('🖼️ Gerando thumbnail do vídeo...')
       const thumbnail = await this.generateThumbnailFromFile(
         videoPath,
         timeInSeconds,
       )
-      console.log('✅ Thumbnail gerado com sucesso')
 
       return thumbnail
     } catch (error) {
@@ -219,7 +205,6 @@ export class VideoThumbnailService {
       try {
         await access(videoPath, constants.F_OK)
         await unlink(videoPath)
-        console.log('🧹 Vídeo temporário removido')
       } catch (error) {
         // Arquivo não existe ou erro ao deletar - ignorar
       }

@@ -49,18 +49,12 @@ export class VideoCompressionService {
 
       // Vídeos muito pequenos não precisam de compressão
       if (stats.size < minSizeToCompress) {
-        console.log(
-          `ℹ️ Vídeo pequeno (${(stats.size / 1024 / 1024).toFixed(2)}MB), pulando compressão`,
-        )
         await unlink(inputPath).catch(() => {})
         return null
       }
 
       // Vídeos muito grandes podem estourar memória - pular compressão
       if (stats.size > MAX_SIZE_TO_COMPRESS) {
-        console.log(
-          `⚠️ Vídeo muito grande (${(stats.size / 1024 / 1024).toFixed(2)}MB > ${MAX_SIZE_TO_COMPRESS / 1024 / 1024}MB), pulando compressão para evitar estouro de memória`,
-        )
         await unlink(inputPath).catch(() => {})
         return null
       }
@@ -84,9 +78,6 @@ export class VideoCompressionService {
       // Verificar tamanho do arquivo comprimido
       const compressedStats = await stat(outputPath)
       if (compressedStats.size >= stats.size) {
-        console.log(
-          '⚠️ Vídeo comprimido é maior que o original, mantendo original',
-        )
         await unlink(outputPath).catch(() => {})
         // Limpar input também
         await unlink(inputPath).catch(() => {})
@@ -95,10 +86,6 @@ export class VideoCompressionService {
 
       const compressionRatio =
         ((stats.size - compressedStats.size) / stats.size) * 100
-
-      console.log(
-        `✅ Vídeo comprimido: ${(stats.size / 1024 / 1024).toFixed(2)}MB → ${(compressedStats.size / 1024 / 1024).toFixed(2)}MB (${compressionRatio.toFixed(1)}% redução)`,
-      )
 
       // Limpar arquivo de input após compressão bem-sucedida
       await unlink(inputPath).catch(() => {})
@@ -235,7 +222,6 @@ export class VideoCompressionService {
       // Determinar framerate
       const targetFramerate = Math.min(originalFramerate, maxFramerate)
 
-      console.time('compression')
       const startTime = Date.now()
 
       const command = ffmpeg(inputPath)
@@ -266,24 +252,13 @@ export class VideoCompressionService {
           '-x264-params nal-hrd=cbr', // Constant bitrate = menos buffers
         ])
         .output(outputPath)
-        .on('start', () => {
-          console.log('🎬 Iniciando compressão de vídeo...')
-        })
         .on('progress', (progress) => {
-          if (progress.percent) {
-            const percent = Math.round(progress.percent)
-            console.log(
-              `⏳ Compressão: ${percent}% completo (${progress.currentFps || 'N/A'} fps)`,
-            )
-            // Se progresso parar por muito tempo, pode estar travado
-            // Mas não vamos matar aqui, o timeout cuida disso
-          }
+          // Se progresso parar por muito tempo, pode estar travado
+          // Mas não vamos matar aqui, o timeout cuida disso
         })
         .on('end', () => {
           clearTimeout(timeout)
-          console.timeEnd('compression')
           const duration = ((Date.now() - startTime) / 1000).toFixed(2)
-          console.log(`✅ Compressão concluída em ${duration}s`)
           resolve()
         })
         .on('error', (error) => {

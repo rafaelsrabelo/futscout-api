@@ -41,7 +41,6 @@ class EmailService {
         html,
       })
 
-      console.log('Email sent: %s', info.messageId)
       return info
     } catch (error) {
       console.error('Error sending email:', error)

@@ -10,6 +10,7 @@ import { dashboardUserActivityAdmin } from './controllers/admin/dashboard-user-a
 import { dashboardUserGrowthAdmin } from './controllers/admin/dashboard-user-growth.js'
 import { generateVideoUploadUrlAdmin } from './controllers/admin/generate-video-upload-url.js'
 import { getAthleteAdmin } from './controllers/admin/get-athlete.js'
+import { importAthletesAdmin } from './controllers/admin/import-athletes.js'
 import { getMatchAdmin } from './controllers/admin/get-match.js'
 import { listAthleteAchievementsAdmin } from './controllers/admin/list-athlete-achievements.js'
 import { listAthleteMatchesAdmin } from './controllers/admin/list-athlete-matches.js'
@@ -315,6 +316,11 @@ export async function appRoutes(app: FastifyInstance) {
     '/admin/athletes',
     { onRequest: [verifyJwt, verifyAdmin] },
     listAthletesAdmin,
+  )
+  app.post(
+    '/admin/athletes/import',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    importAthletesAdmin,
   )
   app.get(
     '/admin/athletes/:id',
