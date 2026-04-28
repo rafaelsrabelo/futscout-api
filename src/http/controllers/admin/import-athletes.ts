@@ -29,7 +29,7 @@ type ViaCep = {
   erro?: boolean
 }
 
-function parseCsv(text: string): Row[] {
+export function parseCsv(text: string): Row[] {
   const lines: string[][] = []
   let field = ''
   let row: string[] = []
@@ -85,12 +85,12 @@ function parseCsv(text: string): Row[] {
   }))
 }
 
-function normalizeCpf(raw: string): string {
+export function normalizeCpf(raw: string): string {
   // padStart restaura o zero à esquerda perdido pelo Excel ao abrir o CSV
   return raw.replace(/\D/g, '').padStart(11, '0')
 }
 
-function isValidCpf(cpf: string): boolean {
+export function isValidCpf(cpf: string): boolean {
   if (cpf.length !== 11) return false
   if (/^(\d)\1{10}$/.test(cpf)) return false // todos os dígitos iguais
 
@@ -111,31 +111,31 @@ function normalizeCep(raw: string): string {
   return raw.replace(/\D/g, '').padStart(8, '0')
 }
 
-function parseBirthDate(raw: string): Date {
+export function parseBirthDate(raw: string): Date {
   const iso = raw.includes(' ') ? raw.replace(' ', 'T') : raw
   const date = new Date(iso)
   if (isNaN(date.getTime())) throw new Error(`Data inválida: ${raw}`)
   return date
 }
 
-function parseDecimal(raw: string): number {
+export function parseDecimal(raw: string): number {
   const value = parseFloat(raw.replace(',', '.').trim())
   if (isNaN(value)) throw new Error(`Número inválido: ${raw}`)
   return value
 }
 
-function mapGender(raw: string): 'MALE' | 'FEMALE' | 'OTHER' {
+export function mapGender(raw: string): 'MALE' | 'FEMALE' | 'OTHER' {
   const v = raw.toLowerCase().trim()
   if (v.startsWith('masc') || v === 'm') return 'MALE'
   if (v.startsWith('fem') || v === 'f') return 'FEMALE'
   return 'OTHER'
 }
 
-function mapDominantFoot(raw: string): 'RIGHT' | 'LEFT' {
+export function mapDominantFoot(raw: string): 'RIGHT' | 'LEFT' {
   return raw.toLowerCase().trim().startsWith('esq') ? 'LEFT' : 'RIGHT'
 }
 
-function mapPosition(raw: string): 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD' {
+export function mapPosition(raw: string): 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD' {
   const v = raw.toLowerCase().trim()
   if (v.includes('goleiro') || v.includes('goalkeeper')) return 'GOALKEEPER'
   if (v.includes('zagu') || v.includes('lateral') || v.includes('defensor') || v.includes('defender'))
