@@ -12,15 +12,15 @@ export interface AdminAthleteListItem {
   id: string
   nickname: string | null
   profilePhoto: string | null
-  birthDate: Date
-  age: number
-  gender: string
-  primaryPosition: string
+  birthDate: Date | null
+  age: number | null
+  gender: string | null
+  primaryPosition: string | null
   secondaryPosition: string | null
-  dominantFoot: string
+  dominantFoot: string | null
   currentClub: string | null
-  height: number
-  weight: number
+  height: number | null
+  weight: number | null
   hasManager: boolean
   cpf: string
   createdAt: Date
@@ -43,7 +43,8 @@ export interface ListAthletesAdminUseCaseResponse {
   hasMore: boolean
 }
 
-function computeAge(birthDate: Date, referenceDate: Date = new Date()): number {
+function computeAge(birthDate: Date | null, referenceDate: Date = new Date()): number | null {
+  if (!birthDate) return null
   let age = referenceDate.getFullYear() - birthDate.getFullYear()
   const monthDiff = referenceDate.getMonth() - birthDate.getMonth()
   const hasNotHadBirthdayThisYear =
