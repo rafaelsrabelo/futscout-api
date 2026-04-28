@@ -86,7 +86,25 @@ function parseCsv(text: string): Row[] {
 }
 
 function normalizeCpf(raw: string): string {
+  // padStart restaura o zero à esquerda perdido pelo Excel ao abrir o CSV
   return raw.replace(/\D/g, '').padStart(11, '0')
+}
+
+function isValidCpf(cpf: string): boolean {
+  if (cpf.length !== 11) return false
+  if (/^(\d)\1{10}$/.test(cpf)) return false // todos os dígitos iguais
+
+  let sum = 0
+  for (let i = 0; i < 9; i++) sum += parseInt(cpf[i]) * (10 - i)
+  let rem = (sum * 10) % 11
+  if (rem === 10 || rem === 11) rem = 0
+  if (rem !== parseInt(cpf[9])) return false
+
+  sum = 0
+  for (let i = 0; i < 10; i++) sum += parseInt(cpf[i]) * (11 - i)
+  rem = (sum * 10) % 11
+  if (rem === 10 || rem === 11) rem = 0
+  return rem === parseInt(cpf[10])
 }
 
 function normalizeCep(raw: string): string {
@@ -195,7 +213,7 @@ async function lookupCep(cep: string): Promise<ViaCep> {
 
 async function importAthlete(row: Row) {
   const cpf = normalizeCpf(row.cpf)
-  if (cpf.length !== 11) throw new Error(`CPF inválido: ${row.cpf}`)
+  if (!isValidCpf(cpf)) throw new Error(`CPF inválido: ${row.cpf}`)
 
   const currentClub = row.equipe || null
 
