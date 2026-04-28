@@ -216,6 +216,17 @@ async function lookupCep(cep: string): Promise<ViaCep> {
   }
 }
 
+// Busca todos os CEPs únicos de um lote em paralelo (até `concurrency` por vez)
+// para evitar 1731 chamadas HTTP sequenciais que travariam o request.
+async function prefetchCeps(rows: Row[], concurrency = 20): Promise<void> {
+  const unique = [...new Set(rows.map((r) => r.cep.trim()).filter(Boolean).map(normalizeCep))]
+  const uncached = unique.filter((c) => !cepCache.has(c))
+
+  for (let i = 0; i < uncached.length; i += concurrency) {
+    await Promise.all(uncached.slice(i, i + concurrency).map(lookupCep))
+  }
+}
+
 async function importAthlete(row: Row) {
   const cpf = normalizeCpf(row.cpf)
   if (!isValidCpf(cpf)) throw new Error(`CPF inválido: ${row.cpf}`)
@@ -237,7 +248,8 @@ async function importAthlete(row: Row) {
   const cep = hasCep ? normalizeCep(row.cep) : null
   const endereco = cep ? await lookupCep(cep) : null
 
-  const passwordHash = await bcrypt.hash(cpf, 10)
+  // cost 6: senha temporária (= CPF), atleta deve trocar no primeiro acesso
+  const passwordHash = await bcrypt.hash(cpf, 6)
 
   await prisma.$transaction(async (tx) => {
     const nickname = await findAvailableNickname(tx, row.nome, cpf)
@@ -325,23 +337,25 @@ export async function importAthletesAdmin(request: FastifyRequest, reply: Fastif
     return reply.status(400).send({ message: 'CSV sem linhas de dados' })
   }
 
+  await prefetchCeps(rows)
+
   let created = 0
   let updated = 0
   const errors: { row: number; nome: string; cpf: string; error: string }[] = []
 
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i]
-    try {
-      const result = await importAthlete(row)
-      if (result.action === 'updated') {
-        updated++
+  const BATCH = 20
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const batch = rows.slice(i, i + BATCH)
+    const results = await Promise.allSettled(batch.map((row) => importAthlete(row)))
+    results.forEach((result, j) => {
+      const row = batch[j]
+      if (result.status === 'fulfilled') {
+        result.value.action === 'updated' ? updated++ : created++
       } else {
-        created++
+        const message = result.reason instanceof Error ? result.reason.message : String(result.reason)
+        errors.push({ row: i + j + 2, nome: row.nome, cpf: row.cpf, error: message })
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      errors.push({ row: i + 2, nome: row.nome, cpf: row.cpf, error: message })
-    }
+    })
   }
 
   return reply.status(200).send({ created, updated, errors, total: rows.length })

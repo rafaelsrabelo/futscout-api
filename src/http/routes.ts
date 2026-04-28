@@ -319,7 +319,7 @@ export async function appRoutes(app: FastifyInstance) {
   )
   app.post(
     '/admin/athletes/import',
-    { onRequest: [verifyJwt, verifyAdmin] },
+    { onRequest: [verifyJwt, verifyAdmin], config: { timeout: 300_000 } },
     importAthletesAdmin,
   )
   app.get(
