@@ -58,7 +58,7 @@ O CSV deve ter **cabeçalho na primeira linha** (ignorado) e as colunas na ordem
 | Coluna | Exemplo | Observações |
 |--------|---------|-------------|
 | `nome` | `João da Silva` | Nome completo |
-| `cpf` | `123.456.789-09` | Com ou sem máscara |
+| `cpf` | `123.456.789-09` | Com ou sem máscara. Zero à esquerda perdido pelo Excel é restaurado automaticamente. CPF inválido vai para `errors[]` |
 | `nascimento` | `2005-03-15` ou `2005-03-15 00:00:00` | ISO 8601 |
 | `categoria` | `Sub-17` | Livre (não salvo ainda) |
 | `equipe` | `Fortaleza EC` | Nome do clube atual |
@@ -93,6 +93,15 @@ Para cada linha válida com CPF **ainda não cadastrado**, a API cria em uma ún
 4. **`Team`** + **`AthleteTeam`** — time com o nome do campo `equipe` (apenas se preenchido)
 
 Se o CPF **já existe**, apenas `nickname` e `currentClub` são atualizados — nenhum outro dado é sobrescrito.
+
+### Validação de CPF
+
+O CPF passa por validação completa antes de qualquer operação no banco:
+- Dígitos verificadores (módulo 11)
+- Rejeita sequências homogêneas (`111.111.111-11`, `000.000.000-00`, etc.)
+- Zero à esquerda perdido pelo Excel é restaurado automaticamente via `padStart`
+
+CPF que não passa na validação vai para `errors[]` e a linha é pulada.
 
 ---
 
