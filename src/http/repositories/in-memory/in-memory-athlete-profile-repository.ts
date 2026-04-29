@@ -47,7 +47,6 @@ export class InMemoryAthleteProfileRepository
     const athleteProfile: AthleteProfile = {
       id: `athlete-${this.items.length + 1}`,
       userId: data.userId,
-      cpf: data.cpf,
       gender: data.gender,
       nickname: data.nickname ?? null,
       profilePhoto: data.profilePhoto ?? null,
@@ -96,11 +95,6 @@ export class InMemoryAthleteProfileRepository
 
   async findByUserId(userId: string): Promise<AthleteProfile | null> {
     const athleteProfile = this.items.find((item) => item.userId === userId)
-    return athleteProfile || null
-  }
-
-  async findByCpf(cpf: string): Promise<AthleteProfile | null> {
-    const athleteProfile = this.items.find((item) => item.cpf === cpf)
     return athleteProfile || null
   }
 

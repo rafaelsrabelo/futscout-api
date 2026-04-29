@@ -153,6 +153,118 @@ class EmailService {
       text,
     })
   }
+
+  async sendPasswordRecoveryEmail(
+    email: string,
+    password: string,
+    userName: string,
+  ) {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Acesso ao FutScout</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+          }
+          .header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+          }
+          .content {
+            background-color: #f9f9f9;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+          }
+          .password {
+            background-color: #e8f5e8;
+            padding: 20px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            color: #2e7d32;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-family: monospace;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>⚽ FutScout</h1>
+          <h2>Acesso à sua conta</h2>
+        </div>
+
+        <div class="content">
+          <h3>Olá, ${userName}!</h3>
+
+          <p>Confirmamos seu cadastro existente no FutScout. Use a senha temporária abaixo para acessar sua conta:</p>
+
+          <div class="password">
+            ${password}
+          </div>
+
+          <p><strong>Como acessar:</strong></p>
+          <ul>
+            <li>Use o email <strong>${email}</strong> e a senha acima para fazer login</li>
+            <li>Recomendamos alterar a senha após o primeiro acesso</li>
+            <li>Não compartilhe esta senha com ninguém</li>
+          </ul>
+
+          <p>Se você não solicitou este acesso, entre em contato com o suporte imediatamente.</p>
+
+          <p>Atenciosamente,<br>
+          <strong>Equipe FutScout</strong></p>
+        </div>
+
+        <div class="footer">
+          <p>Este é um email automático. Não responda a esta mensagem.</p>
+        </div>
+      </body>
+      </html>
+    `
+
+    const text = `
+      FutScout - Acesso à sua conta
+
+      Olá, ${userName}!
+
+      Confirmamos seu cadastro existente no FutScout.
+
+      Email: ${email}
+      Senha temporária: ${password}
+
+      Recomendamos alterar a senha após o primeiro acesso.
+
+      Se você não solicitou este acesso, entre em contato com o suporte.
+
+      Equipe FutScout
+    `
+
+    return await this.sendEmail({
+      to: email,
+      subject: '🔐 Acesso à sua conta - FutScout',
+      html,
+      text,
+    })
+  }
 }
 
 export const emailService = new EmailService()

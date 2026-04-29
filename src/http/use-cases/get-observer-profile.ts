@@ -9,7 +9,6 @@ interface GetObserverProfileResponse {
   observerProfile: {
     id: string
     userId: string
-    cpf: string
     name: string
     currentClub: string | null
     phone: string

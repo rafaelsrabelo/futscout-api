@@ -15,9 +15,10 @@ export class InMemoryUsersRepository implements UsersRepository {
     return user
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async findByCpf(_cpf: string): Promise<User | null> {
-    return null
+  async findByCpf(cpf: string): Promise<User | null> {
+    const user = this.items.find((user) => user.cpf === cpf)
+    if (!user) return null
+    return user
   }
 
   async findById(userId: string): Promise<User | null> {
@@ -80,6 +81,7 @@ export class InMemoryUsersRepository implements UsersRepository {
       id: `user-${this.items.length + 1}`,
       name: data.name,
       email: data.email,
+      cpf: data.cpf ?? null,
       password: data.password,
       role: data.role ?? null,
       provider: data.provider ?? 'CREDENTIALS',
@@ -87,6 +89,7 @@ export class InMemoryUsersRepository implements UsersRepository {
       emailVerified: data.emailVerified ?? false,
       isActive: data.isActive ?? true,
       isProfile: data.isProfile ?? false,
+      isImported: data.isImported ?? false,
       stripeCustomerId: data.stripeCustomerId ?? null,
       lastLoginAt: null,
       createdAt: new Date(),

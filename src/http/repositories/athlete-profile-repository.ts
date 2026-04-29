@@ -81,7 +81,13 @@ export interface AdminPagination {
 export type AthleteProfileAdminListItem = AthleteProfile & {
   user: Pick<
     User,
-    'id' | 'name' | 'email' | 'emailVerified' | 'isActive' | 'createdAt'
+    | 'id'
+    | 'name'
+    | 'email'
+    | 'cpf'
+    | 'emailVerified'
+    | 'isActive'
+    | 'createdAt'
   >
 }
 
@@ -112,6 +118,7 @@ export interface AthleteAdminDetail {
     | 'id'
     | 'name'
     | 'email'
+    | 'cpf'
     | 'role'
     | 'emailVerified'
     | 'isActive'
@@ -131,7 +138,7 @@ export interface AdminAthleteSearchResult {
   name: string
   nickname: string | null
   profilePhoto: string | null
-  primaryPosition: 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD'
+  primaryPosition: 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD' | null
   currentClub: string | null
 }
 
@@ -139,7 +146,6 @@ export interface AthleteProfileRepository {
   create(data: CreateAthleteProfileData): Promise<AthleteProfile>
   findById(id: string): Promise<AthleteProfileWithUser | null>
   findByUserId(userId: string): Promise<AthleteProfile | null>
-  findByCpf(cpf: string): Promise<AthleteProfile | null>
   findMany(filters: AthleteFilters): Promise<AthleteProfileWithUser[]>
   countMany(filters: AthleteFilters): Promise<number>
   findManyForAdmin(

@@ -68,6 +68,7 @@ export class PrismaAthleteProfileRepository
             id: true,
             name: true,
             email: true,
+            cpf: true,
             role: true,
           },
         },
@@ -122,14 +123,6 @@ export class PrismaAthleteProfileRepository
           },
         },
       },
-    })
-
-    return athleteProfile
-  }
-
-  async findByCpf(cpf: string) {
-    const athleteProfile = await prisma.athleteProfile.findUnique({
-      where: { cpf },
     })
 
     return athleteProfile
@@ -291,6 +284,7 @@ export class PrismaAthleteProfileRepository
               id: true,
               name: true,
               email: true,
+              cpf: true,
               emailVerified: true,
               isActive: true,
               createdAt: true,
@@ -317,6 +311,7 @@ export class PrismaAthleteProfileRepository
             id: true,
             name: true,
             email: true,
+            cpf: true,
             role: true,
             emailVerified: true,
             isActive: true,
@@ -364,6 +359,7 @@ export class PrismaAthleteProfileRepository
         id: user.id,
         name: user.name,
         email: user.email,
+        cpf: user.cpf,
         role: user.role,
         emailVerified: user.emailVerified,
         isActive: user.isActive,

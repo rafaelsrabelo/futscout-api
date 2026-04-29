@@ -37,16 +37,6 @@ export class PrismaObserverProfileRepository
     return observerProfile
   }
 
-  async findByCpf(cpf: string): Promise<ObserverProfile | null> {
-    const observerProfile = await prisma.observerProfile.findUnique({
-      where: {
-        cpf,
-      },
-    })
-
-    return observerProfile
-  }
-
   async update(
     id: string,
     data: UpdateObserverProfileData,

@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify'
 import { PrismaAchievementRepository } from '../repositories/prisma/prisma-achievement-repository.js'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
 import { PrismaFavoriteRepository } from '../repositories/prisma/prisma-favorite-repository.js'
+import { PrismaUsersRepository } from '../repositories/prisma/prisma-users-repository.js'
 import { GetMyAthleteProfileUseCase } from '../use-cases/get-my-athlete-profile.js'
 
 export async function getMyAthleteProfile(
@@ -14,11 +15,13 @@ export async function getMyAthleteProfile(
     const athleteProfileRepository = new PrismaAthleteProfileRepository()
     const favoriteRepository = new PrismaFavoriteRepository()
     const achievementRepository = new PrismaAchievementRepository()
+    const usersRepository = new PrismaUsersRepository()
     const getMyAthleteProfileUseCase = new GetMyAthleteProfileUseCase(
       athleteProfileRepository,
     )
 
     const { profile } = await getMyAthleteProfileUseCase.execute({ userId })
+    const user = await usersRepository.findById(userId)
 
     // Count how many users favorited this athlete
     const favoritesCount = await favoriteRepository.countFavoritesByAthlete(
@@ -31,7 +34,7 @@ export async function getMyAthleteProfile(
     return reply.status(200).send({
       athleteProfile: {
         id: profile.id,
-        cpf: profile.cpf,
+        cpf: user?.cpf ?? null,
         gender: profile.gender,
         nickname: profile.nickname,
         profilePhoto: profile.profilePhoto,

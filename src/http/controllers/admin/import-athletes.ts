@@ -139,13 +139,25 @@ export function mapDominantFoot(raw: string): 'RIGHT' | 'LEFT' | null {
   return raw.toLowerCase().trim().startsWith('esq') ? 'LEFT' : 'RIGHT'
 }
 
-export function mapPosition(raw: string): 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD' | null {
+export function mapPosition(
+  raw: string,
+): 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD' | null {
   if (!raw.trim()) return null
   const v = raw.toLowerCase().trim()
   if (v.includes('goleiro') || v.includes('goalkeeper')) return 'GOALKEEPER'
-  if (v.includes('zagu') || v.includes('lateral') || v.includes('defensor') || v.includes('defender'))
+  if (
+    v.includes('zagu') ||
+    v.includes('lateral') ||
+    v.includes('defensor') ||
+    v.includes('defender')
+  )
     return 'DEFENDER'
-  if (v.includes('atac') || v.includes('forward') || v.includes('centroavante') || v.includes('ponta'))
+  if (
+    v.includes('atac') ||
+    v.includes('forward') ||
+    v.includes('centroavante') ||
+    v.includes('ponta')
+  )
     return 'FORWARD'
   return 'MIDFIELDER'
 }
@@ -219,7 +231,14 @@ async function lookupCep(cep: string): Promise<ViaCep> {
 // Busca todos os CEPs únicos de um lote em paralelo (até `concurrency` por vez)
 // para evitar 1731 chamadas HTTP sequenciais que travariam o request.
 async function prefetchCeps(rows: Row[], concurrency = 20): Promise<void> {
-  const unique = [...new Set(rows.map((r) => r.cep.trim()).filter(Boolean).map(normalizeCep))]
+  const unique = [
+    ...new Set(
+      rows
+        .map((r) => r.cep.trim())
+        .filter(Boolean)
+        .map(normalizeCep),
+    ),
+  ]
   const uncached = unique.filter((c) => !cepCache.has(c))
 
   for (let i = 0; i < uncached.length; i += concurrency) {
@@ -240,7 +259,8 @@ function friendlyPrismaError(err: unknown): string {
     if (msg.includes('nickname')) return 'Nickname já em uso'
     return 'Registro duplicado'
   }
-  if (msg.includes('P2003')) return 'Referência inválida (registro relacionado não encontrado)'
+  if (msg.includes('P2003'))
+    return 'Referência inválida (registro relacionado não encontrado)'
   return msg.split('\n').filter(Boolean)[0] ?? msg
 }
 
@@ -250,14 +270,35 @@ async function importAthlete(row: Row) {
 
   const currentClub = row.equipe || null
 
-  const existingAthlete = await prisma.athleteProfile.findUnique({
+  const existingUser = await prisma.user.findUnique({
     where: { cpf },
-    select: { id: true },
+    select: { id: true, athleteProfile: { select: { id: true } } },
   })
 
-  if (existingAthlete) {
-    const nickname = await findAvailableNickname(prisma, row.nome, cpf, existingAthlete.id)
-    await prisma.athleteProfile.update({ where: { cpf }, data: { nickname, currentClub } })
+  if (existingUser) {
+    const profileId = existingUser.athleteProfile?.id
+    if (!profileId) {
+      // Edge case: User existe mas perfil esqueleto não — recria.
+      const nickname = await findAvailableNickname(prisma, row.nome, cpf)
+      await prisma.athleteProfile.create({
+        data: {
+          userId: existingUser.id,
+          nickname,
+          currentClub,
+        },
+      })
+      return { action: 'updated' as const }
+    }
+    const nickname = await findAvailableNickname(
+      prisma,
+      row.nome,
+      cpf,
+      profileId,
+    )
+    await prisma.athleteProfile.update({
+      where: { id: profileId },
+      data: { nickname, currentClub },
+    })
     return { action: 'updated' as const }
   }
 
@@ -275,9 +316,12 @@ async function importAthlete(row: Row) {
       data: {
         name: row.nome,
         email: `${cpf}@${EMAIL_DOMAIN}`,
+        cpf,
         password: passwordHash,
         role: 'ATHLETE',
         isActive: true,
+        // Cadastro importado: register pode reativar substituindo email/senha.
+        isImported: true,
         // Perfil esqueleto criado pelo import — atleta precisa completar no primeiro acesso
         isProfile: false,
         emailVerified: false,
@@ -287,7 +331,6 @@ async function importAthlete(row: Row) {
     const athlete = await tx.athleteProfile.create({
       data: {
         userId: user.id,
-        cpf,
         nickname,
         currentClub,
         gender: mapGender(row.genero),
@@ -334,7 +377,10 @@ async function importAthlete(row: Row) {
   return { action: 'created' as const }
 }
 
-export async function importAthletesAdmin(request: FastifyRequest, reply: FastifyReply) {
+export async function importAthletesAdmin(
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
   const data = await request.file()
   if (!data) {
     return reply.status(400).send({ message: 'Arquivo CSV não enviado' })
@@ -364,7 +410,9 @@ export async function importAthletesAdmin(request: FastifyRequest, reply: Fastif
   const BATCH = 20
   for (let i = 0; i < rows.length; i += BATCH) {
     const batch = rows.slice(i, i + BATCH)
-    const results = await Promise.allSettled(batch.map((row) => importAthlete(row)))
+    const results = await Promise.allSettled(
+      batch.map((row) => importAthlete(row)),
+    )
     results.forEach((result, j) => {
       const row = batch[j]
       if (result.status === 'fulfilled') {
@@ -381,8 +429,16 @@ export async function importAthletesAdmin(request: FastifyRequest, reply: Fastif
   }
 
   await prisma.importLog.create({
-    data: { total: rows.length, created, updated, errorCount: errors.length, errors },
+    data: {
+      total: rows.length,
+      created,
+      updated,
+      errorCount: errors.length,
+      errors,
+    },
   })
 
-  return reply.status(200).send({ created, updated, errors, total: rows.length })
+  return reply
+    .status(200)
+    .send({ created, updated, errors, total: rows.length })
 }

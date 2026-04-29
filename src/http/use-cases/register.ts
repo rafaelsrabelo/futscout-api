@@ -1,15 +1,18 @@
 import { hash } from 'bcryptjs'
+import { normalizeCpf, validateCpf } from '../../utils/validateCpf.js'
 import type { UsersRepository } from '../repositories/users-repository.js'
 import type { VerificationCodeRepository } from '../repositories/verification-code-repository.js'
+import { CpfAlreadyExistsError } from './errors/cpf-already-exists-error.js'
 import { EmailAlreadyExistsError } from './errors/email-already-exists-error.js'
+import { InvalidCpfError } from './errors/invalid-cpf-error.js'
 import type {
   RegisterUseCaseRequest,
   RegisterUseCaseResponse,
 } from './types.js'
 import { emailService } from '@/lib/email.js'
 import {
-  generateVerificationCode,
   generateCodeExpirationDate,
+  generateVerificationCode,
 } from '@/lib/verification-code.js'
 
 export class RegisterUseCase {
@@ -22,49 +25,102 @@ export class RegisterUseCase {
     name,
     email,
     password,
+    cpf,
     role,
   }: RegisterUseCaseRequest): Promise<RegisterUseCaseResponse> {
+    if (!validateCpf(cpf)) {
+      throw new InvalidCpfError()
+    }
+    const cpfNormalized = normalizeCpf(cpf)
+    const emailNormalized = email.trim().toLowerCase()
     const password_hash = await hash(password, 6)
 
-    const userWithSameEmail = await this.usersRepository.findByEmail(email)
+    const userByCpf = await this.usersRepository.findByCpf(cpfNormalized)
 
-    if (userWithSameEmail) {
+    // Reativação: cadastro importado via script reivindicado pelo dono real.
+    // Substitui email placeholder + senha temporária pelos dados informados
+    // e desliga a flag isImported (consumida).
+    if (userByCpf && userByCpf.isImported) {
+      if (emailNormalized !== userByCpf.email) {
+        const userByEmail =
+          await this.usersRepository.findByEmail(emailNormalized)
+        if (userByEmail && userByEmail.id !== userByCpf.id) {
+          throw new EmailAlreadyExistsError()
+        }
+      }
+
+      const updated = await this.usersRepository.update(userByCpf.id, {
+        name,
+        email: emailNormalized,
+        password: password_hash,
+        isImported: false,
+        emailVerified: false,
+        isActive: false,
+        ...(role && { role }),
+      })
+
+      const verificationCode = generateVerificationCode()
+      const expiresAt = generateCodeExpirationDate(15)
+      await this.verificationCodeRepository.create({
+        code: verificationCode,
+        email: emailNormalized,
+        userId: updated.id,
+        type: 'EMAIL_VERIFICATION',
+        expiresAt,
+      })
+
+      try {
+        await emailService.sendVerificationEmail(
+          emailNormalized,
+          verificationCode,
+          name,
+        )
+      } catch (error) {
+        console.error('Failed to send verification email:', error)
+      }
+
+      return { user: updated, reactivated: true }
+    }
+
+    if (userByCpf) {
+      throw new CpfAlreadyExistsError()
+    }
+
+    const userByEmail = await this.usersRepository.findByEmail(emailNormalized)
+    if (userByEmail) {
       throw new EmailAlreadyExistsError()
     }
 
-    // Criar usuário como inativo
     const user = await this.usersRepository.create({
       name,
-      email,
+      email: emailNormalized,
+      cpf: cpfNormalized,
       password: password_hash,
       role,
-      isActive: false, // Usuário começa inativo até verificar email
+      isActive: false,
+      isImported: false,
     })
 
-    // Gerar código de verificação
     const verificationCode = generateVerificationCode()
-    const expiresAt = generateCodeExpirationDate(15) // 15 minutos
-
-    // Salvar código no banco
+    const expiresAt = generateCodeExpirationDate(15)
     await this.verificationCodeRepository.create({
       code: verificationCode,
-      email,
+      email: emailNormalized,
       userId: user.id,
       type: 'EMAIL_VERIFICATION',
       expiresAt,
     })
 
-    // Enviar email com código
     try {
-      await emailService.sendVerificationEmail(email, verificationCode, name)
+      await emailService.sendVerificationEmail(
+        emailNormalized,
+        verificationCode,
+        name,
+      )
     } catch (error) {
       console.error('Failed to send verification email:', error)
-      // Não falha o registro se o email não for enviado
-      // Pode implementar retry logic aqui
     }
 
-    return {
-      user,
-    }
+    return { user, reactivated: false }
   }
 }

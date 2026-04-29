@@ -27,6 +27,8 @@ import { updateMatchResultAdmin } from './controllers/admin/update-match-result.
 import { updatePlayVideoUrlAdmin } from './controllers/admin/update-play-video-url.js'
 import { verifyAdminSession } from './controllers/admin/verify-admin-session.js'
 import { authenticate } from './controllers/authenticate.js'
+import { checkCpf } from './controllers/check-cpf.js'
+import { recoverAccessByCpf } from './controllers/recover-access-by-cpf.js'
 import { checkPriceIdMatch } from './controllers/billing/check-price-id-match.js'
 import { checkout } from './controllers/billing/checkout.js'
 import { getStripeConfig } from './controllers/billing/get-stripe-config.js'
@@ -113,6 +115,8 @@ export async function appRoutes(app: FastifyInstance) {
   app.post('/auth/sessions', authenticate)
   app.post('/auth/social-login', socialLogin)
   app.post('/auth/refresh', refreshToken)
+  app.post('/auth/check-cpf', checkCpf)
+  app.post('/auth/recover-access', recoverAccessByCpf)
 
   // Public athlete routes (accessible without JWT for web)
   app.get('/public/athletes', publicListAthletes)

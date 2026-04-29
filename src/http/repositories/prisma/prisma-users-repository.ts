@@ -21,13 +21,8 @@ export class PrismaUsersRepository implements UsersRepository {
   }
 
   async findByCpf(cpf: string) {
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { athleteProfile: { cpf } },
-          { observerProfile: { cpf } },
-        ],
-      },
+    const user = await prisma.user.findUnique({
+      where: { cpf },
     })
 
     return user

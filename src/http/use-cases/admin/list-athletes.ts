@@ -22,7 +22,7 @@ export interface AdminAthleteListItem {
   height: number | null
   weight: number | null
   hasManager: boolean
-  cpf: string
+  cpf: string | null
   createdAt: Date
   user: {
     id: string
@@ -43,7 +43,10 @@ export interface ListAthletesAdminUseCaseResponse {
   hasMore: boolean
 }
 
-function computeAge(birthDate: Date | null, referenceDate: Date = new Date()): number | null {
+function computeAge(
+  birthDate: Date | null,
+  referenceDate: Date = new Date(),
+): number | null {
   if (!birthDate) return null
   let age = referenceDate.getFullYear() - birthDate.getFullYear()
   const monthDiff = referenceDate.getMonth() - birthDate.getMonth()
@@ -59,9 +62,7 @@ function computeAge(birthDate: Date | null, referenceDate: Date = new Date()): n
 }
 
 export class ListAthletesAdminUseCase {
-  constructor(
-    private athleteProfileRepository: AthleteProfileRepository,
-  ) {}
+  constructor(private athleteProfileRepository: AthleteProfileRepository) {}
 
   async execute(
     request: ListAthletesAdminUseCaseRequest,
@@ -88,7 +89,7 @@ export class ListAthletesAdminUseCase {
       height: profile.height,
       weight: profile.weight,
       hasManager: profile.hasManager,
-      cpf: profile.cpf,
+      cpf: profile.user.cpf,
       createdAt: profile.createdAt,
       user: {
         id: profile.user.id,

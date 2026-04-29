@@ -1,6 +1,5 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import z from 'zod'
-import { validateCpf } from '../../utils/validateCpf.js'
 import { PrismaAddressRepository } from '../repositories/prisma/prisma-address-repository.js'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
 import { PrismaUsersRepository } from '../repositories/prisma/prisma-users-repository.js'
@@ -11,13 +10,6 @@ export async function createAthleteProfile(
   reply: FastifyReply,
 ) {
   const createAthleteProfileBodySchema = z.object({
-    cpf: z
-      .string()
-      .min(11)
-      .max(14)
-      .refine((cpf) => validateCpf(cpf), {
-        message: 'Invalid CPF format',
-      }),
     name: z.string().min(2).max(100),
     gender: z.enum(['MALE', 'FEMALE', 'OTHER']),
     nickname: z.string().min(3).max(30).optional(),
@@ -98,12 +90,6 @@ export async function createAthleteProfile(
       }
       if (error.message === 'Nickname already exists') {
         return reply.status(409).send({ message: 'Nickname already exists' })
-      }
-      if (error.message === 'CPF already exists') {
-        return reply.status(409).send({ message: 'CPF already exists' })
-      }
-      if (error.message === 'Invalid CPF format') {
-        return reply.status(400).send({ message: 'Invalid CPF format' })
       }
     }
 

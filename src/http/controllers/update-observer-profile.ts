@@ -1,24 +1,27 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
+import { prisma } from '../../lib/prisma.js'
 import { PrismaObserverProfileRepository } from '../repositories/prisma/prisma-observer-profile-repository.js'
-import { CpfAlreadyExistsError } from '../use-cases/errors/cpf-already-exists-error.js'
-import { InvalidCpfError } from '../use-cases/errors/invalid-cpf-error.js'
 import { ObserverProfileNotFoundError } from '../use-cases/errors/observer-profile-not-found-error.js'
 import { UpdateObserverProfileUseCase } from '../use-cases/update-observer-profile.js'
+
+function formatCpf(cpf: string | null): string | null {
+  if (!cpf) return null
+  return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+}
 
 export async function updateObserverProfile(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
   const updateObserverProfileBodySchema = z.object({
-    cpf: z.string().optional(),
     name: z.string().optional(),
     currentClub: z.string().optional(),
     phone: z.string().optional(),
     profilePhoto: z.string().optional(),
   })
 
-  const { cpf, name, currentClub, phone, profilePhoto } =
+  const { name, currentClub, phone, profilePhoto } =
     updateObserverProfileBodySchema.parse(request.body)
 
   try {
@@ -29,7 +32,6 @@ export async function updateObserverProfile(
 
     const updateData = {
       userId: request.user.sub,
-      ...(cpf !== undefined && { cpf }),
       ...(name !== undefined && { name }),
       ...(currentClub !== undefined && { currentClub }),
       ...(phone !== undefined && { phone }),
@@ -39,26 +41,20 @@ export async function updateObserverProfile(
     const { observerProfile } =
       await updateObserverProfileUseCase.execute(updateData)
 
+    const user = await prisma.user.findUnique({
+      where: { id: request.user.sub },
+      select: { cpf: true },
+    })
+
     return reply.status(200).send({
       observerProfile: {
         ...observerProfile,
-        cpf: observerProfile.cpf.replace(
-          /(\d{3})(\d{3})(\d{3})(\d{2})/,
-          '$1.$2.$3-$4',
-        ),
+        cpf: formatCpf(user?.cpf ?? null),
       },
     })
   } catch (err) {
     if (err instanceof ObserverProfileNotFoundError) {
       return reply.status(404).send({ message: err.message })
-    }
-
-    if (err instanceof CpfAlreadyExistsError) {
-      return reply.status(409).send({ message: err.message })
-    }
-
-    if (err instanceof InvalidCpfError) {
-      return reply.status(400).send({ message: err.message })
     }
 
     throw err

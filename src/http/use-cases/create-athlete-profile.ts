@@ -1,5 +1,4 @@
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library'
-import { normalizeCpf, validateCpf } from '../../utils/validateCpf.js'
 import type { AddressRepository } from '../repositories/address-repository.js'
 import type {
   AthleteProfileRepository,
@@ -10,7 +9,6 @@ import type { UsersRepository } from '../repositories/users-repository.js'
 
 interface CreateAthleteProfileUseCaseRequest {
   userId: string
-  cpf: string
   name: string
   gender: 'MALE' | 'FEMALE' | 'OTHER'
   nickname?: string | undefined
@@ -62,13 +60,12 @@ interface CreateAthleteProfileUseCaseResponse {
   athleteProfile: {
     id: string
     userId: string
-    cpf: string
-    gender: string
+    gender: string | null
     nickname?: string | null
-    height: number
-    weight: number
-    dominantFoot: string
-    primaryPosition: string
+    height: number | null
+    weight: number | null
+    dominantFoot: string | null
+    primaryPosition: string | null
     currentClub?: string | null
     createdAt: Date
   }
@@ -94,12 +91,6 @@ export class CreateAthleteProfileUseCase {
   async execute(
     data: CreateAthleteProfileUseCaseRequest,
   ): Promise<CreateAthleteProfileUseCaseResponse> {
-    // Validar CPF
-    if (!validateCpf(data.cpf)) {
-      throw new Error('Invalid CPF format')
-    }
-
-    // Verificar se o usuário existe
     const user = await this.usersRepository.findById(data.userId)
     if (!user) {
       throw new Error('User not found')
@@ -110,7 +101,7 @@ export class CreateAthleteProfileUseCase {
       data.userId,
     )
     if (existingProfile) {
-      // Atletas importados nascem com perfil esqueleto (cpf+nickname only).
+      // Atletas importados nascem com perfil esqueleto.
       // Se algum dos 6 campos obrigatórios está null, é esqueleto — completa via
       // update em vez de erro. Se já está completo, é tentativa de duplicar.
       const isSkeleton =
@@ -128,14 +119,6 @@ export class CreateAthleteProfileUseCase {
       return this.completeSkeletonProfile(data, existingProfile.id)
     }
 
-    // Verificar se o CPF já existe
-    const existingCpf = await this.athleteProfileRepository.findByCpf(
-      normalizeCpf(data.cpf),
-    )
-    if (existingCpf) {
-      throw new Error('CPF already exists')
-    }
-
     // Verificar se o nickname já existe (se fornecido)
     if (data.nickname) {
       const existingNickname =
@@ -148,7 +131,6 @@ export class CreateAthleteProfileUseCase {
     // Create athlete profile - convert undefined to null for Prisma compatibility
     const athleteData: CreateAthleteProfileData = {
       userId: data.userId,
-      cpf: normalizeCpf(data.cpf), // Normalize CPF (remove formatting)
       gender: data.gender,
       nickname: data.nickname ?? null,
       profilePhoto: data.profilePhoto ?? null,
@@ -244,7 +226,6 @@ export class CreateAthleteProfileUseCase {
         athleteProfile: {
           id: athleteProfile.id,
           userId: athleteProfile.userId,
-          cpf: athleteProfile.cpf,
           gender: athleteProfile.gender,
           nickname: athleteProfile.nickname,
           height: athleteProfile.height,
@@ -260,9 +241,6 @@ export class CreateAthleteProfileUseCase {
       if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
           const target = error.meta?.target as string[]
-          if (target?.includes('cpf')) {
-            throw new Error('CPF already exists')
-          }
           if (target?.includes('nickname')) {
             throw new Error('Nickname already exists')
           }
@@ -341,7 +319,8 @@ export class CreateAthleteProfileUseCase {
       data.state &&
       data.country
     ) {
-      const existingAddress = await this.addressRepository.findByAthleteId(profileId)
+      const existingAddress =
+        await this.addressRepository.findByAthleteId(profileId)
       const addressPayload = {
         zipCode: data.zipCode,
         street: data.street,
@@ -350,7 +329,9 @@ export class CreateAthleteProfileUseCase {
         city: data.city,
         state: data.state,
         country: data.country,
-        ...(data.complement !== undefined ? { complement: data.complement } : {}),
+        ...(data.complement !== undefined
+          ? { complement: data.complement }
+          : {}),
       }
       if (existingAddress) {
         await this.addressRepository.update(profileId, addressPayload)
@@ -369,7 +350,6 @@ export class CreateAthleteProfileUseCase {
       athleteProfile: {
         id: athleteProfile.id,
         userId: athleteProfile.userId,
-        cpf: athleteProfile.cpf,
         gender: athleteProfile.gender,
         nickname: athleteProfile.nickname,
         height: athleteProfile.height,

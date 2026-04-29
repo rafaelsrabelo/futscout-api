@@ -6,11 +6,13 @@ export interface RegisterUseCaseRequest {
   name: string
   email: string
   password: string
+  cpf: string
   role?: UserRole // Opcional para login social
 }
 
 export interface RegisterUseCaseResponse {
   user: User
+  reactivated: boolean
 }
 
 export interface AuthenticateUseCaseRequest {

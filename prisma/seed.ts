@@ -209,6 +209,7 @@ async function main() {
     const user = await prisma.user.create({
       data: {
         email,
+        cpf: generateFakeCPF(),
         name: fullName, // Nome do usuário
         password: 'senha123', // Senha padrão para todos
         role: 'ATHLETE',
@@ -218,7 +219,6 @@ async function main() {
         emailVerified: true,
         athleteProfile: {
           create: {
-            cpf: generateFakeCPF(),
             gender: Math.random() > 0.7 ? Gender.FEMALE : Gender.MALE,
             nickname,
             profilePhoto: `https://api.dicebear.com/7.x/avataaars/svg?seed=${firstName}`,
