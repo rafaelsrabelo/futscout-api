@@ -51,7 +51,7 @@ A request é **partial update**: envie apenas os campos que mudaram. Campos omit
 |-------|------|-------------|
 | `nickname` | string (1–50) | Único entre atletas — `409` se duplicado |
 | `profilePhoto` | string (URL) | URL pública (R2) |
-| `birthDate` | string ISO-8601 | Ex.: `"2013-02-27"` |
+| `birthDate` | string | Aceita `"2013-02-27"` (date-only) **ou** ISO-8601 completo (`"2013-02-27T00:00:00.000Z"`). Backend normaliza para ISO antes de salvar. Datas inválidas retornam `400`. |
 | `gender` | enum | `MALE` \| `FEMALE` \| `OTHER` |
 | `height` | number > 0 | Em metros (ex: `1.71`) |
 | `weight` | number > 0 | Em kg |

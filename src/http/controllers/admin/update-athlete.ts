@@ -25,7 +25,23 @@ const bodySchema = z.object({
   // Perfil
   nickname: z.string().min(1).max(50).optional(),
   profilePhoto: z.string().url().optional(),
-  birthDate: z.string().optional(),
+  // Aceita "YYYY-MM-DD" e ISO-8601 completo. Normaliza para ISO antes de
+  // chegar ao Prisma, que recusa "premature end of input" em date-only.
+  birthDate: z
+    .string()
+    .optional()
+    .transform((value, ctx) => {
+      if (value === undefined) return undefined
+      const date = new Date(value)
+      if (Number.isNaN(date.getTime())) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Data de nascimento inválida.',
+        })
+        return z.NEVER
+      }
+      return date.toISOString()
+    }),
   gender: z.enum(['MALE', 'FEMALE', 'OTHER']).optional(),
   height: z.number().positive().optional(),
   weight: z.number().positive().optional(),
