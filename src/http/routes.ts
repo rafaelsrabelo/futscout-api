@@ -3,6 +3,7 @@ import { addPlay } from './controllers/add-play.js'
 import { addTeamHistory } from './controllers/add-team-history.js'
 import { addPlayToMatchAdmin } from './controllers/admin/add-play-to-match.js'
 import { createMatchAdmin } from './controllers/admin/create-match.js'
+import { createStandalonePlayAdmin } from './controllers/admin/create-standalone-play.js'
 import { deleteMatchAdmin } from './controllers/admin/delete-match.js'
 import { deletePlayAdmin } from './controllers/admin/delete-play.js'
 import { dashboardOverviewAdmin } from './controllers/admin/dashboard-overview.js'
@@ -27,6 +28,7 @@ import { searchAdmin } from './controllers/admin/search.js'
 import { updateAthleteAdmin } from './controllers/admin/update-athlete.js'
 import { updateMatchAdmin } from './controllers/admin/update-match.js'
 import { updateMatchResultAdmin } from './controllers/admin/update-match-result.js'
+import { updatePlayAdmin } from './controllers/admin/update-play.js'
 import { updatePlayVideoUrlAdmin } from './controllers/admin/update-play-video-url.js'
 import { verifyAdminSession } from './controllers/admin/verify-admin-session.js'
 import { authenticate } from './controllers/authenticate.js'
@@ -295,11 +297,7 @@ export async function appRoutes(app: FastifyInstance) {
     { onRequest: [verifyJwt, verifyAdmin] },
     verifyAdminSession,
   )
-  app.get(
-    '/admin/search',
-    { onRequest: [verifyJwt, verifyAdmin] },
-    searchAdmin,
-  )
+  app.get('/admin/search', { onRequest: [verifyJwt, verifyAdmin] }, searchAdmin)
   app.get(
     '/admin/dashboard/overview',
     { onRequest: [verifyJwt, verifyAdmin] },
@@ -429,6 +427,16 @@ export async function appRoutes(app: FastifyInstance) {
     '/admin/plays/:id',
     { onRequest: [verifyJwt, verifyAdmin] },
     deletePlayAdmin,
+  )
+  app.patch(
+    '/admin/plays/:id',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    updatePlayAdmin,
+  )
+  app.post(
+    '/admin/athletes/:athleteId/plays',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    createStandalonePlayAdmin,
   )
 
   // Billing routes

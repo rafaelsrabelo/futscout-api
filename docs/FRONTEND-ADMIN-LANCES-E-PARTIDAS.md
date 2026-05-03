@@ -57,6 +57,8 @@ Frontend precisa remover qualquer `response.match` / `response.play` nesses 6 fe
 | Admin reatribui partida a outro atleta | `POST` | `/api/admin/matches/:id/link-athlete` |
 | Admin edita partida completa (todos os campos) | `PATCH` | `/api/admin/matches/:id` |
 | Admin remove partida | `DELETE` | `/api/admin/matches/:id` |
+| Admin edita metadados de um lance | `PATCH` | `/api/admin/plays/:id` |
+| Admin cria lance avulso (sem partida) | `POST` | `/api/admin/athletes/:athleteId/plays` |
 
 ---
 
@@ -516,3 +518,107 @@ await api.delete(`/admin/matches/${matchId}`)
 ```
 
 > **UX recomendada:** modal de confirmação destacando `"X lances e o scout serão removidos"` (você pode pegar o `playsCount` do `GET /admin/matches/:id`).
+
+---
+
+## ✏️ `PATCH /api/admin/plays/:id` — editar metadados do lance
+
+Edita campos de **metadados** do lance: tipo, rating, observações, foto, thumbnail e classificações. Para vídeo, continue usando `PUT /admin/plays/:id/video-url` (anexar) e `DELETE /admin/plays/:id/video-url` (remover).
+
+**Auth:** `Bearer <accessToken>` com `role = 'ADMIN'`.
+
+**Não consome cota do plano.**
+
+### Path param
+
+| Param | Tipo |
+|---|---|
+| `id` | UUID — `Play.id` |
+
+### Body — todos os campos opcionais
+
+| Campo | Tipo | Observações |
+|---|---|---|
+| `playType` | enum | Veja lista completa em `POST /admin/matches/:matchId/plays` |
+| `rating` | int 1–5 \| null | `null` para limpar |
+| `observations` | string \| null | `null` para limpar |
+| `photoUrl` | string (URL) \| null | |
+| `thumbnailUrl` | string (URL) \| null | Em geral o backend gera; usar só pra correção manual |
+| `classifications` | array \| undefined | `['PHYSICAL'\|'TACTICAL'\|'MENTAL'\|'TECHNICAL']` — **substitui** todas as classificações atuais; `[]` zera; ausente mantém |
+
+### Resposta `200 OK`
+
+Retorna o `Play` completo com `classifications` incluído (mesmo shape de `POST /admin/matches/:matchId/plays`).
+
+### Erros
+
+| Status | `message` |
+|---|---|
+| `400` | Zod (body inválido) |
+| `404` | `Lance não encontrado.` |
+
+### Exemplo
+
+```ts
+await api.patch(`/admin/plays/${playId}`, {
+  playType: 'ASSIST',
+  rating: 5,
+  observations: 'Passe espetacular no contra-ataque',
+  classifications: ['TECHNICAL', 'TACTICAL'],
+})
+```
+
+---
+
+## ➕ `POST /api/admin/athletes/:athleteId/plays` — criar lance avulso
+
+Cria um lance **sem partida** (`matchId = null`) vinculado direto ao atleta. É o equivalente ao `POST /admin/matches/:matchId/plays`, mas para situações como "treino", "amistoso não cadastrado", "compilação", etc.
+
+**Auth:** `Bearer <accessToken>` com `role = 'ADMIN'`.
+
+**Não consome cota do plano** (mesmo que mande vídeo).
+
+### Path param
+
+| Param | Tipo | Descrição |
+|---|---|---|
+| `athleteId` | UUID | `AthleteProfile.id` |
+
+### Body
+
+Mesmo body do `POST /admin/matches/:matchId/plays`:
+
+| Campo | Tipo | Obrigatório |
+|---|---|---|
+| `playType` | enum | ✅ |
+| `videoUrl` | string (URL) | — |
+| `thumbnailUrl` | string (URL) | — (gerado em background se houver `videoUrl`) |
+| `photoUrl` | string (URL) | — |
+| `rating` | int 1–5 | — |
+| `observations` | string | — |
+| `classifications` | `['PHYSICAL'\|'TACTICAL'\|'MENTAL'\|'TECHNICAL']` | — |
+
+### Resposta `201 Created`
+
+Retorna o `Play` completo com `classifications` incluído. `matchId` virá `null`.
+
+### Erros
+
+| Status | `message` |
+|---|---|
+| `400` | Zod (body inválido) |
+| `404` | `Atleta não encontrado.` |
+
+### Exemplo
+
+```ts
+await api.post(`/admin/athletes/${athleteId}/plays`, {
+  playType: 'DRIBBLE',
+  videoUrl: 'https://r2/.../play.mp4',
+  rating: 5,
+  observations: 'Drible em velocidade no treino',
+  classifications: ['TECHNICAL', 'PHYSICAL'],
+})
+```
+
+> **Fluxo de vídeo recomendado:** mesmo do lance em partida — peça presigned URL em `GET /admin/videos/upload-url`, faça `PUT` direto no R2, e então chame este endpoint enviando `videoUrl`. O thumbnail é gerado em background.

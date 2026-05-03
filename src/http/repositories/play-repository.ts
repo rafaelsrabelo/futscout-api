@@ -22,6 +22,26 @@ export interface CreatePlayWithClassificationsInput {
   classifications?: PlayClassification[]
 }
 
+export interface CreateStandalonePlayWithClassificationsInput {
+  athleteId: string
+  playType: PlayType
+  videoUrl?: string | null
+  thumbnailUrl?: string | null
+  photoUrl?: string | null
+  rating?: number | null
+  observations?: string | null
+  classifications?: PlayClassification[]
+}
+
+export interface UpdatePlayMetadataInput {
+  playType?: PlayType
+  rating?: number | null
+  observations?: string | null
+  photoUrl?: string | null
+  thumbnailUrl?: string | null
+  classifications?: PlayClassification[]
+}
+
 export interface AdminAthletePlayFilters {
   hasVideo?: boolean
   playType?: PlayType
@@ -43,6 +63,13 @@ export interface PlayRepository {
   create(data: Prisma.PlayCreateInput): Promise<Play>
   createWithClassifications(
     input: CreatePlayWithClassificationsInput,
+  ): Promise<PlayWithClassifications>
+  createStandaloneWithClassifications(
+    input: CreateStandalonePlayWithClassificationsInput,
+  ): Promise<PlayWithClassifications>
+  updateMetadata(
+    id: string,
+    input: UpdatePlayMetadataInput,
   ): Promise<PlayWithClassifications>
   findById(id: string): Promise<Play | null>
   findByMatch(matchId: string): Promise<Play[]>

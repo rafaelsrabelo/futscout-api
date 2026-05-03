@@ -10,8 +10,10 @@ import type {
   AdminAthletePlayListItem,
   AdminAthletePlayPagination,
   CreatePlayWithClassificationsInput,
+  CreateStandalonePlayWithClassificationsInput,
   PlayRepository,
   PlayWithClassifications,
+  UpdatePlayMetadataInput,
 } from '../play-repository.js'
 
 export class InMemoryPlayRepository implements PlayRepository {
@@ -59,6 +61,69 @@ export class InMemoryPlayRepository implements PlayRepository {
     return play
   }
 
+  async createStandaloneWithClassifications(
+    input: CreateStandalonePlayWithClassificationsInput,
+  ): Promise<PlayWithClassifications> {
+    const playId = randomUUID()
+    const now = new Date()
+
+    const classifications: PlayClassifications[] = (
+      input.classifications ?? []
+    ).map((classification) => ({
+      id: randomUUID(),
+      playId,
+      classification,
+      createdAt: now,
+    }))
+
+    const play: PlayWithClassifications = {
+      id: playId,
+      matchId: null,
+      athleteId: input.athleteId,
+      playType: input.playType,
+      videoUrl: input.videoUrl ?? null,
+      thumbnailUrl: input.thumbnailUrl ?? null,
+      photoUrl: input.photoUrl ?? null,
+      rating: input.rating ?? null,
+      observations: input.observations ?? null,
+      createdAt: now,
+      updatedAt: now,
+      classifications,
+    }
+
+    this.items.push(play)
+    return play
+  }
+
+  async updateMetadata(
+    id: string,
+    input: UpdatePlayMetadataInput,
+  ): Promise<PlayWithClassifications> {
+    const play = this.items.find((p) => p.id === id)
+    if (!play) {
+      throw new Error('Play not found')
+    }
+
+    if (input.playType !== undefined) play.playType = input.playType
+    if (input.rating !== undefined) play.rating = input.rating
+    if (input.observations !== undefined) play.observations = input.observations
+    if (input.photoUrl !== undefined) play.photoUrl = input.photoUrl
+    if (input.thumbnailUrl !== undefined) play.thumbnailUrl = input.thumbnailUrl
+
+    if (input.classifications !== undefined) {
+      const now = new Date()
+      play.classifications = input.classifications.map((classification) => ({
+        id: randomUUID(),
+        playId: id,
+        classification,
+        createdAt: now,
+      }))
+    }
+
+    play.updatedAt = new Date()
+    return play
+  }
+
   async findById(id: string): Promise<Play | null> {
     return this.items.find((p) => p.id === id) ?? null
   }
@@ -84,7 +149,10 @@ export class InMemoryPlayRepository implements PlayRepository {
   ): Promise<{ items: AdminAthletePlayListItem[]; total: number }> {
     let filtered = this.items.filter((p) => {
       if (p.athleteId === athleteProfileId) return true
-      if (p.matchId && this.matchMeta[p.matchId]?.athleteId === athleteProfileId) {
+      if (
+        p.matchId &&
+        this.matchMeta[p.matchId]?.athleteId === athleteProfileId
+      ) {
         return true
       }
       return false
@@ -111,9 +179,7 @@ export class InMemoryPlayRepository implements PlayRepository {
       filtered = filtered.filter((p) => p.createdAt <= to)
     }
 
-    filtered.sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
-    )
+    filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 
     const total = filtered.length
     const start = (pagination.page - 1) * pagination.pageSize
@@ -124,7 +190,11 @@ export class InMemoryPlayRepository implements PlayRepository {
       return {
         ...p,
         match: match
-          ? { id: match.id, date: match.date, adversaryTeam: match.adversaryTeam }
+          ? {
+              id: match.id,
+              date: match.date,
+              adversaryTeam: match.adversaryTeam,
+            }
           : null,
       }
     })

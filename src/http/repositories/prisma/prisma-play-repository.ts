@@ -5,8 +5,10 @@ import type {
   AdminAthletePlayListItem,
   AdminAthletePlayPagination,
   CreatePlayWithClassificationsInput,
+  CreateStandalonePlayWithClassificationsInput,
   PlayRepository,
   PlayWithClassifications,
+  UpdatePlayMetadataInput,
 } from '../play-repository.js'
 
 export class PrismaPlayRepository implements PlayRepository {
@@ -49,6 +51,87 @@ export class PrismaPlayRepository implements PlayRepository {
 
       if (!play) {
         throw new Error('Failed to create play')
+      }
+
+      return play
+    })
+  }
+
+  async createStandaloneWithClassifications(
+    input: CreateStandalonePlayWithClassificationsInput,
+  ): Promise<PlayWithClassifications> {
+    return prisma.$transaction(async (tx) => {
+      const createdPlay = await tx.play.create({
+        data: {
+          athlete: { connect: { id: input.athleteId } },
+          playType: input.playType,
+          videoUrl: input.videoUrl ?? null,
+          thumbnailUrl: input.thumbnailUrl ?? null,
+          photoUrl: input.photoUrl ?? null,
+          rating: input.rating ?? null,
+          observations: input.observations ?? null,
+        },
+      })
+
+      if (input.classifications && input.classifications.length > 0) {
+        await tx.playClassifications.createMany({
+          data: input.classifications.map((classification) => ({
+            playId: createdPlay.id,
+            classification,
+          })),
+        })
+      }
+
+      const play = await tx.play.findUnique({
+        where: { id: createdPlay.id },
+        include: { classifications: true },
+      })
+
+      if (!play) {
+        throw new Error('Failed to create standalone play')
+      }
+
+      return play
+    })
+  }
+
+  async updateMetadata(
+    id: string,
+    input: UpdatePlayMetadataInput,
+  ): Promise<PlayWithClassifications> {
+    return prisma.$transaction(async (tx) => {
+      const data: Prisma.PlayUpdateInput = {}
+      if (input.playType !== undefined) data.playType = input.playType
+      if (input.rating !== undefined) data.rating = input.rating
+      if (input.observations !== undefined)
+        data.observations = input.observations
+      if (input.photoUrl !== undefined) data.photoUrl = input.photoUrl
+      if (input.thumbnailUrl !== undefined)
+        data.thumbnailUrl = input.thumbnailUrl
+
+      if (Object.keys(data).length > 0) {
+        await tx.play.update({ where: { id }, data })
+      }
+
+      if (input.classifications !== undefined) {
+        await tx.playClassifications.deleteMany({ where: { playId: id } })
+        if (input.classifications.length > 0) {
+          await tx.playClassifications.createMany({
+            data: input.classifications.map((classification) => ({
+              playId: id,
+              classification,
+            })),
+          })
+        }
+      }
+
+      const play = await tx.play.findUnique({
+        where: { id },
+        include: { classifications: true },
+      })
+
+      if (!play) {
+        throw new Error('Play not found after update')
       }
 
       return play
