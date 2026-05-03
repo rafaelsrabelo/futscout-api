@@ -1,5 +1,8 @@
+import { randomUUID } from 'node:crypto'
+
 import type {
   Achievement,
+  AchievementType,
   Prisma,
 } from '../../../../generated/prisma/client.js'
 import type {
@@ -12,7 +15,27 @@ export class InMemoryAchievementRepository implements AchievementRepository {
   public items: Achievement[] = []
 
   async create(data: Prisma.AchievementCreateInput): Promise<Achievement> {
-    throw new Error('InMemoryAchievementRepository.create: not implemented')
+    const athleteId =
+      (data as { athlete?: { connect?: { id?: string } } }).athlete?.connect
+        ?.id ?? null
+
+    if (!athleteId) {
+      throw new Error('athlete.connect.id required')
+    }
+
+    const now = new Date()
+    const achievement: Achievement = {
+      id: randomUUID(),
+      athleteId,
+      name: data.name as string,
+      category: data.category as string,
+      year: data.year as number,
+      type: data.type as AchievementType,
+      createdAt: now,
+      updatedAt: now,
+    }
+    this.items.push(achievement)
+    return achievement
   }
 
   async findById(id: string): Promise<Achievement | null> {
@@ -53,7 +76,17 @@ export class InMemoryAchievementRepository implements AchievementRepository {
     id: string,
     data: Prisma.AchievementUpdateInput,
   ): Promise<Achievement> {
-    throw new Error('InMemoryAchievementRepository.update: not implemented')
+    const idx = this.items.findIndex((a) => a.id === id)
+    if (idx === -1) throw new Error('Achievement not found')
+
+    const current = this.items[idx]!
+    const next: Achievement = { ...current, updatedAt: new Date() }
+    if (data.name !== undefined) next.name = data.name as string
+    if (data.category !== undefined) next.category = data.category as string
+    if (data.year !== undefined) next.year = data.year as number
+    if (data.type !== undefined) next.type = data.type as AchievementType
+    this.items[idx] = next
+    return next
   }
 
   async delete(id: string): Promise<void> {

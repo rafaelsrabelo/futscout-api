@@ -2,10 +2,14 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { addPlay } from './controllers/add-play.js'
 import { addTeamHistory } from './controllers/add-team-history.js'
 import { addPlayToMatchAdmin } from './controllers/admin/add-play-to-match.js'
+import { createAchievementAdmin } from './controllers/admin/create-achievement.js'
 import { createMatchAdmin } from './controllers/admin/create-match.js'
 import { createStandalonePlayAdmin } from './controllers/admin/create-standalone-play.js'
+import { createTeamHistoryAdmin } from './controllers/admin/create-team-history.js'
+import { deleteAchievementAdmin } from './controllers/admin/delete-achievement.js'
 import { deleteMatchAdmin } from './controllers/admin/delete-match.js'
 import { deletePlayAdmin } from './controllers/admin/delete-play.js'
+import { deleteTeamHistoryAdmin } from './controllers/admin/delete-team-history.js'
 import { dashboardOverviewAdmin } from './controllers/admin/dashboard-overview.js'
 import { dashboardInactivityBucketsAdmin } from './controllers/admin/dashboard-inactivity-buckets.js'
 import { dashboardUserActivityAdmin } from './controllers/admin/dashboard-user-activity.js'
@@ -25,10 +29,12 @@ import { listMatchPlaysAdmin } from './controllers/admin/list-match-plays.js'
 import { listMatchesAdmin } from './controllers/admin/list-matches.js'
 import { removePlayVideoAdmin } from './controllers/admin/remove-play-video.js'
 import { searchAdmin } from './controllers/admin/search.js'
+import { updateAchievementAdmin } from './controllers/admin/update-achievement.js'
 import { updateAthleteAdmin } from './controllers/admin/update-athlete.js'
 import { updateMatchAdmin } from './controllers/admin/update-match.js'
 import { updateMatchResultAdmin } from './controllers/admin/update-match-result.js'
 import { updatePlayAdmin } from './controllers/admin/update-play.js'
+import { updateTeamHistoryAdmin } from './controllers/admin/update-team-history.js'
 import { updatePlayVideoUrlAdmin } from './controllers/admin/update-play-video-url.js'
 import { verifyAdminSession } from './controllers/admin/verify-admin-session.js'
 import { authenticate } from './controllers/authenticate.js'
@@ -437,6 +443,36 @@ export async function appRoutes(app: FastifyInstance) {
     '/admin/athletes/:athleteId/plays',
     { onRequest: [verifyJwt, verifyAdmin] },
     createStandalonePlayAdmin,
+  )
+  app.post(
+    '/admin/athletes/:athleteId/achievements',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    createAchievementAdmin,
+  )
+  app.patch(
+    '/admin/achievements/:id',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    updateAchievementAdmin,
+  )
+  app.delete(
+    '/admin/achievements/:id',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    deleteAchievementAdmin,
+  )
+  app.post(
+    '/admin/athletes/:athleteId/team-history',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    createTeamHistoryAdmin,
+  )
+  app.patch(
+    '/admin/team-history/:id',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    updateTeamHistoryAdmin,
+  )
+  app.delete(
+    '/admin/team-history/:id',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    deleteTeamHistoryAdmin,
   )
 
   // Billing routes
