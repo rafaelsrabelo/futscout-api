@@ -17,26 +17,26 @@ export async function seedPlans() {
         name: 'FREE',
         price: 0,
         currency: 'BRL',
-        monthlyLimitMatches: 5, // 5 jogos por mês
-        monthlyLimitVideos: 5, // 5 vídeos por jogo
-        monthlyLimitStandaloneVideos: 5, // 5 vídeos standalone (lances sem partida)
+        monthlyLimitMatches: 10, // 10 jogos por mês
+        monthlyLimitVideos: 10, // 10 vídeos por jogo
+        monthlyLimitStandaloneVideos: 10, // 10 vídeos standalone (lances sem partida)
         isUnlimited: false,
       },
     })
   } else {
     // Atualizar plano existente se os limites mudaram
     const needsUpdate =
-      existingFreePlan.monthlyLimitMatches !== 5 ||
-      existingFreePlan.monthlyLimitVideos !== 5 ||
-      existingFreePlan.monthlyLimitStandaloneVideos !== 5
+      existingFreePlan.monthlyLimitMatches !== 10 ||
+      existingFreePlan.monthlyLimitVideos !== 10 ||
+      existingFreePlan.monthlyLimitStandaloneVideos !== 10
 
     if (needsUpdate) {
       await prisma.plan.update({
         where: { name: 'FREE' },
         data: {
-          monthlyLimitMatches: 5,
-          monthlyLimitVideos: 5, // 5 vídeos por jogo
-          monthlyLimitStandaloneVideos: 5, // 5 vídeos standalone
+          monthlyLimitMatches: 10,
+          monthlyLimitVideos: 10, // 10 vídeos por jogo
+          monthlyLimitStandaloneVideos: 10, // 10 vídeos standalone
         },
       })
     }
@@ -51,8 +51,8 @@ export async function seedPlans() {
         name: 'PREMIUM',
         price: 2990, // R$29,90 em centavos
         currency: 'BRL',
-        monthlyLimitMatches: 10, // 10 jogos por mês
-        monthlyLimitVideos: 10, // 10 vídeos por partida
+        monthlyLimitMatches: 20, // 20 jogos por mês
+        monthlyLimitVideos: 20, // 20 vídeos por partida
         monthlyLimitStandaloneVideos: null, // Lances standalone ilimitados
         isUnlimited: false,
         stripePriceId: stripePriceId ?? null,
@@ -61,8 +61,8 @@ export async function seedPlans() {
   } else {
     // Atualizar limites e stripePriceId se necessário
     const needsUpdate =
-      existingPremiumPlan.monthlyLimitMatches !== 10 ||
-      existingPremiumPlan.monthlyLimitVideos !== 10 ||
+      existingPremiumPlan.monthlyLimitMatches !== 20 ||
+      existingPremiumPlan.monthlyLimitVideos !== 20 ||
       existingPremiumPlan.monthlyLimitStandaloneVideos !== null ||
       existingPremiumPlan.isUnlimited !== false ||
       (stripePriceId && !existingPremiumPlan.stripePriceId)
@@ -71,8 +71,8 @@ export async function seedPlans() {
       await prisma.plan.update({
         where: { name: 'PREMIUM' },
         data: {
-          monthlyLimitMatches: 10,
-          monthlyLimitVideos: 10,
+          monthlyLimitMatches: 20,
+          monthlyLimitVideos: 20,
           monthlyLimitStandaloneVideos: null,
           isUnlimited: false,
           stripePriceId: stripePriceId ?? existingPremiumPlan.stripePriceId,
