@@ -1,9 +1,12 @@
 import { prisma } from '../../../lib/prisma.js'
 import type {
-  TeamRepository,
+  AdminTeamFilters,
+  AdminTeamListItem,
+  AdminTeamPagination,
   CreateTeamData,
-  UpdateTeamData,
   Team,
+  TeamRepository,
+  UpdateTeamData,
 } from '../team-repository.js'
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library'
 
@@ -57,6 +60,44 @@ export class PrismaTeamRepository implements TeamRepository {
     })
 
     return team
+  }
+
+  async findManyForAdmin(
+    filters: AdminTeamFilters,
+    pagination: AdminTeamPagination,
+  ): Promise<{ items: AdminTeamListItem[]; total: number }> {
+    const where: {
+      name?: { contains: string; mode: 'insensitive' }
+      userId?: string
+    } = {}
+
+    if (filters.q && filters.q.trim().length > 0) {
+      where.name = { contains: filters.q.trim(), mode: 'insensitive' }
+    }
+    if (filters.ownerUserId) {
+      where.userId = filters.ownerUserId
+    }
+
+    const [rows, total] = await Promise.all([
+      prisma.team.findMany({
+        where,
+        orderBy: [{ isPrincipal: 'desc' }, { name: 'asc' }],
+        skip: (pagination.page - 1) * pagination.pageSize,
+        take: pagination.pageSize,
+        select: {
+          id: true,
+          name: true,
+          acronym: true,
+          shieldPhoto: true,
+          isPrincipal: true,
+          userId: true,
+          createdAt: true,
+        },
+      }),
+      prisma.team.count({ where }),
+    ])
+
+    return { items: rows, total }
   }
 
   async update(id: string, data: UpdateTeamData): Promise<Team> {

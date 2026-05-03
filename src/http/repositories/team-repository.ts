@@ -25,11 +25,36 @@ export interface Team {
   updatedAt: Date
 }
 
+export interface AdminTeamFilters {
+  q?: string
+  ownerUserId?: string
+}
+
+export interface AdminTeamPagination {
+  page: number
+  pageSize: number
+}
+
+export type AdminTeamListItem = Pick<
+  Team,
+  | 'id'
+  | 'name'
+  | 'acronym'
+  | 'shieldPhoto'
+  | 'isPrincipal'
+  | 'userId'
+  | 'createdAt'
+>
+
 export interface TeamRepository {
   create(data: CreateTeamData): Promise<Team>
   findById(id: string): Promise<Team | null>
   findByUserId(userId: string): Promise<Team[]>
   findByName(name: string, userId: string): Promise<Team | null>
+  findManyForAdmin(
+    filters: AdminTeamFilters,
+    pagination: AdminTeamPagination,
+  ): Promise<{ items: AdminTeamListItem[]; total: number }>
   update(id: string, data: UpdateTeamData): Promise<Team>
   delete(id: string): Promise<void>
   unsetPrincipalTeams(userId: string): Promise<void>

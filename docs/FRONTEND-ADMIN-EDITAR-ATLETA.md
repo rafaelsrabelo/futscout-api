@@ -223,6 +223,51 @@ Mesmo payload do exemplo "conta + endereço". O backend detecta que o atleta nã
 
 ---
 
+## 🔐 `POST /api/admin/athletes/:id/reset-password` — alterar senha do atleta
+
+Endpoint dedicado para o admin definir uma **nova senha** para o atleta. Não confunde com o fluxo de "esqueci minha senha" (esse é via e-mail).
+
+**Auth:** `Bearer <accessToken>` com `role = 'ADMIN'`.
+
+### Path param
+
+| Param | Tipo |
+|---|---|
+| `id` | UUID — `AthleteProfile.id` |
+
+### Body
+
+| Campo | Tipo | Observações |
+|---|---|---|
+| `password` | string (8–128) | Senha em texto puro. Backend hashea com bcrypt antes de salvar. |
+
+### Resposta
+
+| Status | Body | Quando |
+|---|---|---|
+| `204 No Content` | — | Senha redefinida com sucesso |
+| `400` | Zod | `password` inválida (curta demais, etc.) |
+| `404` | `Atleta não encontrado.` | `id` não corresponde |
+
+### Efeitos colaterais
+
+- **Invalida todos os refresh tokens** do atleta — qualquer dispositivo conectado é forçado a refazer login na próxima request 401.
+- O access token atual continua válido até expirar (default 15 min). Se quiser invalidação imediata absoluta, peça pra subir endpoint de logout-all (hoje só existe o do próprio user).
+- Não envia e-mail nem notificação — comunique a nova senha pro atleta fora da plataforma.
+
+### Exemplo
+
+```ts
+await api.post(`/admin/athletes/${athleteId}/reset-password`, {
+  password: 'NovaSenhaForte123',
+})
+// 204 → mostre toast "Senha alterada. Avise o atleta."
+```
+
+> **UX recomendada:** modal com campo de senha + confirmação no front (não passar para o backend — só o `password` final). Após sucesso, mostrar a senha em claro pro admin **uma vez** com botão "Copiar" e disclaimer "Você não verá mais essa senha".
+
+---
+
 ## ✅ Cobertura de testes
 
 `src/http/use-cases/admin/update-athlete.spec.ts` cobre:

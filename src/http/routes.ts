@@ -27,7 +27,9 @@ import { listAthletesAdmin } from './controllers/admin/list-athletes.js'
 import { linkMatchAthleteAdmin } from './controllers/admin/link-match-athlete.js'
 import { listMatchPlaysAdmin } from './controllers/admin/list-match-plays.js'
 import { listMatchesAdmin } from './controllers/admin/list-matches.js'
+import { listTeamsAdmin } from './controllers/admin/list-teams.js'
 import { removePlayVideoAdmin } from './controllers/admin/remove-play-video.js'
+import { resetAthletePasswordAdmin } from './controllers/admin/reset-athlete-password.js'
 import { searchAdmin } from './controllers/admin/search.js'
 import { updateAchievementAdmin } from './controllers/admin/update-achievement.js'
 import { updateAthleteAdmin } from './controllers/admin/update-athlete.js'
@@ -329,6 +331,11 @@ export async function appRoutes(app: FastifyInstance) {
     { onRequest: [verifyJwt, verifyAdmin] },
     listAthletesAdmin,
   )
+  app.get(
+    '/admin/teams',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    listTeamsAdmin,
+  )
   app.post(
     '/admin/athletes/import',
     { onRequest: [verifyJwt, verifyAdmin], config: { timeout: 300_000 } },
@@ -348,6 +355,11 @@ export async function appRoutes(app: FastifyInstance) {
     '/admin/athletes/:id',
     { onRequest: [verifyJwt, verifyAdmin] },
     updateAthleteAdmin,
+  )
+  app.post(
+    '/admin/athletes/:id/reset-password',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    resetAthletePasswordAdmin,
   )
   app.get(
     '/admin/athletes/:athleteId/matches',

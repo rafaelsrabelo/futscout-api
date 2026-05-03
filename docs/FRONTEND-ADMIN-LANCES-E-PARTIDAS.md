@@ -59,6 +59,8 @@ Frontend precisa remover qualquer `response.match` / `response.play` nesses 6 fe
 | Admin remove partida | `DELETE` | `/api/admin/matches/:id` |
 | Admin edita metadados de um lance | `PATCH` | `/api/admin/plays/:id` |
 | Admin cria lance avulso (sem partida) | `POST` | `/api/admin/athletes/:athleteId/plays` |
+| Admin lista times (picker) | `GET` | `/api/admin/teams` |
+| Admin cria partida | `POST` | `/api/admin/matches` |
 
 ---
 
@@ -622,3 +624,118 @@ await api.post(`/admin/athletes/${athleteId}/plays`, {
 ```
 
 > **Fluxo de vídeo recomendado:** mesmo do lance em partida — peça presigned URL em `GET /admin/videos/upload-url`, faça `PUT` direto no R2, e então chame este endpoint enviando `videoUrl`. O thumbnail é gerado em background.
+
+---
+
+## ➕ `POST /api/admin/matches` — criar partida
+
+Cria uma partida nova vinculada a um atleta. Substitui o caminho user-side (`POST /matches`) quando o admin precisa cadastrar manualmente.
+
+**Auth:** `Bearer <accessToken>` com `role = 'ADMIN'`. **Não consome cota.**
+
+### Body
+
+| Campo | Tipo | Obrigatório |
+|---|---|---|
+| `athleteProfileId` | UUID | ✅ |
+| `myTeamId` | UUID | ✅ — use o picker `GET /admin/teams` |
+| `adversaryTeam` | string (≥1) | ✅ |
+| `date` | string (parseável por `new Date`) | ✅ |
+| `modality` | `FUT_11` \| `FUT_7` \| `FUTSAL` | — |
+| `category` | `U5..U20` \| `AMATEUR` \| `PROFESSIONAL` | — |
+| `location` | string | — |
+| `streamUrl` | URL | — |
+| `competitionId` | UUID | — (omitido = amistoso) |
+| `status` | `SCHEDULED` \| `LIVE` \| `FINISHED` \| `CANCELLED` | — (default `SCHEDULED`) |
+| `result` | `WIN` \| `LOSS` \| `DRAW` \| `NOT_FINISHED` | — (derivado dos scores se ausente) |
+| `myTeamScore` / `adversaryScore` | int ≥ 0 | — |
+| `playerPosition` | `STARTER` \| `SUBSTITUTE` | — |
+| `observations` | string | — |
+| `matchDuration` / `approximateTime` | int 0–240 (min) | — |
+| `photoUrl` / `videoUrl` / `youtubeUrl` | URL | — |
+| `performanceRating` | int 1–5 | — |
+
+### Resposta `201 Created` — `Match` completo.
+
+### Erros
+
+| Status | `message` |
+|---|---|
+| `400` | Zod |
+| `404` | `Atleta não encontrado.` |
+
+### Exemplo
+
+```ts
+await api.post('/admin/matches', {
+  athleteProfileId: 'athlete-uuid',
+  myTeamId: 'team-uuid',
+  adversaryTeam: 'Rival FC',
+  date: '2026-04-10T19:30:00.000Z',
+  modality: 'FUT_11',
+  category: 'U17',
+  location: 'Estádio Castelão',
+  status: 'SCHEDULED',
+})
+```
+
+---
+
+## 🔍 `GET /api/admin/teams` — picker de times
+
+Listagem paginada de times para alimentar autocomplete (necessário para escolher `myTeamId` em partidas e `teamId` em histórico de times).
+
+**Auth:** `Bearer <accessToken>` com `role = 'ADMIN'`.
+
+### Query params
+
+| Param | Tipo | Default | Observações |
+|---|---|---|---|
+| `q` | string (≥1, trim) | — | Busca case-insensitive em `name` (ILIKE) |
+| `athleteId` | UUID | — | `AthleteProfile.id` — filtra só os times criados pelo `User` desse atleta |
+| `page` | int ≥ 1 | `1` | |
+| `pageSize` | int 1–100 | `20` | |
+
+### Resposta `200 OK`
+
+```json
+{
+  "items": [
+    {
+      "id": "team-uuid",
+      "name": "Santa Cruz",
+      "acronym": "SCC",
+      "shieldPhoto": "https://r2/.../shield.png",
+      "isPrincipal": true,
+      "userId": "user-uuid",
+      "createdAt": "2025-01-01T00:00:00.000Z"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "pageSize": 20
+}
+```
+
+Ordenação: `isPrincipal` desc, depois `name` asc.
+
+### Erros
+
+| Status | `message` |
+|---|---|
+| `400` | Zod |
+| `404` | `Atleta não encontrado.` (quando `athleteId` enviado não existe) |
+
+### Exemplos de uso
+
+```ts
+// Picker no form de partida — todos os times do banco
+const { data } = await api.get('/admin/teams', { params: { q: 'sant' } })
+
+// Picker no form de team-history do atleta — só os times daquele atleta
+const { data } = await api.get('/admin/teams', {
+  params: { athleteId: athleteProfileId, pageSize: 50 },
+})
+```
+
+> **UX recomendada:** debounce de 300ms no input do `q`, render dos `items` com `acronym` e `shieldPhoto` quando disponíveis. Para "form de partida" (admin pode escolher qualquer time), não passe `athleteId`. Para "form de histórico de times" do atleta, passe `athleteId` para limitar à lista dele (e botão extra "buscar em todos os times" caso precise).
