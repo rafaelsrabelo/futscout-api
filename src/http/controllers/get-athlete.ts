@@ -6,6 +6,7 @@ import { PrismaFavoriteRepository } from '../repositories/prisma/prisma-favorite
 import { PrismaMatchRepository } from '../repositories/prisma/prisma-match-repository.js'
 import { PrismaPlayRepository } from '../repositories/prisma/prisma-play-repository.js'
 import { isUserPremium } from '../utils/check-premium.js'
+import { redactAthleteSensitiveFields } from '../utils/redact-athlete.js'
 
 type PlayData = {
   id: string
@@ -257,9 +258,16 @@ export async function getAthlete(request: FastifyRequest, reply: FastifyReply) {
       return 0
     })
 
+    // Esconder managerContact quando quem está visualizando não é o próprio
+    // dono do perfil — telefone do empresário/responsável não pode vazar.
+    const isOwner = athleteProfile.userId === userId
+    const safeAthleteProfile = isOwner
+      ? athleteProfile
+      : redactAthleteSensitiveFields(athleteProfile)
+
     return reply.status(200).send({
       athlete: {
-        ...athleteProfile,
+        ...safeAthleteProfile,
         favorites: favoritesCount,
         isFavorite,
         isPremium,
