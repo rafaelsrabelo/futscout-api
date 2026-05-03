@@ -59,16 +59,14 @@ export class InMemoryMatchRepository implements MatchRepository {
       result: (data.result as Match['result']) ?? 'NOT_FINISHED',
       myTeamScore: (data.myTeamScore as number | null) ?? null,
       adversaryScore: (data.adversaryScore as number | null) ?? null,
-      playerPosition:
-        (data.playerPosition as Match['playerPosition']) ?? null,
+      playerPosition: (data.playerPosition as Match['playerPosition']) ?? null,
       observations: (data.observations as string | null) ?? null,
       matchDuration: (data.matchDuration as number | null) ?? null,
       approximateTime: (data.approximateTime as number | null) ?? null,
       photoUrl: (data.photoUrl as string | null) ?? null,
       videoUrl: (data.videoUrl as string | null) ?? null,
       youtubeUrl: (data.youtubeUrl as string | null) ?? null,
-      performanceRating:
-        (data.performanceRating as number | null) ?? null,
+      performanceRating: (data.performanceRating as number | null) ?? null,
       createdAt: now,
       updatedAt: now,
     }
@@ -117,12 +115,50 @@ export class InMemoryMatchRepository implements MatchRepository {
     applyScalar('adversaryScore', data.adversaryScore)
     applyScalar('result', data.result)
     applyScalar('status', data.status)
+    applyScalar('date', data.date)
+    applyScalar('adversaryTeam', data.adversaryTeam)
+    applyScalar('modality', data.modality)
+    applyScalar('category', data.category)
+    applyScalar('location', data.location)
+    applyScalar('streamUrl', data.streamUrl)
+    applyScalar('playerPosition', data.playerPosition)
+    applyScalar('observations', data.observations)
+    applyScalar('matchDuration', data.matchDuration)
+    applyScalar('approximateTime', data.approximateTime)
+    applyScalar('photoUrl', data.photoUrl)
+    applyScalar('videoUrl', data.videoUrl)
+    applyScalar('youtubeUrl', data.youtubeUrl)
+    applyScalar('performanceRating', data.performanceRating)
 
     // Handle athlete: { connect: { id } } nested shape
     const athleteData = (data as { athlete?: { connect?: { id?: string } } })
       .athlete
     if (athleteData?.connect?.id) {
       match.athleteId = athleteData.connect.id
+    }
+
+    const myTeamData = (data as { myTeam?: { connect?: { id?: string } } })
+      .myTeam
+    if (myTeamData?.connect?.id) {
+      match.myTeamId = myTeamData.connect.id
+    }
+
+    const competitionData = data as {
+      competition?: { connect?: { id?: string } } | { disconnect?: boolean }
+    }
+    if (
+      competitionData.competition &&
+      'connect' in competitionData.competition &&
+      competitionData.competition.connect?.id
+    ) {
+      match.competitionId = competitionData.competition.connect.id
+    }
+    if (
+      competitionData.competition &&
+      'disconnect' in competitionData.competition &&
+      competitionData.competition.disconnect
+    ) {
+      match.competitionId = null
     }
 
     match.updatedAt = new Date()
@@ -182,7 +218,7 @@ export class InMemoryMatchRepository implements MatchRepository {
       ...m,
       playsCount: this.playsCountByMatchId[m.id] ?? 0,
       competition: m.competitionId
-        ? this.competitionsById[m.competitionId] ?? null
+        ? (this.competitionsById[m.competitionId] ?? null)
         : null,
     }))
 
@@ -270,7 +306,7 @@ export class InMemoryMatchRepository implements MatchRepository {
         ...m,
         playsCount: this.playsCountByMatchId[m.id] ?? 0,
         competition: m.competitionId
-          ? this.competitionsById[m.competitionId] ?? null
+          ? (this.competitionsById[m.competitionId] ?? null)
           : null,
         athleteProfile: {
           id: athlete?.id ?? m.athleteId,
@@ -334,7 +370,7 @@ export class InMemoryMatchRepository implements MatchRepository {
       ...match,
       playsCount: this.playsCountByMatchId[match.id] ?? 0,
       competition: match.competitionId
-        ? this.competitionsById[match.competitionId] ?? null
+        ? (this.competitionsById[match.competitionId] ?? null)
         : null,
       myTeam: this.teamsById[match.myTeamId] ?? null,
       athleteProfile: {

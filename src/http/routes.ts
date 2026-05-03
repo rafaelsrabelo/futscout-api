@@ -3,6 +3,7 @@ import { addPlay } from './controllers/add-play.js'
 import { addTeamHistory } from './controllers/add-team-history.js'
 import { addPlayToMatchAdmin } from './controllers/admin/add-play-to-match.js'
 import { createMatchAdmin } from './controllers/admin/create-match.js'
+import { deleteMatchAdmin } from './controllers/admin/delete-match.js'
 import { deletePlayAdmin } from './controllers/admin/delete-play.js'
 import { dashboardOverviewAdmin } from './controllers/admin/dashboard-overview.js'
 import { dashboardInactivityBucketsAdmin } from './controllers/admin/dashboard-inactivity-buckets.js'
@@ -24,6 +25,7 @@ import { listMatchesAdmin } from './controllers/admin/list-matches.js'
 import { removePlayVideoAdmin } from './controllers/admin/remove-play-video.js'
 import { searchAdmin } from './controllers/admin/search.js'
 import { updateAthleteAdmin } from './controllers/admin/update-athlete.js'
+import { updateMatchAdmin } from './controllers/admin/update-match.js'
 import { updateMatchResultAdmin } from './controllers/admin/update-match-result.js'
 import { updatePlayVideoUrlAdmin } from './controllers/admin/update-play-video-url.js'
 import { verifyAdminSession } from './controllers/admin/verify-admin-session.js'
@@ -377,6 +379,16 @@ export async function appRoutes(app: FastifyInstance) {
     '/admin/matches/:id',
     { onRequest: [verifyJwt, verifyAdmin] },
     getMatchAdmin,
+  )
+  app.patch(
+    '/admin/matches/:id',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    updateMatchAdmin,
+  )
+  app.delete(
+    '/admin/matches/:id',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    deleteMatchAdmin,
   )
   app.get(
     '/admin/matches/:id/plays',

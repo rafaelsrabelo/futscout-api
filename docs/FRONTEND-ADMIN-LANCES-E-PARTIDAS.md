@@ -55,6 +55,8 @@ Frontend precisa remover qualquer `response.match` / `response.play` nesses 6 fe
 | Admin anexa/substitui vídeo em um lance | `PUT` | `/api/admin/plays/:id/video-url` |
 | Admin edita placar / resultado | `PATCH` | `/api/admin/matches/:id/result` |
 | Admin reatribui partida a outro atleta | `POST` | `/api/admin/matches/:id/link-athlete` |
+| Admin edita partida completa (todos os campos) | `PATCH` | `/api/admin/matches/:id` |
+| Admin remove partida | `DELETE` | `/api/admin/matches/:id` |
 
 ---
 
@@ -413,3 +415,104 @@ GET /api/admin/athletes/:athleteId/team-history
 - [ ] Busca global em `/admin/partidas` → `GET /admin/matches?q=...`
 - [ ] Atalho "Corrigir placar" na tela de partida → `PATCH /admin/matches/:id/result`
 - [ ] Atalho "Reatribuir atleta" → `POST /admin/matches/:id/link-athlete`
+- [ ] Botão "Editar partida" → `PATCH /admin/matches/:id` (formulário completo)
+- [ ] Botão "Excluir partida" → `DELETE /admin/matches/:id` (confirmar; cascata em lances/scout)
+
+---
+
+## ✏️ `PATCH /api/admin/matches/:id` — edição completa de partida
+
+Cobre **todos** os campos da partida (data, adversário, modalidade, categoria, local, scores, resultado, status, posição do jogador, observações, fotos, vídeos, rating de performance, atleta, time, competição). Use este endpoint quando o admin quiser corrigir qualquer informação além do placar.
+
+> Para **só placar/resultado**, prefira `PATCH /admin/matches/:id/result` — request body menor.
+> Para **só reatribuir atleta**, prefira `POST /admin/matches/:id/link-athlete`.
+
+**Auth:** `Bearer <accessToken>` com `role = 'ADMIN'`.
+
+**Não consome cota do plano.**
+
+### Path param
+
+| Param | Tipo | Descrição |
+|---|---|---|
+| `id` | UUID | `Match.id` |
+
+### Body — todos os campos opcionais (partial update)
+
+| Campo | Tipo | Observações |
+|---|---|---|
+| `athleteProfileId` | UUID | Reatribui partida a outro atleta · `404` se não existir |
+| `myTeamId` | UUID | Troca o time principal da partida |
+| `competitionId` | UUID \| null | `null` desconecta a competição (vira amistoso) |
+| `adversaryTeam` | string | Nome do adversário |
+| `date` | string ISO-8601 | Data/hora da partida |
+| `modality` | enum | `FUT_11` \| `FUT_7` \| `FUTSAL` |
+| `category` | enum | `U5..U20` \| `AMATEUR` \| `PROFESSIONAL` |
+| `location` | string | Local |
+| `streamUrl` | string (URL) \| null | Link de transmissão |
+| `status` | enum | `SCHEDULED` \| `LIVE` \| `FINISHED` \| `CANCELLED` |
+| `result` | enum | `WIN` \| `LOSS` \| `DRAW` \| `NOT_FINISHED` |
+| `myTeamScore` | int ≥ 0 \| null | |
+| `adversaryScore` | int ≥ 0 \| null | |
+| `playerPosition` | enum \| null | `STARTER` \| `SUBSTITUTE` |
+| `observations` | string \| null | |
+| `matchDuration` | int 0–240 \| null | Em minutos |
+| `approximateTime` | int 0–240 \| null | Em minutos |
+| `photoUrl` | string (URL) \| null | |
+| `videoUrl` | string (URL) \| null | |
+| `youtubeUrl` | string (URL) \| null | |
+| `performanceRating` | int 1–5 \| null | |
+
+**Regra de derivação do `result`:** se você enviar `myTeamScore`/`adversaryScore` e **não** enviar `result`, o backend deriva (`WIN`/`LOSS`/`DRAW`). Se enviar `result` explicitamente, o explícito vence.
+
+### Resposta `200 OK`
+
+Retorna o objeto `Match` atualizado completo (mesmo shape de `GET /admin/matches/:id`, mas sem os agregados `playsCount`/`competition`/`myTeam`/`athleteProfile`).
+
+### Erros
+
+| Status | Quando |
+|---|---|
+| `400` | Body inválido (Zod) |
+| `404` | `Partida não encontrada.` ou `Atleta não encontrado.` (quando `athleteProfileId` não existe) |
+
+### Exemplo
+
+```ts
+await api.patch(`/admin/matches/${matchId}`, {
+  date: '2026-04-10T19:30:00.000Z',
+  location: 'Arena Castelão',
+  modality: 'FUTSAL',
+  myTeamScore: 3,
+  adversaryScore: 1,
+  performanceRating: 5,
+  observations: 'Hat-trick no 2º tempo',
+})
+```
+
+---
+
+## 🗑️ `DELETE /api/admin/matches/:id` — remover partida
+
+Apaga a partida do atleta. **Cascata** via Prisma: todos os `Play` e o `Scout` da partida são removidos junto.
+
+**Auth:** `Bearer <accessToken>` com `role = 'ADMIN'`.
+
+**Path param:** `id` (UUID) — `Match.id`.
+
+### Resposta
+
+| Status | Body | Quando |
+|---|---|---|
+| `204 No Content` | — | Removida com sucesso |
+| `400` | Zod | ID inválido |
+| `404` | `Partida não encontrada.` | ID não existe |
+
+### Exemplo
+
+```ts
+await api.delete(`/admin/matches/${matchId}`)
+// Confirme com o admin antes — a operação é destrutiva e remove lances/scout em cascata.
+```
+
+> **UX recomendada:** modal de confirmação destacando `"X lances e o scout serão removidos"` (você pode pegar o `playsCount` do `GET /admin/matches/:id`).
