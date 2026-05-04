@@ -180,28 +180,78 @@ export class PrismaAthleteProfileRepository
   async findMany(filters: AthleteFilters) {
     const { page = 1, limit = 20 } = filters
     const where = this.buildWhere(filters)
+    const skip = (page - 1) * limit
 
-    const athletes = await prisma.athleteProfile.findMany({
-      where,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            role: true,
-            isActive: true,
-          },
+    const include = {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          role: true,
+          isActive: true,
         },
-        address: true,
       },
-      orderBy: {
-        createdAt: 'desc',
+      address: true,
+    } as const
+    const orderBy = { createdAt: 'desc' } as const
+
+    // Atletas com Subscription PREMIUM ativa aparecem primeiro na listagem.
+    // Como o sort precisa atravessar a paginação, dividimos em duas buscas:
+    // página é (a) totalmente premium, (b) parcialmente premium + completa
+    // com não-premium, ou (c) totalmente não-premium.
+    const premiumSubs = await prisma.subscription.findMany({
+      where: {
+        status: 'active',
+        currentPeriodEnd: { gte: new Date() },
+        plan: { name: 'PREMIUM' },
       },
-      skip: (page - 1) * limit,
-      take: limit,
+      select: { userId: true },
+    })
+    const premiumUserIds = premiumSubs.map((s) => s.userId)
+
+    if (premiumUserIds.length === 0) {
+      return prisma.athleteProfile.findMany({
+        where,
+        include,
+        orderBy,
+        skip,
+        take: limit,
+      })
+    }
+
+    const premiumWhere = { ...where, userId: { in: premiumUserIds } }
+    const totalPremium = await prisma.athleteProfile.count({
+      where: premiumWhere,
     })
 
-    return athletes
+    if (skip >= totalPremium) {
+      return prisma.athleteProfile.findMany({
+        where: { ...where, userId: { notIn: premiumUserIds } },
+        include,
+        orderBy,
+        skip: skip - totalPremium,
+        take: limit,
+      })
+    }
+
+    const premiumPage = await prisma.athleteProfile.findMany({
+      where: premiumWhere,
+      include,
+      orderBy,
+      skip,
+      take: limit,
+    })
+    if (premiumPage.length === limit) return premiumPage
+
+    const remaining = limit - premiumPage.length
+    const nonPremiumPage = await prisma.athleteProfile.findMany({
+      where: { ...where, userId: { notIn: premiumUserIds } },
+      include,
+      orderBy,
+      skip: 0,
+      take: remaining,
+    })
+    return [...premiumPage, ...nonPremiumPage]
   }
 
   async countMany(filters: AthleteFilters) {
