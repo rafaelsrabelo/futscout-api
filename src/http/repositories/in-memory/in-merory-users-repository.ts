@@ -1,9 +1,22 @@
 import type { AuthProvider, User, UserRole } from 'generated/prisma/client.js'
-import type { UsersRepository } from '../users-repository.js'
+import type {
+  AdminUserDetail,
+  AdminUserListItem,
+  AdminUsersFilters,
+  AdminUsersPagination,
+  UsersRepository,
+} from '../users-repository.js'
 import type { UserCreateInput } from 'generated/prisma/models.js'
 
 export class InMemoryUsersRepository implements UsersRepository {
   public items: User[] = []
+  // Sets opcionais que specs preenchem pra simular relações cross-tabela.
+  public athleteProfileUserIds = new Set<string>()
+  public observerProfileUserIds = new Set<string>()
+  public premiumUserIds = new Set<string>()
+  // Mapeia userId → athleteProfileId (opcional, usado por findByIdForAdmin).
+  public athleteProfileIdByUser = new Map<string, string>()
+  public observerProfileIdByUser = new Map<string, string>()
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async findByEmail(email: string): Promise<User | null> {
@@ -37,6 +50,53 @@ export class InMemoryUsersRepository implements UsersRepository {
       return null
     }
     return user
+  }
+
+  async findManyForAdmin(
+    filters: AdminUsersFilters,
+    pagination: AdminUsersPagination,
+  ): Promise<{ items: User[]; total: number }> {
+    let filtered = this.items
+
+    if (filters.role === 'none') {
+      filtered = filtered.filter((u) => u.role === null)
+    } else if (filters.role) {
+      filtered = filtered.filter((u) => u.role === filters.role)
+    }
+
+    if (filters.q) {
+      const term = filters.q.trim().toLowerCase()
+      const cpfDigits = term.replace(/\D/g, '')
+      filtered = filtered.filter((u) => {
+        const nameHit = u.name.toLowerCase().includes(term)
+        const cpfHit = cpfDigits && u.cpf?.includes(cpfDigits)
+        return nameHit || cpfHit
+      })
+    }
+
+    const sorted = [...filtered].sort(
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+    )
+    const start = (pagination.page - 1) * pagination.pageSize
+    const paged = sorted.slice(start, start + pagination.pageSize)
+    const items: AdminUserListItem[] = paged.map((u) => ({
+      ...u,
+      hasAthleteProfile: this.athleteProfileUserIds.has(u.id),
+      hasObserverProfile: this.observerProfileUserIds.has(u.id),
+      activePlan: this.premiumUserIds.has(u.id) ? 'PREMIUM' : 'FREE',
+    }))
+    return { items, total: filtered.length }
+  }
+
+  async findByIdForAdmin(userId: string): Promise<AdminUserDetail | null> {
+    const user = this.items.find((u) => u.id === userId)
+    if (!user) return null
+    return {
+      user,
+      athleteProfileId: this.athleteProfileIdByUser.get(userId) ?? null,
+      observerProfileId: this.observerProfileIdByUser.get(userId) ?? null,
+      activePlan: this.premiumUserIds.has(userId) ? 'PREMIUM' : 'FREE',
+    }
   }
 
   async findByProvider(

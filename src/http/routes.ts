@@ -24,6 +24,10 @@ import { listAthleteMatchesAdmin } from './controllers/admin/list-athlete-matche
 import { listAthletePlaysAdmin } from './controllers/admin/list-athlete-plays.js'
 import { listAthleteTeamHistoryAdmin } from './controllers/admin/list-athlete-team-history.js'
 import { listAthletesAdmin } from './controllers/admin/list-athletes.js'
+import { listUsersAdmin } from './controllers/admin/list-users.js'
+import { getUserAdmin } from './controllers/admin/get-user.js'
+import { updateUserAdmin } from './controllers/admin/update-user.js'
+import { resetUserPasswordAdmin } from './controllers/admin/reset-user-password.js'
 import { linkMatchAthleteAdmin } from './controllers/admin/link-match-athlete.js'
 import { listMatchPlaysAdmin } from './controllers/admin/list-match-plays.js'
 import { listMatchesAdmin } from './controllers/admin/list-matches.js'
@@ -325,6 +329,26 @@ export async function appRoutes(app: FastifyInstance) {
     '/admin/dashboard/inactivity-buckets',
     { onRequest: [verifyJwt, verifyAdmin] },
     dashboardInactivityBucketsAdmin,
+  )
+  app.get(
+    '/admin/users',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    listUsersAdmin,
+  )
+  app.get(
+    '/admin/users/:id',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    getUserAdmin,
+  )
+  app.patch(
+    '/admin/users/:id',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    updateUserAdmin,
+  )
+  app.post(
+    '/admin/users/:id/reset-password',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    resetUserPasswordAdmin,
   )
   app.get(
     '/admin/athletes',
