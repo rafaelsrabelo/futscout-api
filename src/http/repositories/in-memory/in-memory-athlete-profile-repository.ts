@@ -273,7 +273,7 @@ export class InMemoryAthleteProfileRepository
     ).length
 
     return {
-      profile,
+      profile: { ...profile, cpf: user.cpf },
       address,
       user: {
         id: user.id,
@@ -283,6 +283,7 @@ export class InMemoryAthleteProfileRepository
         emailVerified: user.emailVerified,
         isActive: user.isActive,
         createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt,
       },
       subscription,
       counts: {
@@ -339,6 +340,7 @@ export class InMemoryAthleteProfileRepository
           id: user?.id ?? '',
           name: user?.name ?? '',
           email: user?.email ?? '',
+          cpf: user?.cpf ?? null,
           emailVerified: user?.emailVerified ?? false,
           isActive: user?.isActive ?? true,
           createdAt: user?.createdAt ?? new Date(0),

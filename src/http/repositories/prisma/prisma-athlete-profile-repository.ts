@@ -316,6 +316,7 @@ export class PrismaAthleteProfileRepository
             emailVerified: true,
             isActive: true,
             createdAt: true,
+            lastLoginAt: true,
             subscriptions: {
               where: { status: 'active' },
               orderBy: { currentPeriodEnd: 'desc' },
@@ -353,17 +354,17 @@ export class PrismaAthleteProfileRepository
     const [activeSubscription] = user.subscriptions
 
     return {
-      profile: profileOnly,
+      profile: { ...profileOnly, cpf: user.cpf },
       address,
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
-        cpf: user.cpf,
         role: user.role,
         emailVerified: user.emailVerified,
         isActive: user.isActive,
         createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt,
       },
       subscription: activeSubscription
         ? {

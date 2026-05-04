@@ -111,18 +111,18 @@ export interface AthleteAdminCounts {
 }
 
 export interface AthleteAdminDetail {
-  profile: AthleteProfile
+  profile: AthleteProfile & { cpf: string | null }
   address: Address | null
   user: Pick<
     User,
     | 'id'
     | 'name'
     | 'email'
-    | 'cpf'
     | 'role'
     | 'emailVerified'
     | 'isActive'
     | 'createdAt'
+    | 'lastLoginAt'
   >
   subscription: AthleteAdminSubscriptionView | null
   counts: AthleteAdminCounts
