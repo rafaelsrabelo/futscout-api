@@ -34,6 +34,7 @@ export async function getMyAthleteProfile(
     return reply.status(200).send({
       athleteProfile: {
         id: profile.id,
+        name: user?.name ?? null,
         cpf: user?.cpf ?? null,
         gender: profile.gender,
         nickname: profile.nickname,
