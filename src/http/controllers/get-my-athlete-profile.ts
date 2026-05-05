@@ -4,6 +4,7 @@ import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-at
 import { PrismaFavoriteRepository } from '../repositories/prisma/prisma-favorite-repository.js'
 import { PrismaUsersRepository } from '../repositories/prisma/prisma-users-repository.js'
 import { GetMyAthleteProfileUseCase } from '../use-cases/get-my-athlete-profile.js'
+import { coerceAthleteNullStrings } from '../utils/null-strings-to-empty.js'
 
 export async function getMyAthleteProfile(
   request: FastifyRequest,
@@ -32,7 +33,7 @@ export async function getMyAthleteProfile(
     const achievements = await achievementRepository.findByAthleteId(profile.id)
 
     return reply.status(200).send({
-      athleteProfile: {
+      athleteProfile: coerceAthleteNullStrings({
         id: profile.id,
         name: user?.name ?? null,
         cpf: user?.cpf ?? null,
@@ -70,7 +71,7 @@ export async function getMyAthleteProfile(
         })),
         createdAt: profile.createdAt,
         updatedAt: profile.updatedAt,
-      },
+      }),
     })
   } catch (error) {
     if (

@@ -6,6 +6,7 @@ import { PrismaFavoriteRepository } from '../repositories/prisma/prisma-favorite
 import { PrismaMatchRepository } from '../repositories/prisma/prisma-match-repository.js'
 import { PrismaPlayRepository } from '../repositories/prisma/prisma-play-repository.js'
 import { isUserPremium } from '../utils/check-premium.js'
+import { coerceAthleteNullStrings } from '../utils/null-strings-to-empty.js'
 import { redactAthleteSensitiveFields } from '../utils/redact-athlete.js'
 
 type PlayData = {
@@ -261,7 +262,7 @@ export async function publicGetAthlete(
     const safeAthleteProfile = redactAthleteSensitiveFields(athleteProfile)
 
     return reply.status(200).send({
-      athlete: {
+      athlete: coerceAthleteNullStrings({
         ...safeAthleteProfile,
         favorites: favoritesCount,
         isFavorite: false, // Always false for public access
@@ -292,7 +293,7 @@ export async function publicGetAthlete(
             : null,
           createdAt: play.createdAt,
         })),
-      },
+      }),
     })
   } catch (error) {
     return reply.status(500).send({ message: 'Internal server error' })

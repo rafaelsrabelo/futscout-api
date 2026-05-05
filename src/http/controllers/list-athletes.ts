@@ -6,6 +6,7 @@ import {
   enrichAthletesWithFlags,
   sortByPremiumAndDate,
 } from '../utils/athlete-list-helpers.js'
+import { coerceAthleteNullStrings } from '../utils/null-strings-to-empty.js'
 
 export async function listAthletes(
   request: FastifyRequest,
@@ -54,7 +55,7 @@ export async function listAthletes(
     const totalPages = Math.max(1, Math.ceil(total / filters.limit))
 
     return reply.status(200).send({
-      athletes: sortedAthletes,
+      athletes: sortedAthletes.map((a) => coerceAthleteNullStrings(a)),
       pagination: {
         page: filters.page,
         limit: filters.limit,
