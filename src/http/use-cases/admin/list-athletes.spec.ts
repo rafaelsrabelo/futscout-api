@@ -97,10 +97,65 @@ describe('List Athletes Admin Use Case', () => {
 
     const [item] = result.items
     expect(item?.id).toBe('profile-1')
+    expect(item?.userId).toBe('user-1')
+    expect(item?.hasProfile).toBe(true)
     expect(item?.nickname).toBe('Rafa')
     expect(item?.primaryPosition).toBe('FORWARD')
     expect(item?.age).toBeGreaterThan(0)
     expect(item?.user.email).toBe('rafa@example.com')
+  })
+
+  it('inclui atletas com role=ATHLETE mesmo sem AthleteProfile (perfil incompleto)', async () => {
+    // Usuário com profile completo
+    const completo = makeUser({ id: 'u-completo', name: 'Completo' })
+    seed(
+      athleteProfileRepository,
+      completo,
+      makeProfile(completo.id, { id: 'p-completo' }),
+    )
+
+    // Usuário com role=ATHLETE mas sem AthleteProfile (não completou wizard)
+    const incompleto = makeUser({
+      id: 'u-incompleto',
+      name: 'Jonas Sem Perfil',
+      email: 'jonas@example.com',
+      isProfile: false,
+    })
+    athleteProfileRepository.addUser(incompleto)
+
+    // OBSERVER não deve aparecer
+    athleteProfileRepository.addUser(
+      makeUser({ id: 'u-observer', role: 'OBSERVER' }),
+    )
+
+    const result = await sut.execute({ page: 1, pageSize: 20 })
+
+    expect(result.total).toBe(2)
+    const ids = result.items.map((i) => i.userId).sort()
+    expect(ids).toEqual(['u-completo', 'u-incompleto'])
+
+    const incompletoItem = result.items.find((i) => i.userId === 'u-incompleto')
+    expect(incompletoItem?.id).toBeNull()
+    expect(incompletoItem?.hasProfile).toBe(false)
+    expect(incompletoItem?.nickname).toBeNull()
+    expect(incompletoItem?.primaryPosition).toBeNull()
+    expect(incompletoItem?.age).toBeNull()
+    expect(incompletoItem?.user.email).toBe('jonas@example.com')
+  })
+
+  it('filtros de profile (ex: primaryPosition) excluem atletas incompletos', async () => {
+    seed(
+      athleteProfileRepository,
+      makeUser({ id: 'u1' }),
+      makeProfile('u1', { id: 'p1', primaryPosition: 'FORWARD' }),
+    )
+    athleteProfileRepository.addUser(
+      makeUser({ id: 'u-incompleto', isProfile: false }),
+    )
+
+    const result = await sut.execute({ primaryPosition: 'FORWARD' })
+    expect(result.total).toBe(1)
+    expect(result.items[0]?.userId).toBe('u1')
   })
 
   it('filters by q matching name, nickname or email (case-insensitive)', async () => {

@@ -259,51 +259,62 @@ export class PrismaAthleteProfileRepository
     return prisma.athleteProfile.count({ where })
   }
 
-  private buildAdminWhere(filters: AdminAthleteFilters) {
+  // Constrói o where para listagem admin partindo de User (role=ATHLETE).
+  // Filtros que tocam AthleteProfile vão sob `athleteProfile.is`, o que
+  // naturalmente exclui usuários sem perfil quando o filtro é aplicado.
+  private buildAdminUserWhere(filters: AdminAthleteFilters) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: Record<string, any> = {}
+    const where: Record<string, any> = { role: 'ATHLETE' }
 
-    if (filters.gender) where.gender = filters.gender
-    if (filters.dominantFoot) where.dominantFoot = filters.dominantFoot
-    if (filters.primaryPosition) where.primaryPosition = filters.primaryPosition
-    if (filters.hasManager !== undefined) where.hasManager = filters.hasManager
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const profileWhere: Record<string, any> = {}
 
-    if (filters.currentClub) {
-      where.currentClub = { contains: filters.currentClub, mode: 'insensitive' }
+    if (filters.gender) profileWhere.gender = filters.gender
+    if (filters.dominantFoot) profileWhere.dominantFoot = filters.dominantFoot
+    if (filters.primaryPosition) {
+      profileWhere.primaryPosition = filters.primaryPosition
     }
-
-    if (filters.q) {
-      const term = filters.q
-      where.OR = [
-        { nickname: { contains: term, mode: 'insensitive' } },
-        { user: { is: { name: { contains: term, mode: 'insensitive' } } } },
-        { user: { is: { email: { contains: term, mode: 'insensitive' } } } },
-      ]
+    if (filters.hasManager !== undefined) {
+      profileWhere.hasManager = filters.hasManager
+    }
+    if (filters.currentClub) {
+      profileWhere.currentClub = {
+        contains: filters.currentClub,
+        mode: 'insensitive',
+      }
     }
 
     if (filters.minHeight !== undefined || filters.maxHeight !== undefined) {
-      where.height = {}
-      if (filters.minHeight !== undefined) where.height.gte = filters.minHeight
-      if (filters.maxHeight !== undefined) where.height.lte = filters.maxHeight
+      profileWhere.height = {}
+      if (filters.minHeight !== undefined) {
+        profileWhere.height.gte = filters.minHeight
+      }
+      if (filters.maxHeight !== undefined) {
+        profileWhere.height.lte = filters.maxHeight
+      }
     }
 
     if (filters.minWeight !== undefined || filters.maxWeight !== undefined) {
-      where.weight = {}
-      if (filters.minWeight !== undefined) where.weight.gte = filters.minWeight
-      if (filters.maxWeight !== undefined) where.weight.lte = filters.maxWeight
+      profileWhere.weight = {}
+      if (filters.minWeight !== undefined) {
+        profileWhere.weight.gte = filters.minWeight
+      }
+      if (filters.maxWeight !== undefined) {
+        profileWhere.weight.lte = filters.maxWeight
+      }
     }
 
     // Idade X hoje ⇒ birthDate ∈ (today - (X+1) anos, today - X anos].
     // minAge define limite superior do birthDate; maxAge define limite
     // inferior exclusivo do birthDate.
     if (filters.minAge !== undefined || filters.maxAge !== undefined) {
-      where.birthDate = {}
+      profileWhere.birthDate = {}
       const today = new Date()
 
       if (filters.minAge !== undefined) {
         const maxBirthDate = new Date(today)
         maxBirthDate.setFullYear(today.getFullYear() - filters.minAge)
-        where.birthDate.lte = maxBirthDate
+        profileWhere.birthDate.lte = maxBirthDate
       }
 
       if (filters.maxAge !== undefined) {
@@ -311,8 +322,25 @@ export class PrismaAthleteProfileRepository
         minBirthDateExclusive.setFullYear(
           today.getFullYear() - (filters.maxAge + 1),
         )
-        where.birthDate.gt = minBirthDateExclusive
+        profileWhere.birthDate.gt = minBirthDateExclusive
       }
+    }
+
+    if (Object.keys(profileWhere).length > 0) {
+      where.athleteProfile = { is: profileWhere }
+    }
+
+    if (filters.q) {
+      const term = filters.q
+      where.OR = [
+        { name: { contains: term, mode: 'insensitive' } },
+        { email: { contains: term, mode: 'insensitive' } },
+        {
+          athleteProfile: {
+            is: { nickname: { contains: term, mode: 'insensitive' } },
+          },
+        },
+      ]
     }
 
     return where
@@ -322,31 +350,35 @@ export class PrismaAthleteProfileRepository
     filters: AdminAthleteFilters,
     pagination: AdminPagination,
   ) {
-    const where = this.buildAdminWhere(filters)
+    const where = this.buildAdminUserWhere(filters)
     const { page, pageSize } = pagination
 
-    const [items, total] = await Promise.all([
-      prisma.athleteProfile.findMany({
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
         where,
         include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              cpf: true,
-              emailVerified: true,
-              isActive: true,
-              createdAt: true,
-            },
-          },
+          athleteProfile: true,
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
-      prisma.athleteProfile.count({ where }),
+      prisma.user.count({ where }),
     ])
+
+    const items = users.map((user) => ({
+      profile: user.athleteProfile,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        cpf: user.cpf,
+        emailVerified: user.emailVerified,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt,
+      },
+    }))
 
     return { items, total }
   }

@@ -9,7 +9,9 @@ export interface ListAthletesAdminUseCaseRequest extends AdminAthleteFilters {
 }
 
 export interface AdminAthleteListItem {
-  id: string
+  id: string | null
+  userId: string
+  hasProfile: boolean
   nickname: string | null
   profilePhoto: string | null
   birthDate: Date | null
@@ -75,31 +77,33 @@ export class ListAthletesAdminUseCase {
         pageSize,
       })
 
-    const mapped: AdminAthleteListItem[] = items.map((profile) => ({
-      id: profile.id,
-      nickname: profile.nickname,
-      profilePhoto: profile.profilePhoto,
-      birthDate: profile.birthDate,
-      age: computeAge(profile.birthDate),
-      gender: profile.gender,
-      primaryPosition: profile.primaryPosition,
-      secondaryPosition: profile.secondaryPosition,
-      dominantFoot: profile.dominantFoot,
-      currentClub: profile.currentClub,
-      height: profile.height,
-      weight: profile.weight,
-      hasManager: profile.hasManager,
-      cpf: profile.user.cpf,
-      createdAt: profile.createdAt,
+    const mapped: AdminAthleteListItem[] = items.map(({ profile, user }) => ({
+      id: profile?.id ?? null,
+      userId: user.id,
+      hasProfile: profile !== null,
+      nickname: profile?.nickname ?? null,
+      profilePhoto: profile?.profilePhoto ?? null,
+      birthDate: profile?.birthDate ?? null,
+      age: computeAge(profile?.birthDate ?? null),
+      gender: profile?.gender ?? null,
+      primaryPosition: profile?.primaryPosition ?? null,
+      secondaryPosition: profile?.secondaryPosition ?? null,
+      dominantFoot: profile?.dominantFoot ?? null,
+      currentClub: profile?.currentClub ?? null,
+      height: profile?.height ?? null,
+      weight: profile?.weight ?? null,
+      hasManager: profile?.hasManager ?? false,
+      cpf: user.cpf,
+      // Para incompletos, usa o createdAt do User (quando se cadastrou).
+      createdAt: profile?.createdAt ?? user.createdAt,
       user: {
-        id: profile.user.id,
-        name: profile.user.name,
-        email: profile.user.email,
-        emailVerified: profile.user.emailVerified,
-        isActive: profile.user.isActive,
-        createdAt: profile.user.createdAt,
-        // lastLoginAt will be wired up once BE-16 adds the column.
-        lastLoginAt: null,
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        emailVerified: user.emailVerified,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt,
       },
     }))
 

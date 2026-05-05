@@ -78,7 +78,8 @@ export interface AdminPagination {
   pageSize: number
 }
 
-export type AthleteProfileAdminListItem = AthleteProfile & {
+export interface AthleteProfileAdminListItem {
+  profile: AthleteProfile | null
   user: Pick<
     User,
     | 'id'
@@ -88,6 +89,7 @@ export type AthleteProfileAdminListItem = AthleteProfile & {
     | 'emailVerified'
     | 'isActive'
     | 'createdAt'
+    | 'lastLoginAt'
   >
 }
 

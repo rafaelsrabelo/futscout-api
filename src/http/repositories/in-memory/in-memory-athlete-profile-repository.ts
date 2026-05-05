@@ -176,47 +176,76 @@ export class InMemoryAthleteProfileRepository
     return items.length
   }
 
+  // Aplica filtros sobre Users com role=ATHLETE. Filtros que tocam profile
+  // só fazem sentido para usuários com perfil — nesse caso o user sem perfil
+  // é descartado.
   private applyAdminFilters(
-    items: AthleteProfile[],
+    users: User[],
     filters: AdminAthleteFilters,
-  ): AthleteProfile[] {
-    let filtered = items
+  ): { user: User; profile: AthleteProfile | null }[] {
+    const profileFilterActive =
+      filters.gender !== undefined ||
+      filters.dominantFoot !== undefined ||
+      filters.primaryPosition !== undefined ||
+      filters.hasManager !== undefined ||
+      filters.currentClub !== undefined ||
+      filters.minHeight !== undefined ||
+      filters.maxHeight !== undefined ||
+      filters.minWeight !== undefined ||
+      filters.maxWeight !== undefined ||
+      filters.minAge !== undefined ||
+      filters.maxAge !== undefined
+
+    let rows = users.map((user) => ({
+      user,
+      profile: this.items.find((p) => p.userId === user.id) ?? null,
+    }))
+
+    if (profileFilterActive) {
+      rows = rows.filter((r) => r.profile !== null)
+    }
 
     if (filters.gender) {
-      filtered = filtered.filter((item) => item.gender === filters.gender)
+      rows = rows.filter((r) => r.profile?.gender === filters.gender)
     }
     if (filters.dominantFoot) {
-      filtered = filtered.filter(
-        (item) => item.dominantFoot === filters.dominantFoot,
+      rows = rows.filter(
+        (r) => r.profile?.dominantFoot === filters.dominantFoot,
       )
     }
     if (filters.primaryPosition) {
-      filtered = filtered.filter(
-        (item) => item.primaryPosition === filters.primaryPosition,
+      rows = rows.filter(
+        (r) => r.profile?.primaryPosition === filters.primaryPosition,
       )
     }
     if (filters.hasManager !== undefined) {
-      filtered = filtered.filter(
-        (item) => item.hasManager === filters.hasManager,
-      )
+      rows = rows.filter((r) => r.profile?.hasManager === filters.hasManager)
     }
     if (filters.currentClub) {
       const needle = filters.currentClub.toLowerCase()
-      filtered = filtered.filter((item) =>
-        item.currentClub?.toLowerCase().includes(needle),
+      rows = rows.filter((r) =>
+        r.profile?.currentClub?.toLowerCase().includes(needle),
       )
     }
     if (filters.minHeight !== undefined) {
-      filtered = filtered.filter((item) => item.height >= filters.minHeight!)
+      rows = rows.filter(
+        (r) => (r.profile?.height ?? -Infinity) >= filters.minHeight!,
+      )
     }
     if (filters.maxHeight !== undefined) {
-      filtered = filtered.filter((item) => item.height <= filters.maxHeight!)
+      rows = rows.filter(
+        (r) => (r.profile?.height ?? Infinity) <= filters.maxHeight!,
+      )
     }
     if (filters.minWeight !== undefined) {
-      filtered = filtered.filter((item) => item.weight >= filters.minWeight!)
+      rows = rows.filter(
+        (r) => (r.profile?.weight ?? -Infinity) >= filters.minWeight!,
+      )
     }
     if (filters.maxWeight !== undefined) {
-      filtered = filtered.filter((item) => item.weight <= filters.maxWeight!)
+      rows = rows.filter(
+        (r) => (r.profile?.weight ?? Infinity) <= filters.maxWeight!,
+      )
     }
 
     if (filters.minAge !== undefined || filters.maxAge !== undefined) {
@@ -224,32 +253,33 @@ export class InMemoryAthleteProfileRepository
       if (filters.minAge !== undefined) {
         const maxBirthDate = new Date(today)
         maxBirthDate.setFullYear(today.getFullYear() - filters.minAge)
-        filtered = filtered.filter((item) => item.birthDate <= maxBirthDate)
+        rows = rows.filter(
+          (r) => r.profile !== null && r.profile.birthDate <= maxBirthDate,
+        )
       }
       if (filters.maxAge !== undefined) {
         const minBirthDateExclusive = new Date(today)
         minBirthDateExclusive.setFullYear(
           today.getFullYear() - (filters.maxAge + 1),
         )
-        filtered = filtered.filter(
-          (item) => item.birthDate > minBirthDateExclusive,
+        rows = rows.filter(
+          (r) =>
+            r.profile !== null && r.profile.birthDate > minBirthDateExclusive,
         )
       }
     }
 
     if (filters.q) {
       const needle = filters.q.toLowerCase()
-      filtered = filtered.filter((item) => {
-        const user = this.users.find((u) => u.id === item.userId)
-        return (
-          item.nickname?.toLowerCase().includes(needle) ||
-          user?.name.toLowerCase().includes(needle) ||
-          user?.email.toLowerCase().includes(needle)
-        )
-      })
+      rows = rows.filter(
+        (r) =>
+          r.user.name.toLowerCase().includes(needle) ||
+          r.user.email.toLowerCase().includes(needle) ||
+          r.profile?.nickname?.toLowerCase().includes(needle),
+      )
     }
 
-    return filtered
+    return rows
   }
 
   async findByIdForAdmin(id: string): Promise<AthleteAdminDetail | null> {
@@ -322,31 +352,32 @@ export class InMemoryAthleteProfileRepository
     filters: AdminAthleteFilters,
     pagination: AdminPagination,
   ): Promise<{ items: AthleteProfileAdminListItem[]; total: number }> {
-    const filtered = this.applyAdminFilters(this.items, filters)
+    const athletes = this.users.filter((u) => u.role === 'ATHLETE')
+    const filtered = this.applyAdminFilters(athletes, filters)
 
     const sorted = [...filtered].sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+      (a, b) => b.user.createdAt.getTime() - a.user.createdAt.getTime(),
     )
 
     const { page, pageSize } = pagination
     const start = (page - 1) * pageSize
     const paged = sorted.slice(start, start + pageSize)
 
-    const items: AthleteProfileAdminListItem[] = paged.map((profile) => {
-      const user = this.users.find((u) => u.id === profile.userId)
-      return {
-        ...profile,
+    const items: AthleteProfileAdminListItem[] = paged.map(
+      ({ user, profile }) => ({
+        profile,
         user: {
-          id: user?.id ?? '',
-          name: user?.name ?? '',
-          email: user?.email ?? '',
-          cpf: user?.cpf ?? null,
-          emailVerified: user?.emailVerified ?? false,
-          isActive: user?.isActive ?? true,
-          createdAt: user?.createdAt ?? new Date(0),
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          cpf: user.cpf,
+          emailVerified: user.emailVerified,
+          isActive: user.isActive,
+          createdAt: user.createdAt,
+          lastLoginAt: user.lastLoginAt,
         },
-      }
-    })
+      }),
+    )
 
     return { items, total: filtered.length }
   }
