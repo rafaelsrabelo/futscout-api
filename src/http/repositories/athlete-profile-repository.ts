@@ -36,6 +36,8 @@ export type UpdateAthleteProfileData = {
   hasNutritionist?: boolean
   hasPsychologist?: boolean
   hasPersonalTrainer?: boolean
+  // Classificação interna (admin). null limpa a classificação.
+  classification?: 'DESENVOLVIMENTO' | 'PERFORMANCE' | null
 }
 
 export interface AthleteFilters {
@@ -71,6 +73,8 @@ export interface AdminAthleteFilters {
   maxHeight?: number
   minWeight?: number
   maxWeight?: number
+  // Filtra por classificação. 'UNCLASSIFIED' devolve só os não classificados.
+  classification?: 'DESENVOLVIMENTO' | 'PERFORMANCE' | 'UNCLASSIFIED'
 }
 
 export interface AdminPagination {

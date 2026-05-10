@@ -56,6 +56,13 @@ enum DominantFoot {
   LEFT
 }
 
+// Classificação interna do atleta (admin-only).
+// null = ainda não classificado. Novos valores podem ser adicionados no futuro.
+enum AthleteClassification {
+  DESENVOLVIMENTO
+  PERFORMANCE
+}
+
 enum MatchResult {
   WIN
   LOSS
@@ -168,16 +175,18 @@ model User {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  athleteProfile    AthleteProfile?
-  observerProfile   ObserverProfile?
-  refreshTokens     RefreshToken[]
-  tokenBlacklist    TokenBlacklist[]
-  verificationCodes VerificationCode[]
-  favorites         Favorite[]
-  teams             Team[]
-  savedSearches     SavedSearch[]
-  subscriptions     Subscription[]
-  usages            Usage[]
+  athleteProfile             AthleteProfile?
+  observerProfile            ObserverProfile?
+  refreshTokens              RefreshToken[]
+  tokenBlacklist             TokenBlacklist[]
+  verificationCodes          VerificationCode[]
+  favorites                  Favorite[]
+  teams                      Team[]
+  savedSearches              SavedSearch[]
+  subscriptions              Subscription[]
+  usages                     Usage[]
+  // Classificações que esse usuário (admin) registrou em atletas
+  athleteClassificationsMade AthleteClassificationLog[] @relation("ClassifiedBy")
 
   @@unique([provider, providerId])
   @@map("users")
@@ -225,7 +234,7 @@ model AthleteProfile {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   gender       Gender?
-  nickname     String?  @unique
+  nickname     String?   @unique
   profilePhoto String?
   birthDate    DateTime?
 
@@ -252,6 +261,11 @@ model AthleteProfile {
   hasPsychologist    Boolean @default(false) // Acompanhamento psicológico
   hasPersonalTrainer Boolean @default(false) // Treino personalizado com professor de educação física
 
+  // Classificação interna (admin define). Snapshot da última entrada do log
+  // para filtros rápidos. Histórico completo em AthleteClassificationLog.
+  classification     AthleteClassification?
+  classificationLogs AthleteClassificationLog[]
+
   address      Address?
   teams        AthleteTeam[]
   teamHistory  TeamHistory[]
@@ -265,6 +279,24 @@ model AthleteProfile {
   updatedAt DateTime @updatedAt
 
   @@map("athlete_profiles")
+}
+
+// Histórico de classificações do atleta. Cada chamada ao endpoint admin de
+// classificar gera uma linha aqui — o campo `classification` em
+// AthleteProfile é o snapshot do último registro, mantido para filtros
+// rápidos. classification null nesse log = admin removeu a classificação.
+model AthleteClassificationLog {
+  id             String                 @id @default(uuid())
+  athleteId      String
+  athlete        AthleteProfile         @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  classification AthleteClassification?
+  comment        String?
+  classifiedById String
+  classifiedBy   User                   @relation("ClassifiedBy", fields: [classifiedById], references: [id])
+  createdAt      DateTime               @default(now())
+
+  @@index([athleteId, createdAt(sort: Desc)])
+  @@map("athlete_classification_logs")
 }
 
 model ObserverProfile {
@@ -611,7 +643,7 @@ model ImportLog {
   created    Int
   updated    Int
   errorCount Int
-  errors     Json     // array de { row, nome, cpf, error }
+  errors     Json // array de { row, nome, cpf, error }
   createdAt  DateTime @default(now())
 
   @@map("import_logs")

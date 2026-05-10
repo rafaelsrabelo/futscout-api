@@ -15,6 +15,10 @@ const listAthletesAdminQuerySchema = z.object({
   dominantFoot: z.enum(['RIGHT', 'LEFT']).optional(),
   currentClub: z.string().trim().min(1).optional(),
   hasManager: z.coerce.boolean().optional(),
+  // 'UNCLASSIFIED' devolve só os atletas com perfil ainda sem classificação.
+  classification: z
+    .enum(['DESENVOLVIMENTO', 'PERFORMANCE', 'UNCLASSIFIED'])
+    .optional(),
   minAge: z.coerce.number().int().min(0).max(120).optional(),
   maxAge: z.coerce.number().int().min(0).max(120).optional(),
   minHeight: z.coerce.number().positive().optional(),

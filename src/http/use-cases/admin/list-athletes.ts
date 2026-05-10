@@ -24,6 +24,7 @@ export interface AdminAthleteListItem {
   height: number | null
   weight: number | null
   hasManager: boolean
+  classification: 'DESENVOLVIMENTO' | 'PERFORMANCE' | null
   cpf: string | null
   createdAt: Date
   user: {
@@ -93,6 +94,7 @@ export class ListAthletesAdminUseCase {
       height: profile?.height ?? null,
       weight: profile?.weight ?? null,
       hasManager: profile?.hasManager ?? false,
+      classification: profile?.classification ?? null,
       cpf: user.cpf,
       // Para incompletos, usa o createdAt do User (quando se cadastrou).
       createdAt: profile?.createdAt ?? user.createdAt,

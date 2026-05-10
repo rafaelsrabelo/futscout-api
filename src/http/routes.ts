@@ -34,7 +34,9 @@ import { listMatchesAdmin } from './controllers/admin/list-matches.js'
 import { listTeamsAdmin } from './controllers/admin/list-teams.js'
 import { removePlayVideoAdmin } from './controllers/admin/remove-play-video.js'
 import { resetAthletePasswordAdmin } from './controllers/admin/reset-athlete-password.js'
+import { listAthleteClassificationHistoryAdmin } from './controllers/admin/list-athlete-classification-history.js'
 import { searchAdmin } from './controllers/admin/search.js'
+import { setAthleteClassificationAdmin } from './controllers/admin/set-athlete-classification.js'
 import { updateAchievementAdmin } from './controllers/admin/update-achievement.js'
 import { updateAthleteAdmin } from './controllers/admin/update-athlete.js'
 import { updateMatchAdmin } from './controllers/admin/update-match.js'
@@ -379,6 +381,16 @@ export async function appRoutes(app: FastifyInstance) {
     '/admin/athletes/:id',
     { onRequest: [verifyJwt, verifyAdmin] },
     updateAthleteAdmin,
+  )
+  app.patch(
+    '/admin/athletes/:id/classification',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    setAthleteClassificationAdmin,
+  )
+  app.get(
+    '/admin/athletes/:id/classification/history',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    listAthleteClassificationHistoryAdmin,
   )
   app.post(
     '/admin/athletes/:id/reset-password',

@@ -67,6 +67,7 @@ export class InMemoryAthleteProfileRepository
       managerName: data.managerName ?? null,
       managerCompany: data.managerCompany ?? null,
       managerContact: data.managerContact ?? null,
+      classification: data.classification ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -194,7 +195,8 @@ export class InMemoryAthleteProfileRepository
       filters.minWeight !== undefined ||
       filters.maxWeight !== undefined ||
       filters.minAge !== undefined ||
-      filters.maxAge !== undefined
+      filters.maxAge !== undefined ||
+      filters.classification !== undefined
 
     let rows = users.map((user) => ({
       user,
@@ -226,6 +228,20 @@ export class InMemoryAthleteProfileRepository
       rows = rows.filter((r) =>
         r.profile?.currentClub?.toLowerCase().includes(needle),
       )
+    }
+    if (filters.classification) {
+      if (filters.classification === 'UNCLASSIFIED') {
+        rows = rows.filter(
+          (r) =>
+            r.profile !== null &&
+            (r.profile.classification === null ||
+              r.profile.classification === undefined),
+        )
+      } else {
+        rows = rows.filter(
+          (r) => r.profile?.classification === filters.classification,
+        )
+      }
     }
     if (filters.minHeight !== undefined) {
       rows = rows.filter(

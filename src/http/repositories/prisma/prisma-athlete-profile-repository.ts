@@ -283,6 +283,10 @@ export class PrismaAthleteProfileRepository
         mode: 'insensitive',
       }
     }
+    if (filters.classification) {
+      profileWhere.classification =
+        filters.classification === 'UNCLASSIFIED' ? null : filters.classification
+    }
 
     if (filters.minHeight !== undefined || filters.maxHeight !== undefined) {
       profileWhere.height = {}
