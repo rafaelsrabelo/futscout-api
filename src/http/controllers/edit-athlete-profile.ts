@@ -40,6 +40,9 @@ export async function editAthleteProfile(
     hasNutritionist: z.boolean().optional(),
     hasPsychologist: z.boolean().optional(),
     hasPersonalTrainer: z.boolean().optional(),
+    // Aliases vindos de versões antigas do mobile
+    hasNutritionalSupport: z.boolean().optional(),
+    hasPsychologicalSupport: z.boolean().optional(),
     // Endereço (opcional)
     address: z
       .object({
@@ -70,10 +73,28 @@ export async function editAthleteProfile(
 
     // Prepare data for use case, excluding undefined values
     // Tratar string vazia em currentClub como null (para permitir limpar o campo)
-    const { address, currentClub, ...otherData } = profileData
+    // Mergear aliases hasNutritionalSupport/hasPsychologicalSupport vindos de
+    // versões antigas do mobile com os nomes canônicos do schema.
+    const {
+      address,
+      currentClub,
+      hasNutritionalSupport,
+      hasPsychologicalSupport,
+      hasNutritionist,
+      hasPsychologist,
+      ...otherData
+    } = profileData
+    const mergedNutritionist = hasNutritionist ?? hasNutritionalSupport
+    const mergedPsychologist = hasPsychologist ?? hasPsychologicalSupport
     const useCaseRequest = {
       userId,
       ...otherData,
+      ...(mergedNutritionist !== undefined && {
+        hasNutritionist: mergedNutritionist,
+      }),
+      ...(mergedPsychologist !== undefined && {
+        hasPsychologist: mergedPsychologist,
+      }),
       ...(currentClub !== undefined && {
         currentClub: currentClub === '' ? null : currentClub,
       }),

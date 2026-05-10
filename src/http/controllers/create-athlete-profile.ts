@@ -36,9 +36,12 @@ export async function createAthleteProfile(
     managerName: z.string().max(100).optional(),
     managerCompany: z.string().max(100).optional(),
     managerContact: z.string().max(100).optional(),
-    hasNutritionist: z.boolean().default(false),
-    hasPsychologist: z.boolean().default(false),
+    hasNutritionist: z.boolean().optional(),
+    hasPsychologist: z.boolean().optional(),
     hasPersonalTrainer: z.boolean().default(false),
+    // Aliases vindos do mobile (versões antigas) — mergeados abaixo
+    hasNutritionalSupport: z.boolean().optional(),
+    hasPsychologicalSupport: z.boolean().optional(),
     // Campos de endereço (opcionais)
     zipCode: z.string().max(10).optional(),
     street: z.string().max(255).optional(),
@@ -49,17 +52,46 @@ export async function createAthleteProfile(
     state: z.string().max(100).optional(),
     country: z.string().max(100).optional(),
 
-    // Campos de time (opcionais)
+    // Campos de time (opcionais).
+    // name/acronym/shieldPhoto fazem trim e tratam string vazia como undefined
+    // — o mobile manda "" quando o usuário toca e limpa o input, e o min(1)
+    // antigo derrubava o request.
     team: z.object({
-      name: z.string().min(1).max(100),
-      acronym: z.string().min(1).max(10).optional(),
-      shieldPhoto: z.string().url().optional(),
+      name: z
+        .string()
+        .max(100)
+        .transform((v) => (v && v.trim() ? v.trim() : ''))
+        .refine((v) => v.length >= 1, { message: 'Team name is required' }),
+      acronym: z
+        .string()
+        .max(10)
+        .optional()
+        .transform((v) => (v && v.trim() ? v.trim() : undefined)),
+      shieldPhoto: z
+        .string()
+        .optional()
+        .transform((v) => (v && v.trim() ? v.trim() : undefined))
+        .refine((v) => v === undefined || /^https?:\/\//.test(v), {
+          message: 'shieldPhoto must be a valid URL',
+        }),
       isPrincipal: z.boolean().optional().default(false),
     }).optional(),
   })
 
   const userId = request.user.sub
-  const data = createAthleteProfileBodySchema.parse(request.body)
+  const parsed = createAthleteProfileBodySchema.parse(request.body)
+  const {
+    hasNutritionalSupport,
+    hasPsychologicalSupport,
+    hasNutritionist,
+    hasPsychologist,
+    ...rest
+  } = parsed
+  const data = {
+    ...rest,
+    hasNutritionist: hasNutritionist ?? hasNutritionalSupport ?? false,
+    hasPsychologist: hasPsychologist ?? hasPsychologicalSupport ?? false,
+  }
 
   try {
     const prismaUsersRepository = new PrismaUsersRepository()
