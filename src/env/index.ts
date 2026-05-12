@@ -47,6 +47,9 @@ const envSchema = z
     // Exemplo para mobile: futscout://payment/success
     APP_REDIRECT_URL: z.string().default('futscout://payment'),
 
+    // Expo Push Notifications — opcional; sem token o SDK envia anonimamente.
+    EXPO_ACCESS_TOKEN: z.string().optional(),
+
     // Default admin credentials (consumed by seedAdmin on startup).
     // Required in dev and test, optional in production so that prod boots
     // even when the admin row already exists and secrets are not re-set.

@@ -158,6 +158,9 @@ export interface AthleteProfileRepository {
     filters: AdminAthleteFilters,
     pagination: AdminPagination,
   ): Promise<{ items: AthleteProfileAdminListItem[]; total: number }>
+  // Resolve userIds de atletas que casam com o filtro admin.
+  // Usado pelo envio/preview de push notifications — não pagina.
+  findUserIdsByAdminFilter(filters: AdminAthleteFilters): Promise<string[]>
   findByIdForAdmin(id: string): Promise<AthleteAdminDetail | null>
   countPlaysByTypeForAthlete(
     athleteProfileId: string,

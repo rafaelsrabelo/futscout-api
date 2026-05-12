@@ -31,7 +31,11 @@ import { resetUserPasswordAdmin } from './controllers/admin/reset-user-password.
 import { linkMatchAthleteAdmin } from './controllers/admin/link-match-athlete.js'
 import { listMatchPlaysAdmin } from './controllers/admin/list-match-plays.js'
 import { listMatchesAdmin } from './controllers/admin/list-matches.js'
+import { listNotificationsAdmin } from './controllers/admin/list-notifications.js'
 import { listTeamsAdmin } from './controllers/admin/list-teams.js'
+import { getNotificationAdmin } from './controllers/admin/get-notification.js'
+import { previewNotificationAudienceAdmin } from './controllers/admin/preview-notification-audience.js'
+import { sendNotificationAdmin } from './controllers/admin/send-notification.js'
 import { removePlayVideoAdmin } from './controllers/admin/remove-play-video.js'
 import { resetAthletePasswordAdmin } from './controllers/admin/reset-athlete-password.js'
 import { listAthleteClassificationHistoryAdmin } from './controllers/admin/list-athlete-classification-history.js'
@@ -101,7 +105,9 @@ import { publicGetAthlete } from './controllers/public-get-athlete.js'
 import { publicListAthletes } from './controllers/public-list-athletes.js'
 import { refreshToken } from './controllers/refresh-token.js'
 import { regenerateThumbnail } from './controllers/regenerate-thumbnail.js'
+import { registerPushToken } from './controllers/register-push-token.js'
 import { register } from './controllers/register.js'
+import { removePushToken } from './controllers/remove-push-token.js'
 import { socialLogin } from './controllers/social-login.js'
 import { syncCurrentClub } from './controllers/sync-current-club.js'
 import { toggleFavorite } from './controllers/toggle-favorite.js'
@@ -294,6 +300,10 @@ export async function appRoutes(app: FastifyInstance) {
     { onRequest: [verifyJwt] },
     executeSavedSearch,
   )
+
+  // Push notification tokens (mobile)
+  app.post('/push-tokens', { onRequest: [verifyJwt] }, registerPushToken)
+  app.delete('/push-tokens/:token', { onRequest: [verifyJwt] }, removePushToken)
 
   // Utility routes
   app.post('/athletes/sync-club', { onRequest: [verifyJwt] }, syncCurrentClub)
@@ -521,6 +531,28 @@ export async function appRoutes(app: FastifyInstance) {
     '/admin/team-history/:id',
     { onRequest: [verifyJwt, verifyAdmin] },
     deleteTeamHistoryAdmin,
+  )
+
+  // Admin — push notifications
+  app.post(
+    '/admin/notifications/preview',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    previewNotificationAudienceAdmin,
+  )
+  app.post(
+    '/admin/notifications/send',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    sendNotificationAdmin,
+  )
+  app.get(
+    '/admin/notifications',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    listNotificationsAdmin,
+  )
+  app.get(
+    '/admin/notifications/:id',
+    { onRequest: [verifyJwt, verifyAdmin] },
+    getNotificationAdmin,
   )
 
   // Billing routes

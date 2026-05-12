@@ -398,6 +398,14 @@ export class InMemoryAthleteProfileRepository
     return { items, total: filtered.length }
   }
 
+  async findUserIdsByAdminFilter(
+    filters: AdminAthleteFilters,
+  ): Promise<string[]> {
+    const athletes = this.users.filter((u) => u.role === 'ATHLETE')
+    const filtered = this.applyAdminFilters(athletes, filters)
+    return filtered.map(({ user }) => user.id)
+  }
+
   async findByNickname(nickname: string): Promise<AthleteProfile | null> {
     const athleteProfile = this.items.find((item) => item.nickname === nickname)
     return athleteProfile || null

@@ -187,6 +187,9 @@ model User {
   usages                     Usage[]
   // Classificações que esse usuário (admin) registrou em atletas
   athleteClassificationsMade AthleteClassificationLog[] @relation("ClassifiedBy")
+  pushTokens                 PushToken[]
+  // Notificações que esse usuário (admin) disparou
+  notificationsSent          NotificationLog[]          @relation("NotificationsSentBy")
 
   @@unique([provider, providerId])
   @@map("users")
@@ -635,6 +638,56 @@ model Achievement {
 enum AchievementType {
   COLLECTIVE // Título coletivo (ex: campeonato com time)
   INDIVIDUAL // Título individual (ex: melhor jogador, artilheiro)
+}
+
+enum PushPlatform {
+  IOS
+  ANDROID
+}
+
+enum NotificationAudienceType {
+  ALL
+  USER_IDS
+  ATHLETE_FILTER
+}
+
+model PushToken {
+  id         String       @id @default(uuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String       @unique // ExponentPushToken[...]
+  platform   PushPlatform
+  deviceName String?
+  deviceId   String? // expo-constants installationId
+  appVersion String?
+  lastUsedAt DateTime     @default(now())
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([deviceId])
+  @@map("push_tokens")
+}
+
+model NotificationLog {
+  id               String                   @id @default(uuid())
+  title            String
+  body             String
+  data             Json? // payload customizado (ex.: { screen, params } para deep link)
+  audienceType     NotificationAudienceType
+  audiencePayload  Json // { userIds? , filters? }
+  sentByUserId     String
+  sentBy           User                     @relation("NotificationsSentBy", fields: [sentByUserId], references: [id], onDelete: Restrict)
+  totalRecipients  Int                      @default(0) // usuários alvo (resolvidos da audiência)
+  totalWithToken   Int                      @default(0) // destes, quantos tinham ≥1 PushToken
+  successCount     Int                      @default(0) // tickets ok retornados pela Expo
+  failureCount     Int                      @default(0) // tickets com erro
+  invalidTokensCnt Int                      @default(0) // tokens removidos por DeviceNotRegistered
+  createdAt        DateTime                 @default(now())
+
+  @@index([createdAt])
+  @@index([sentByUserId])
+  @@map("notification_logs")
 }
 
 model ImportLog {

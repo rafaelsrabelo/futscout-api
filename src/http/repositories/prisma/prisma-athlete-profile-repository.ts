@@ -387,6 +387,17 @@ export class PrismaAthleteProfileRepository
     return { items, total }
   }
 
+  async findUserIdsByAdminFilter(
+    filters: AdminAthleteFilters,
+  ): Promise<string[]> {
+    const where = this.buildAdminUserWhere(filters)
+    const users = await prisma.user.findMany({
+      where,
+      select: { id: true },
+    })
+    return users.map((u) => u.id)
+  }
+
   async findByIdForAdmin(id: string): Promise<AthleteAdminDetail | null> {
     const profile = await prisma.athleteProfile.findUnique({
       where: { id },
