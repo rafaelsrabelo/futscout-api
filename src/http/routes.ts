@@ -52,6 +52,9 @@ import { verifyAdminSession } from './controllers/admin/verify-admin-session.js'
 import { authenticate } from './controllers/authenticate.js'
 import { checkCpf } from './controllers/check-cpf.js'
 import { recoverAccessByCpf } from './controllers/recover-access-by-cpf.js'
+import { forgotPassword } from './controllers/forgot-password.js'
+import { verifyPasswordResetCode } from './controllers/verify-password-reset-code.js'
+import { resetPassword } from './controllers/reset-password.js'
 import { checkPriceIdMatch } from './controllers/billing/check-price-id-match.js'
 import { checkout } from './controllers/billing/checkout.js'
 import { getStripeConfig } from './controllers/billing/get-stripe-config.js'
@@ -142,6 +145,11 @@ export async function appRoutes(app: FastifyInstance) {
   app.post('/auth/refresh', refreshToken)
   app.post('/auth/check-cpf', checkCpf)
   app.post('/auth/recover-access', recoverAccessByCpf)
+
+  // Fluxo "esqueci minha senha" (email + código de 6 dígitos)
+  app.post('/auth/forgot-password', forgotPassword)
+  app.post('/auth/forgot-password/verify', verifyPasswordResetCode)
+  app.post('/auth/reset-password', resetPassword)
 
   // Public athlete routes (accessible without JWT for web)
   app.get('/public/athletes', publicListAthletes)

@@ -28,17 +28,23 @@ export class InMemoryVerificationCodeRepository
   async findByCodeAndEmail(
     code: string,
     email: string,
+    type?: string,
   ): Promise<VerificationCode | null> {
     const now = new Date()
     const verificationCode = this.items.find(
       (item) =>
         item.code === code &&
         item.email === email &&
+        (type ? item.type === type : true) &&
         item.expiresAt > now &&
         item.usedAt === null,
     )
 
     return verificationCode || null
+  }
+
+  async findById(id: string): Promise<VerificationCode | null> {
+    return this.items.find((item) => item.id === id) || null
   }
 
   async markAsUsed(id: string): Promise<VerificationCode> {
@@ -59,5 +65,15 @@ export class InMemoryVerificationCodeRepository
 
   async deleteByEmail(email: string): Promise<void> {
     this.items = this.items.filter((item) => item.email !== email)
+  }
+
+  async invalidateByEmailAndType(email: string, type: string): Promise<void> {
+    const now = new Date()
+
+    for (const item of this.items) {
+      if (item.email === email && item.type === type && item.usedAt === null) {
+        item.usedAt = now
+      }
+    }
   }
 }

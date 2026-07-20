@@ -15,16 +15,25 @@ export class PrismaVerificationCodeRepository
     return verificationCode
   }
 
-  async findByCodeAndEmail(code: string, email: string) {
+  async findByCodeAndEmail(code: string, email: string, type?: string) {
     const verificationCode = await prisma.verificationCode.findFirst({
       where: {
         code,
         email,
+        ...(type ? { type } : {}),
         expiresAt: {
           gt: new Date(), // Código ainda não expirou
         },
         usedAt: null, // Código ainda não foi usado
       },
+    })
+
+    return verificationCode
+  }
+
+  async findById(id: string) {
+    const verificationCode = await prisma.verificationCode.findUnique({
+      where: { id },
     })
 
     return verificationCode
@@ -54,6 +63,19 @@ export class PrismaVerificationCodeRepository
   async deleteByEmail(email: string) {
     await prisma.verificationCode.deleteMany({
       where: { email },
+    })
+  }
+
+  async invalidateByEmailAndType(email: string, type: string) {
+    await prisma.verificationCode.updateMany({
+      where: {
+        email,
+        type,
+        usedAt: null,
+      },
+      data: {
+        usedAt: new Date(),
+      },
     })
   }
 }

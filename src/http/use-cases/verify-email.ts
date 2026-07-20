@@ -21,9 +21,14 @@ export class VerifyEmailUseCase {
     email,
     code,
   }: VerifyEmailUseCaseRequest): Promise<VerifyEmailUseCaseResponse> {
-    // Buscar código válido
+    // Buscar código válido — o filtro por type evita que um código de outro
+    // fluxo (ex.: PASSWORD_RESET) sirva para ativar a conta.
     const verificationCode =
-      await this.verificationCodeRepository.findByCodeAndEmail(code, email)
+      await this.verificationCodeRepository.findByCodeAndEmail(
+        code,
+        email,
+        'EMAIL_VERIFICATION',
+      )
 
     if (!verificationCode) {
       return {
