@@ -52,6 +52,7 @@ Content-Type: application/json
 {
   "threadId": "3f8a...uuid",
   "turnId": "9c2b...uuid",
+  "messageId": "7d1c...uuid",
   "response": "Achei 7 atacantes canhotos até 20 anos. Quer que eu abra a idade até 22?",
   "responseType": "ATHLETE_LIST",
   "items": [
@@ -75,6 +76,7 @@ Content-Type: application/json
     "dominantFoot": "LEFT",
     "maxAge": 20
   },
+  "filterSummary": "Atacante · canhoto · até 20 anos",
   "savedSearchId": null,
   "meta": { "tokensUsed": 1240, "cachedTokens": 980 }
 }
@@ -114,6 +116,30 @@ Content-Type: application/json
 
 ---
 
+## 1b. Salvar um filtro específico — `POST /api/scout-chat/messages/:messageId/save-search`
+
+**Este é o caminho principal para salvar.** Cada turno que fez busca vira um bloco próprio na conversa, com seu `messageId` e seu `filterSummary`. O observador vê o bloco, toca em "salvar", dá um nome — e pronto.
+
+```http
+POST /api/scout-chat/messages/7d1c.../save-search
+{ "title": "Atacantes canhotos", "description": "Para a base do sub-20" }
+
+→ 201 { "savedSearch": { "id": "...", "title": "...", "filters": {...}, ... } }
+```
+
+Por que existe, tendo a IA a tool `save_search`: aqui **não há chamada ao modelo**. É determinístico, instantâneo, de graça, e salva exatamente o filtro que estava na tela — sem depender da IA relembrar os critérios corretamente.
+
+Depois de salvar, o `savedSearchId` fica gravado naquele turno: ao reabrir a conversa por `GET /threads/:id`, o bloco já vem marcado como salvo.
+
+| Status | Quando |
+|---|---|
+| **400** | O turno não fez busca (era uma pergunta da IA, por exemplo). Não ofereça o botão "salvar" quando `appliedFilters` for `null`. |
+| **404** | Mensagem inexistente ou de conversa de outro usuário. |
+
+A tool `save_search` continua funcionando para quem prefere pedir falando ("salva essa busca como X"), mas o botão é o caminho recomendado.
+
+---
+
 ## 2. Histórico de conversas
 
 ### `GET /api/scout-chat/threads`
@@ -143,11 +169,21 @@ Reabre uma conversa inteira. **Os cards vêm do snapshot gravado no turno** — 
   "thread": { "id": "...", "title": "...", "status": "OPEN", "createdAt": "...", "updatedAt": "..." },
   "messages": [
     { "id": "...", "role": "USER", "content": "quero atacante canhoto sub-20", "items": [], "responseType": null, "savedSearchId": null, "createdAt": "..." },
-    { "id": "...", "role": "ASSISTANT", "content": "Achei 7...", "items": [ { /* AthleteCard */ } ], "responseType": "ATHLETE_LIST", "savedSearchId": null, "createdAt": "..." }
+    {
+      "id": "...", "role": "ASSISTANT", "content": "Achei 7...",
+      "items": [ { /* AthleteCard */ } ],
+      "responseType": "ATHLETE_LIST",
+      "appliedFilters": { "primaryPosition": "FORWARD", "dominantFoot": "LEFT", "maxAge": 20 },
+      "filterSummary": "Atacante · canhoto · até 20 anos",
+      "savedSearchId": null,
+      "createdAt": "..."
+    }
   ],
   "appliedFilters": { "primaryPosition": "FORWARD", "dominantFoot": "LEFT", "maxAge": 20 }
 }
 ```
+
+Cada mensagem carrega **os filtros daquele turno**. É isso que permite renderizar a conversa como uma sequência de buscas — cada uma com seu chip e seu botão de salvar. O `appliedFilters` no topo do objeto é só o último, para o app mostrar o "filtro atual".
 
 `role` é `USER` ou `ASSISTANT`. Renderize na ordem que veio (cronológica). Para continuar a conversa, mande o `thread.id` como `threadId` no próximo `POST /messages`.
 

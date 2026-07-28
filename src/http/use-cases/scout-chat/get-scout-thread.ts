@@ -4,6 +4,7 @@ import type {
 } from '../../repositories/scout-chat-repository.js'
 import type { AthleteSearchFilters } from '../../repositories/saved-search-repository.js'
 import { ScoutThreadNotFoundError } from '../errors/scout-thread-not-found-error.js'
+import { buildFilterSummary } from './filter-summary.js'
 import type { AthleteCard } from './tools/tool-types.js'
 
 interface GetScoutThreadRequest {
@@ -18,6 +19,13 @@ interface ScoutThreadMessage {
   /** Snapshot dos cards do turno — a conversa reabre sem refazer a busca. */
   items: AthleteCard[]
   responseType: string | null
+  /**
+   * Filtros DESTE turno. Cada busca da conversa vira um bloco próprio que o
+   * observador pode ver e salvar; antes tudo colapsava num valor só e o
+   * histórico perdia qual filtro era qual.
+   */
+  appliedFilters: AthleteSearchFilters | null
+  filterSummary: string | null
   savedSearchId: string | null
   createdAt: Date
 }
@@ -63,12 +71,16 @@ export class GetScoutThreadUseCase {
           appliedFilters = toolCall.appliedFilters
         }
 
+        const messageFilters = toolCall?.appliedFilters ?? null
+
         return {
           id: message.id,
           role: message.role,
           content: message.content,
           items: (message.cards as AthleteCard[] | null) ?? [],
           responseType: toolCall?.responseType ?? null,
+          appliedFilters: messageFilters,
+          filterSummary: buildFilterSummary(messageFilters),
           savedSearchId: toolCall?.savedSearchId ?? null,
           createdAt: message.createdAt,
         }

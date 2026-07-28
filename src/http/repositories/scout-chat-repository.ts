@@ -49,6 +49,16 @@ export interface ScoutChatRepository {
   updateThread(id: string, data: UpdateScoutThreadData): Promise<ScoutThread>
 
   createMessage(data: CreateScoutMessageData): Promise<ScoutMessage>
+  findMessageById(id: string): Promise<ScoutMessage | null>
+  /**
+   * Reescreve o `toolCall` da mensagem. Usado ao salvar um filtro do histórico:
+   * grava o `savedSearchId` ali para a conversa reabrir já marcando o bloco
+   * como salvo.
+   */
+  updateMessageToolCall(
+    id: string,
+    toolCall: ScoutMessageToolCall,
+  ): Promise<ScoutMessage>
   /** Mensagens da thread em ordem cronológica (mais antiga primeiro). */
   findMessagesByThreadId(threadId: string): Promise<ScoutMessage[]>
   /**

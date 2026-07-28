@@ -67,6 +67,17 @@ export class PrismaScoutChatRepository implements ScoutChatRepository {
     return message
   }
 
+  async findMessageById(id: string) {
+    return prisma.scoutMessage.findUnique({ where: { id } })
+  }
+
+  async updateMessageToolCall(id: string, toolCall: ScoutMessageToolCall) {
+    return prisma.scoutMessage.update({
+      where: { id },
+      data: { toolCall: JSON.parse(JSON.stringify(toolCall)) },
+    })
+  }
+
   async findMessagesByThreadId(threadId: string) {
     return prisma.scoutMessage.findMany({
       where: { threadId },

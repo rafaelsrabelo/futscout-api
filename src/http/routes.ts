@@ -114,6 +114,7 @@ import { removePushToken } from './controllers/remove-push-token.js'
 import { closeScoutThread } from './controllers/scout-chat/close-scout-thread.js'
 import { getScoutThread } from './controllers/scout-chat/get-scout-thread.js'
 import { listScoutThreads } from './controllers/scout-chat/list-scout-threads.js'
+import { saveSearchFromMessage } from './controllers/scout-chat/save-search-from-message.js'
 import { sendScoutMessage } from './controllers/scout-chat/send-scout-message.js'
 import { socialLogin } from './controllers/social-login.js'
 import { syncCurrentClub } from './controllers/sync-current-club.js'
@@ -320,6 +321,13 @@ export async function appRoutes(app: FastifyInstance) {
     '/scout-chat/messages',
     { onRequest: [verifyJwt, checkAiUsage] },
     sendScoutMessage,
+  )
+  // Salva o filtro de UM turno da conversa. Sem IA no caminho: o observador
+  // clica no bloco que está vendo e dá um nome.
+  app.post(
+    '/scout-chat/messages/:messageId/save-search',
+    { onRequest: [verifyJwt] },
+    saveSearchFromMessage,
   )
   app.get('/scout-chat/threads', { onRequest: [verifyJwt] }, listScoutThreads)
   app.get('/scout-chat/threads/:id', { onRequest: [verifyJwt] }, getScoutThread)

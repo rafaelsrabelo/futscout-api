@@ -80,6 +80,24 @@ export class InMemoryScoutChatRepository implements ScoutChatRepository {
     return message
   }
 
+  async findMessageById(id: string): Promise<ScoutMessage | null> {
+    return this.messages.find((message) => message.id === id) ?? null
+  }
+
+  async updateMessageToolCall(
+    id: string,
+    toolCall: ScoutMessageToolCall,
+  ): Promise<ScoutMessage> {
+    const message = this.messages.find((item) => item.id === id)
+
+    if (!message) {
+      throw new Error('Scout message not found')
+    }
+
+    message.toolCall = JSON.parse(JSON.stringify(toolCall))
+    return message
+  }
+
   async findMessagesByThreadId(threadId: string): Promise<ScoutMessage[]> {
     return this.sortedByThread(threadId)
   }

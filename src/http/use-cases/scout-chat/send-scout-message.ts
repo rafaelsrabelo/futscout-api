@@ -10,6 +10,7 @@ import type {
   ScoutHistoryEntry,
   ScoutLlmService,
 } from './llm/scout-llm-service.js'
+import { buildFilterSummary } from './filter-summary.js'
 import { scoutLog } from './scout-log.js'
 import type { ScoutResponseType } from './scout-output-schema.js'
 import type { AthleteCard } from './tools/tool-types.js'
@@ -35,11 +36,15 @@ interface SendScoutMessageRequest {
 interface SendScoutMessageResponse {
   threadId: string
   turnId: string
+  /** Id da mensagem do assistente — o app usa para salvar ESTE filtro. */
+  messageId: string
   response: string
   responseType: ScoutResponseType
   items: AthleteCard[]
   /** Critérios valendo ao fim do turno — o que o app mostra como "filtro atual". */
   appliedFilters: AthleteSearchFilters | null
+  /** Os mesmos filtros em texto, para o app renderizar o chip sem traduzir. */
+  filterSummary: string | null
   savedSearchId: string | null
   meta: {
     tokensUsed: number
@@ -105,7 +110,7 @@ export class SendScoutMessageUseCase {
         : {}),
     }
 
-    await this.scoutChatRepository.createMessage({
+    const assistantMessage = await this.scoutChatRepository.createMessage({
       threadId: thread.id,
       role: 'ASSISTANT',
       content: turn.output.response,
@@ -137,10 +142,12 @@ export class SendScoutMessageUseCase {
     return {
       threadId: thread.id,
       turnId,
+      messageId: assistantMessage.id,
       response: turn.output.response,
       responseType,
       items: turn.cards,
       appliedFilters,
+      filterSummary: buildFilterSummary(appliedFilters),
       savedSearchId: turn.savedSearchId,
       meta: {
         tokensUsed: turn.totalTokens,
