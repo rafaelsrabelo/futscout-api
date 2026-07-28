@@ -1,5 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { CloudflareR2Service } from '../../lib/cloudflare-r2.js'
+import { prisma } from '../../lib/prisma.js'
 import { PrismaObserverProfileRepository } from '../repositories/prisma/prisma-observer-profile-repository.js'
 import { verifyJwt } from '../middlewares/verify-jwt.js'
 
@@ -69,12 +70,18 @@ export async function uploadObserverProfilePhoto(
       profilePhoto: url,
     })
 
+    // O nome vem de `users.name` — o perfil de observador não guarda mais cópia.
+    const user = await prisma.user.findUnique({
+      where: { id: request.user.sub },
+      select: { name: true },
+    })
+
     return reply.status(200).send({
       message: 'Foto de perfil enviada com sucesso!',
       profilePhoto: url,
       observerProfile: {
         id: updatedProfile.id,
-        name: updatedProfile.name,
+        name: user?.name ?? null,
         profilePhoto: updatedProfile.profilePhoto,
         updatedAt: updatedProfile.updatedAt,
       },

@@ -9,8 +9,9 @@ export async function createAthleteProfile(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
+  // `name` não entra aqui: o nome é definido no cadastro (POST /auth/register).
+  // Versões antigas do mobile ainda podem mandá-lo — o Zod descarta em silêncio.
   const createAthleteProfileBodySchema = z.object({
-    name: z.string().min(2).max(100),
     gender: z.enum(['MALE', 'FEMALE', 'OTHER']),
     nickname: z.string().min(3).max(30).optional(),
     profilePhoto: z.string().url().optional(),

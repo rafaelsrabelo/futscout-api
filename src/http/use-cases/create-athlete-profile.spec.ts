@@ -33,7 +33,6 @@ describe('Create Athlete Profile Use Case', () => {
 
     const { athleteProfile } = await sut.execute({
       userId: user.id,
-      name: 'John Doe',
       gender: 'MALE',
       nickname: 'Johnny',
       birthDate: '1995-01-15T00:00:00.000Z',
@@ -60,7 +59,6 @@ describe('Create Athlete Profile Use Case', () => {
     await expect(() =>
       sut.execute({
         userId: 'non-existent-user',
-        name: 'No One',
         gender: 'MALE',
         birthDate: '1995-01-15T00:00:00.000Z',
         height: 1.8,
@@ -82,7 +80,6 @@ describe('Create Athlete Profile Use Case', () => {
 
     await sut.execute({
       userId: user.id,
-      name: 'John Doe',
       gender: 'MALE',
       birthDate: '1995-01-15T00:00:00.000Z',
       height: 1.8,
@@ -94,7 +91,6 @@ describe('Create Athlete Profile Use Case', () => {
     await expect(() =>
       sut.execute({
         userId: user.id,
-        name: 'John Doe',
         gender: 'MALE',
         birthDate: '1996-01-15T00:00:00.000Z',
         height: 1.75,
@@ -116,7 +112,6 @@ describe('Create Athlete Profile Use Case', () => {
 
     await sut.execute({
       userId: user1.id,
-      name: 'John Doe',
       gender: 'MALE',
       nickname: 'Superstar',
       birthDate: '1995-01-15T00:00:00.000Z',
@@ -137,7 +132,6 @@ describe('Create Athlete Profile Use Case', () => {
     await expect(() =>
       sut.execute({
         userId: user2.id,
-        name: 'Jane Doe',
         gender: 'FEMALE',
         nickname: 'Superstar',
         birthDate: '1996-01-15T00:00:00.000Z',
@@ -162,7 +156,6 @@ describe('Create Athlete Profile Use Case', () => {
 
     await sut.execute({
       userId: user.id,
-      name: 'John Doe',
       gender: 'MALE',
       birthDate: '1995-01-15T00:00:00.000Z',
       height: 1.8,

@@ -1,13 +1,12 @@
+// O nome não vive aqui — fonte única é `users.name`, definido no cadastro.
 export interface CreateObserverProfileData {
   userId: string
-  name: string
   currentClub?: string | null
   phone: string
   profilePhoto?: string | null
 }
 
 export interface UpdateObserverProfileData {
-  name?: string
   currentClub?: string | null
   phone?: string
   profilePhoto?: string | null
@@ -16,7 +15,6 @@ export interface UpdateObserverProfileData {
 export interface ObserverProfile {
   id: string
   userId: string
-  name: string
   currentClub: string | null
   phone: string
   profilePhoto: string | null

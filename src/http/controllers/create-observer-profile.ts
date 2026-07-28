@@ -13,14 +13,15 @@ export async function createObserverProfile(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
+  // `name` não entra aqui: o nome é definido no cadastro (POST /auth/register).
+  // Versões antigas do mobile ainda podem mandá-lo — o Zod descarta em silêncio.
   const createObserverProfileBodySchema = z.object({
-    name: z.string(),
     currentClub: z.string().optional(),
     phone: z.string(),
     profilePhoto: z.string().optional(),
   })
 
-  const { name, currentClub, phone, profilePhoto } =
+  const { currentClub, phone, profilePhoto } =
     createObserverProfileBodySchema.parse(request.body)
 
   const observerProfileRepository = new PrismaObserverProfileRepository()
@@ -30,7 +31,6 @@ export async function createObserverProfile(
 
   const { observerProfile } = await createObserverProfileUseCase.execute({
     userId: request.user.sub,
-    name,
     currentClub,
     phone,
     profilePhoto,
@@ -38,12 +38,13 @@ export async function createObserverProfile(
 
   const user = await prisma.user.findUnique({
     where: { id: request.user.sub },
-    select: { cpf: true },
+    select: { name: true, cpf: true },
   })
 
   return reply.status(201).send({
     observerProfile: {
       ...observerProfile,
+      name: user?.name ?? null,
       cpf: formatCpf(user?.cpf ?? null),
     },
   })

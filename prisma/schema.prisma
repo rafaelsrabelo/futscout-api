@@ -307,7 +307,7 @@ model ObserverProfile {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  name         String
+  // O nome do observador vive apenas em `users.name` — definido no cadastro.
   currentClub  String? // Clube atual é opcional
   phone        String // Telefone de contato
   profilePhoto String? // Foto de perfil

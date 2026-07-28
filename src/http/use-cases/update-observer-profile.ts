@@ -1,3 +1,4 @@
+import { prisma } from '../../lib/prisma.js'
 import type { ObserverProfileRepository } from '../repositories/observer-profile-repository.js'
 import { ObserverProfileNotFoundError } from './errors/observer-profile-not-found-error.js'
 
@@ -13,7 +14,6 @@ interface UpdateObserverProfileResponse {
   observerProfile: {
     id: string
     userId: string
-    name: string
     currentClub: string | null
     phone: string
     profilePhoto: string | null
@@ -40,7 +40,6 @@ export class UpdateObserverProfileUseCase {
     }
 
     const updateData = {
-      ...(name && { name }),
       ...(currentClub && { currentClub }),
       ...(phone && { phone }),
       ...(profilePhoto && { profilePhoto }),
@@ -50,6 +49,14 @@ export class UpdateObserverProfileUseCase {
       existingProfile.id,
       updateData,
     )
+
+    // O nome mora em `users.name` — editá-lo aqui atualiza a fonte única.
+    if (name) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { name },
+      })
+    }
 
     return {
       observerProfile,

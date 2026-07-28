@@ -9,7 +9,6 @@ import type { UsersRepository } from '../repositories/users-repository.js'
 
 interface CreateAthleteProfileUseCaseRequest {
   userId: string
-  name: string
   gender: 'MALE' | 'FEMALE' | 'OTHER'
   nickname?: string | undefined
   profilePhoto?: string | undefined
@@ -216,11 +215,9 @@ export class CreateAthleteProfileUseCase {
         await this.addressRepository.create(addressData)
       }
 
-      // Atualizar o usuário para marcar que tem perfil e sincronizar o nome
+      // Marcar que o usuário tem perfil. O nome não é tocado aqui — ele vem do
+      // cadastro e só muda pelo PUT /athletes/profile.
       await this.usersRepository.updateProfile(data.userId, true)
-      await this.usersRepository.update(data.userId, {
-        name: data.name, // Sincroniza o nome do perfil com o nome do usuário
-      })
 
       return {
         athleteProfile: {
@@ -344,7 +341,6 @@ export class CreateAthleteProfileUseCase {
     }
 
     await this.usersRepository.updateProfile(data.userId, true)
-    await this.usersRepository.update(data.userId, { name: data.name })
 
     return {
       athleteProfile: {

@@ -43,12 +43,13 @@ export async function updateObserverProfile(
 
     const user = await prisma.user.findUnique({
       where: { id: request.user.sub },
-      select: { cpf: true },
+      select: { name: true, cpf: true },
     })
 
     return reply.status(200).send({
       observerProfile: {
         ...observerProfile,
+        name: user?.name ?? null,
         cpf: formatCpf(user?.cpf ?? null),
       },
     })
