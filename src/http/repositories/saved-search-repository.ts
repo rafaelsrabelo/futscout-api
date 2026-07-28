@@ -1,9 +1,13 @@
 import type { SavedSearch } from '../../../generated/prisma/client.js'
 
+// Espelha AthleteFilters sem a paginação — é o que fica persistido no
+// `filters Json` da SavedSearch e é reexecutado depois.
 export interface AthleteSearchFilters {
   gender?: 'MALE' | 'FEMALE' | 'OTHER'
   dominantFoot?: 'RIGHT' | 'LEFT'
   primaryPosition?: 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD'
+  secondaryPosition?: 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD'
+  classification?: 'DESENVOLVIMENTO' | 'PERFORMANCE'
   currentClub?: string
   nickname?: string
   name?: string
@@ -12,6 +16,8 @@ export interface AthleteSearchFilters {
   maxHeight?: number
   minWeight?: number
   maxWeight?: number
+  minAge?: number
+  maxAge?: number
 }
 
 export interface CreateSavedSearchData {

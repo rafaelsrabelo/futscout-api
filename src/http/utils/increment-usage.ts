@@ -87,6 +87,40 @@ export async function incrementStandaloneVideoUsage(userId: string) {
   })
 }
 
+/**
+ * Conta uma mensagem enviada ao chat de busca. Chamada pelo controller DEPOIS
+ * do turno completar: turno que falhou não consome cota do observador.
+ */
+export async function incrementAiMessageUsage(userId: string) {
+  const now = new Date()
+  const month = now.getMonth() + 1
+  const year = now.getFullYear()
+
+  await prisma.usage.upsert({
+    where: {
+      userId_month_year: {
+        userId,
+        month,
+        year,
+      },
+    },
+    create: {
+      userId,
+      month,
+      year,
+      matchesUsed: 0,
+      videosUsed: 0,
+      standaloneVideosUsed: 0,
+      aiMessagesUsed: 1,
+    },
+    update: {
+      aiMessagesUsed: {
+        increment: 1,
+      },
+    },
+  })
+}
+
 export async function decrementVideoUsage(userId: string) {
   const now = new Date()
   const month = now.getMonth() + 1

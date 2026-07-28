@@ -44,6 +44,7 @@ export interface AthleteFilters {
   gender?: 'MALE' | 'FEMALE' | 'OTHER'
   dominantFoot?: 'RIGHT' | 'LEFT'
   primaryPosition?: 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD'
+  secondaryPosition?: 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD'
   currentClub?: string
   nickname?: string
   name?: string
@@ -52,6 +53,10 @@ export interface AthleteFilters {
   maxHeight?: number
   minWeight?: number
   maxWeight?: number
+  // Idade é derivada de birthDate na consulta — não existe coluna de idade.
+  minAge?: number
+  maxAge?: number
+  classification?: 'DESENVOLVIMENTO' | 'PERFORMANCE'
   page?: number
   limit?: number
 }

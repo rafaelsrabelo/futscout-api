@@ -157,6 +157,43 @@ export class InMemoryAthleteProfileRepository
       )
     }
 
+    if (filters.secondaryPosition) {
+      filteredItems = filteredItems.filter(
+        (item) => item.secondaryPosition === filters.secondaryPosition,
+      )
+    }
+
+    if (filters.classification) {
+      filteredItems = filteredItems.filter(
+        (item) => item.classification === filters.classification,
+      )
+    }
+
+    // Idade X hoje ⇒ birthDate ∈ (today - (X+1) anos, today - X anos].
+    // Mesma semântica do repositório Prisma, aplicada em memória.
+    if (filters.minAge !== undefined || filters.maxAge !== undefined) {
+      const today = new Date()
+
+      if (filters.minAge !== undefined) {
+        const maxBirthDate = new Date(today)
+        maxBirthDate.setFullYear(today.getFullYear() - filters.minAge)
+        filteredItems = filteredItems.filter(
+          (item) => item.birthDate !== null && item.birthDate <= maxBirthDate,
+        )
+      }
+
+      if (filters.maxAge !== undefined) {
+        const minBirthDateExclusive = new Date(today)
+        minBirthDateExclusive.setFullYear(
+          today.getFullYear() - (filters.maxAge + 1),
+        )
+        filteredItems = filteredItems.filter(
+          (item) =>
+            item.birthDate !== null && item.birthDate > minBirthDateExclusive,
+        )
+      }
+    }
+
     // Map to include user data
     return filteredItems.map((item) => {
       const user = this.users.find((user) => user.id === item.userId)

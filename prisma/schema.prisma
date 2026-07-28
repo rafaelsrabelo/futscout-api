@@ -190,6 +190,7 @@ model User {
   pushTokens                 PushToken[]
   // Notificações que esse usuário (admin) disparou
   notificationsSent          NotificationLog[]          @relation("NotificationsSentBy")
+  scoutThreads               ScoutThread[]
 
   @@unique([provider, providerId])
   @@map("users")
@@ -581,6 +582,7 @@ model Plan {
   monthlyLimitMatches          Int?
   monthlyLimitVideos           Int? // Vídeos dentro de jogos (não limitado no FREE, só conta)
   monthlyLimitStandaloneVideos Int? // Vídeos standalone (lances sem partida)
+  monthlyLimitAiMessages       Int? // Mensagens no chat de busca (IAFutscore). null = sem limite
   isUnlimited                  Boolean  @default(false)
   stripePriceId                String?
   createdAt                    DateTime @default(now())
@@ -613,6 +615,7 @@ model Usage {
   videosUsed           Int      @default(0) // Vídeos dentro de jogos (só conta, não limita)
   standaloneVideosUsed Int      @default(0) // Vídeos standalone (lances sem partida)
   matchesUsed          Int      @default(0)
+  aiMessagesUsed       Int      @default(0) // Mensagens enviadas ao chat de busca
   createdAt            DateTime @default(now())
 
   @@unique([userId, month, year])
@@ -700,4 +703,63 @@ model ImportLog {
   createdAt  DateTime @default(now())
 
   @@map("import_logs")
+}
+
+// ============================================================
+// ====== Chat de busca de atletas (IAFutscore) ======
+// ============================================================
+// Substitui o formulário de filtros do observador: em vez de preencher campos,
+// ele conversa e a IA traduz a conversa em AthleteFilters via tool calling.
+
+enum ScoutThreadStatus {
+  OPEN
+  CLOSED
+}
+
+enum ScoutMessageRole {
+  USER
+  ASSISTANT
+  TOOL
+}
+
+model ScoutThread {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Título curto derivado da primeira mensagem, para listar as conversas.
+  title  String?
+  status ScoutThreadStatus @default(OPEN)
+
+  messages ScoutMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@map("scout_threads")
+}
+
+model ScoutMessage {
+  id       String      @id @default(uuid())
+  threadId String
+  thread   ScoutThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  role    ScoutMessageRole
+  content String
+
+  // Payload da tool quando role=TOOL: { name, arguments, summary }.
+  toolCall Json?
+  // Snapshot dos atletas devolvidos no turno, para a conversa re-renderizar
+  // os cards ao ser reaberta sem precisar refazer a busca.
+  cards    Json?
+
+  promptTokens     Int?
+  completionTokens Int?
+  totalTokens      Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([threadId, createdAt])
+  @@map("scout_messages")
 }

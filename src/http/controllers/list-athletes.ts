@@ -18,6 +18,10 @@ export async function listAthletes(
     primaryPosition: z
       .enum(['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD'])
       .optional(),
+    secondaryPosition: z
+      .enum(['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD'])
+      .optional(),
+    classification: z.enum(['DESENVOLVIMENTO', 'PERFORMANCE']).optional(),
     currentClub: z.string().optional(),
     nickname: z.string().optional(),
     name: z.string().optional(),
@@ -29,6 +33,8 @@ export async function listAthletes(
     maxHeight: z.string().transform(Number).optional(),
     minWeight: z.string().transform(Number).optional(),
     maxWeight: z.string().transform(Number).optional(),
+    minAge: z.string().transform(Number).optional(),
+    maxAge: z.string().transform(Number).optional(),
     page: z.string().transform(Number).default(1),
     limit: z.string().transform(Number).default(20),
   })

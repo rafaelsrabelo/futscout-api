@@ -133,6 +133,7 @@ export class PrismaAthleteProfileRepository
       gender,
       dominantFoot,
       primaryPosition,
+      secondaryPosition,
       currentClub,
       nickname,
       name,
@@ -141,6 +142,9 @@ export class PrismaAthleteProfileRepository
       maxHeight,
       minWeight,
       maxWeight,
+      minAge,
+      maxAge,
+      classification,
     } = filters
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -149,6 +153,8 @@ export class PrismaAthleteProfileRepository
     if (gender) where.gender = gender
     if (dominantFoot) where.dominantFoot = dominantFoot
     if (primaryPosition) where.primaryPosition = primaryPosition
+    if (secondaryPosition) where.secondaryPosition = secondaryPosition
+    if (classification) where.classification = classification
     if (currentClub) {
       where.currentClub = { contains: currentClub, mode: 'insensitive' }
     }
@@ -172,6 +178,25 @@ export class PrismaAthleteProfileRepository
       where.weight = {}
       if (minWeight) where.weight.gte = minWeight
       if (maxWeight) where.weight.lte = maxWeight
+    }
+
+    // Idade X hoje ⇒ birthDate ∈ (today - (X+1) anos, today - X anos].
+    // Mesma conversão usada na listagem admin (buildAdminUserWhere).
+    if (minAge !== undefined || maxAge !== undefined) {
+      where.birthDate = {}
+      const today = new Date()
+
+      if (minAge !== undefined) {
+        const maxBirthDate = new Date(today)
+        maxBirthDate.setFullYear(today.getFullYear() - minAge)
+        where.birthDate.lte = maxBirthDate
+      }
+
+      if (maxAge !== undefined) {
+        const minBirthDateExclusive = new Date(today)
+        minBirthDateExclusive.setFullYear(today.getFullYear() - (maxAge + 1))
+        where.birthDate.gt = minBirthDateExclusive
+      }
     }
 
     return where
