@@ -10,6 +10,7 @@ import type {
   ScoutHistoryEntry,
   ScoutLlmService,
 } from './llm/scout-llm-service.js'
+import { scoutLog } from './scout-log.js'
 import type { ScoutResponseType } from './scout-output-schema.js'
 import type { AthleteCard } from './tools/tool-types.js'
 
@@ -121,6 +122,16 @@ export class SendScoutMessageUseCase {
         title: buildTitle(message),
       })
     }
+
+    // Fecho do turno em uma linha. `iterations=1` com `filters=null` é a
+    // assinatura de "o modelo respondeu sem buscar" — a causa mais provável de
+    // o app receber 200 e não mostrar atleta nenhum.
+    scoutLog(
+      `💬 scout-chat turn [${turnId}] thread=${thread.id} ` +
+        `iterations=${turn.toolLoopIterations} responseType=${responseType} ` +
+        `items=${turn.cards.length} filters=${JSON.stringify(appliedFilters)} ` +
+        `tokens=${turn.totalTokens} responseLen=${turn.output.response.length}`,
+    )
 
     return {
       threadId: thread.id,

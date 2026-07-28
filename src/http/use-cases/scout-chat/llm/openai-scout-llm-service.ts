@@ -11,6 +11,7 @@ import {
   SCOUT_OUTPUT_JSON_SCHEMA,
   type ScoutLlmOutput,
 } from '../scout-output-schema.js'
+import { scoutLog, scoutWarn } from '../scout-log.js'
 import type { ScoutToolsRegistry } from '../tools/tools-registry.js'
 import type { AthleteCard, ScoutToolResult } from '../tools/tool-types.js'
 import type {
@@ -62,6 +63,14 @@ const FALLBACK_OUTPUT: ScoutLlmOutput = {
   responseType: 'FALLBACK',
   tool: null,
 }
+
+/**
+ * O modelo às vezes encerra o turno com `response` vazio. Sem isto a bolha
+ * chega em branco no app e parece que a API não respondeu — daí este texto no
+ * lugar, com log para o caso aparecer nos registros.
+ */
+const EMPTY_RESPONSE_FALLBACK =
+  'Não consegui formular a resposta agora. Pode reformular o que você procura?'
 
 /**
  * Chat Completions com structured output + loop de tools sintético: a cada
@@ -134,6 +143,13 @@ export class OpenAiScoutLlmService implements ScoutLlmService {
         standingFilters: appliedFilters ?? input.standingFilters,
       })
 
+      // Log por tool: é o único jeito de saber, de fora, o que o modelo pediu e
+      // o que o banco respondeu. O `summary` já traz o total encontrado.
+      scoutLog(
+        `🔎 scout-chat tool [${input.turnId}] it=${iteration} name=${toolCall.name} ` +
+          `args=${JSON.stringify(toolCall.arguments)} → ${result.summary}`,
+      )
+
       // Última tool que produziu cards vence: os cards refletem o passo final.
       if (result.cards?.length) cards = result.cards
       if (result.appliedFilters) appliedFilters = result.appliedFilters
@@ -169,6 +185,16 @@ export class OpenAiScoutLlmService implements ScoutLlmService {
       iteration: number
     },
   ): ScoutTurnResult {
+    // Só o turno final passa por aqui, então é o lugar certo para garantir que
+    // exista texto: uma bolha vazia no app é indistinguível de falha de rede.
+    if (!output.response.trim()) {
+      scoutWarn(
+        `⚠️ scout-chat: modelo devolveu response vazio ` +
+          `(responseType=${output.responseType}, cards=${ctx.cards.length}) — usando fallback`,
+      )
+      output = { ...output, response: EMPTY_RESPONSE_FALLBACK }
+    }
+
     return {
       output,
       cards: ctx.cards,
