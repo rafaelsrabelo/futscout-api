@@ -111,6 +111,10 @@ import { regenerateThumbnail } from './controllers/regenerate-thumbnail.js'
 import { registerPushToken } from './controllers/register-push-token.js'
 import { register } from './controllers/register.js'
 import { removePushToken } from './controllers/remove-push-token.js'
+import { closeScoutThread } from './controllers/scout-chat/close-scout-thread.js'
+import { getScoutThread } from './controllers/scout-chat/get-scout-thread.js'
+import { listScoutThreads } from './controllers/scout-chat/list-scout-threads.js'
+import { sendScoutMessage } from './controllers/scout-chat/send-scout-message.js'
 import { socialLogin } from './controllers/social-login.js'
 import { syncCurrentClub } from './controllers/sync-current-club.js'
 import { toggleFavorite } from './controllers/toggle-favorite.js'
@@ -127,6 +131,7 @@ import { uploadProfilePhoto } from './controllers/upload-profile-photo.js'
 import { uploadVideoToPlay } from './controllers/upload-video-to-play.js'
 import { verifyEmail } from './controllers/verify-email.js'
 
+import { checkAiUsage } from './middlewares/check-ai-usage.js'
 import { checkUsage } from './middlewares/check-usage.js'
 import { verifyAdmin } from './middlewares/verify-admin.js'
 import { verifyJwt } from './middlewares/verify-jwt.js'
@@ -307,6 +312,21 @@ export async function appRoutes(app: FastifyInstance) {
     '/saved-searches/:id/execute',
     { onRequest: [verifyJwt] },
     executeSavedSearch,
+  )
+
+  // Chat de busca de atletas — IAFutscore (Observer only).
+  // Substitui o formulário de filtros: o observador conversa e a IA monta a busca.
+  app.post(
+    '/scout-chat/messages',
+    { onRequest: [verifyJwt, checkAiUsage] },
+    sendScoutMessage,
+  )
+  app.get('/scout-chat/threads', { onRequest: [verifyJwt] }, listScoutThreads)
+  app.get('/scout-chat/threads/:id', { onRequest: [verifyJwt] }, getScoutThread)
+  app.delete(
+    '/scout-chat/threads/:id',
+    { onRequest: [verifyJwt] },
+    closeScoutThread,
   )
 
   // Push notification tokens (mobile)

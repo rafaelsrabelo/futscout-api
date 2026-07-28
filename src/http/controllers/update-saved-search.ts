@@ -24,6 +24,10 @@ export async function updateSavedSearch(
         primaryPosition: z
           .enum(['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD'])
           .optional(),
+        secondaryPosition: z
+          .enum(['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD'])
+          .optional(),
+        classification: z.enum(['DESENVOLVIMENTO', 'PERFORMANCE']).optional(),
         currentClub: z.string().optional(),
         nickname: z.string().optional(),
         name: z.string().optional(),
@@ -32,10 +36,21 @@ export async function updateSavedSearch(
         maxHeight: z.number().positive().optional(),
         minWeight: z.number().positive().optional(),
         maxWeight: z.number().positive().optional(),
+        // Idade entra aqui porque o chat salva buscas por faixa de idade; sem
+        // isto, editar pelo app apagaria o critério silenciosamente.
+        minAge: z.number().int().min(0).max(60).optional(),
+        maxAge: z.number().int().min(0).max(60).optional(),
       })
       .optional(),
     isActive: z.boolean().optional(),
   })
+
+  // Verificar se o usuário é Observer
+  if (request.user.role !== 'OBSERVER') {
+    return reply.status(403).send({
+      message: 'Only observers can update saved searches',
+    })
+  }
 
   const { id } = updateSavedSearchParamsSchema.parse(request.params)
   const { title, description, filters, isActive } =

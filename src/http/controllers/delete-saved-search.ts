@@ -14,6 +14,13 @@ export async function deleteSavedSearch(
     id: z.string().uuid(),
   })
 
+  // Verificar se o usuário é Observer
+  if (request.user.role !== 'OBSERVER') {
+    return reply.status(403).send({
+      message: 'Only observers can delete saved searches',
+    })
+  }
+
   const { id } = deleteSavedSearchParamsSchema.parse(request.params)
 
   try {

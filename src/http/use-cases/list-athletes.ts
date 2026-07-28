@@ -4,6 +4,8 @@ interface ListAthletesUseCaseRequest {
   gender?: 'MALE' | 'FEMALE' | 'OTHER'
   dominantFoot?: 'RIGHT' | 'LEFT'
   primaryPosition?: 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD'
+  secondaryPosition?: 'GOALKEEPER' | 'DEFENDER' | 'MIDFIELDER' | 'FORWARD'
+  classification?: 'DESENVOLVIMENTO' | 'PERFORMANCE'
   currentClub?: string
   nickname?: string
   name?: string
@@ -12,6 +14,8 @@ interface ListAthletesUseCaseRequest {
   maxHeight?: number
   minWeight?: number
   maxWeight?: number
+  minAge?: number
+  maxAge?: number
   page?: number
   limit?: number
 }

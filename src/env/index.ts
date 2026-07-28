@@ -24,6 +24,8 @@ const envSchema = z
 
     // OpenAI configuration
     OPENAI_API_KEY: z.string().optional(),
+    // Modelo usado pelo chat de busca (IAFutscore)
+    AI_CHAT_MODEL: z.string().default('gpt-4o-mini'),
 
     // Cloudflare configuration
     CLOUDFLARE_ACCOUNT_ID: z.string().optional(),

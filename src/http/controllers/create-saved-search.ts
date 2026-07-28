@@ -16,6 +16,10 @@ export async function createSavedSearch(
       primaryPosition: z
         .enum(['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD'])
         .optional(),
+      secondaryPosition: z
+        .enum(['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD'])
+        .optional(),
+      classification: z.enum(['DESENVOLVIMENTO', 'PERFORMANCE']).optional(),
       currentClub: z.string().optional(),
       nickname: z.string().optional(),
       name: z.string().optional(),
@@ -24,6 +28,8 @@ export async function createSavedSearch(
       maxHeight: z.number().min(0).optional(),
       minWeight: z.number().min(0).optional(),
       maxWeight: z.number().min(0).optional(),
+      minAge: z.number().int().min(0).max(60).optional(),
+      maxAge: z.number().int().min(0).max(60).optional(),
     }),
   })
 

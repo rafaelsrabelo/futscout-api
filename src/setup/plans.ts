@@ -1,5 +1,9 @@
 import { prisma } from '../lib/prisma.js'
 
+// Mensagens/mês no chat de busca (IAFutscore) para o plano FREE.
+// PREMIUM fica com null = ilimitado.
+const FREE_AI_MESSAGES = 30
+
 export async function seedPlans() {
   // Verificar se os planos já existem
   const existingFreePlan = await prisma.plan.findUnique({
@@ -20,6 +24,7 @@ export async function seedPlans() {
         monthlyLimitMatches: 10, // 10 jogos por mês
         monthlyLimitVideos: 10, // 10 vídeos por jogo
         monthlyLimitStandaloneVideos: 10, // 10 vídeos standalone (lances sem partida)
+        monthlyLimitAiMessages: FREE_AI_MESSAGES, // mensagens no chat de busca
         isUnlimited: false,
       },
     })
@@ -28,7 +33,8 @@ export async function seedPlans() {
     const needsUpdate =
       existingFreePlan.monthlyLimitMatches !== 10 ||
       existingFreePlan.monthlyLimitVideos !== 10 ||
-      existingFreePlan.monthlyLimitStandaloneVideos !== 10
+      existingFreePlan.monthlyLimitStandaloneVideos !== 10 ||
+      existingFreePlan.monthlyLimitAiMessages !== FREE_AI_MESSAGES
 
     if (needsUpdate) {
       await prisma.plan.update({
@@ -37,6 +43,7 @@ export async function seedPlans() {
           monthlyLimitMatches: 10,
           monthlyLimitVideos: 10, // 10 vídeos por jogo
           monthlyLimitStandaloneVideos: 10, // 10 vídeos standalone
+          monthlyLimitAiMessages: FREE_AI_MESSAGES,
         },
       })
     }
@@ -54,6 +61,7 @@ export async function seedPlans() {
         monthlyLimitMatches: 20, // 20 jogos por mês
         monthlyLimitVideos: 20, // 20 vídeos por partida
         monthlyLimitStandaloneVideos: null, // Lances standalone ilimitados
+        monthlyLimitAiMessages: null, // Chat de busca ilimitado
         isUnlimited: false,
         stripePriceId: stripePriceId ?? null,
       },
@@ -64,6 +72,7 @@ export async function seedPlans() {
       existingPremiumPlan.monthlyLimitMatches !== 20 ||
       existingPremiumPlan.monthlyLimitVideos !== 20 ||
       existingPremiumPlan.monthlyLimitStandaloneVideos !== null ||
+      existingPremiumPlan.monthlyLimitAiMessages !== null ||
       existingPremiumPlan.isUnlimited !== false ||
       (stripePriceId && !existingPremiumPlan.stripePriceId)
 
@@ -74,6 +83,7 @@ export async function seedPlans() {
           monthlyLimitMatches: 20,
           monthlyLimitVideos: 20,
           monthlyLimitStandaloneVideos: null,
+          monthlyLimitAiMessages: null,
           isUnlimited: false,
           stripePriceId: stripePriceId ?? existingPremiumPlan.stripePriceId,
         },
