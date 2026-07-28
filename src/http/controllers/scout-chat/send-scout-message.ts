@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { ScoutChatDisabledError } from '../../use-cases/errors/scout-chat-disabled-error.js'
+import { ScoutChatUnavailableError } from '../../use-cases/errors/scout-chat-unavailable-error.js'
 import { ScoutThreadNotFoundError } from '../../use-cases/errors/scout-thread-not-found-error.js'
 import { makeSendScoutMessageUseCase } from '../../use-cases/scout-chat/make-send-scout-message.js'
 import { incrementAiMessageUsage } from '../../utils/increment-usage.js'
@@ -41,7 +42,10 @@ export async function sendScoutMessage(
       return reply.status(404).send({ message: err.message })
     }
 
-    if (err instanceof ScoutChatDisabledError) {
+    if (
+      err instanceof ScoutChatDisabledError ||
+      err instanceof ScoutChatUnavailableError
+    ) {
       return reply.status(503).send({
         message: 'O chat de busca está indisponível no momento.',
       })

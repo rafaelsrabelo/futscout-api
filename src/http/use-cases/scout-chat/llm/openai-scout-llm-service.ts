@@ -3,17 +3,15 @@ import OpenAI from 'openai'
 import { env } from '@/env/index.js'
 import type { AthleteSearchFilters } from '../../../repositories/saved-search-repository.js'
 import { ScoutChatDisabledError } from '../../errors/scout-chat-disabled-error.js'
+import { ScoutChatUnavailableError } from '../../errors/scout-chat-unavailable-error.js'
 import {
   SCOUT_PROMPT_VERSION,
   SCOUT_SYSTEM_PROMPT,
 } from '../scout-system-prompt.js'
-import {
-  SCOUT_OUTPUT_JSON_SCHEMA,
-  type ScoutLlmOutput,
-} from '../scout-output-schema.js'
+import type { ScoutLlmOutput } from '../scout-output-schema.js'
 import { scoutLog, scoutWarn } from '../scout-log.js'
 import type { ScoutToolsRegistry } from '../tools/tools-registry.js'
-import type { AthleteCard, ScoutToolResult } from '../tools/tool-types.js'
+import type { AthleteCard } from '../tools/tool-types.js'
 import type {
   ScoutLlmService,
   ScoutTurnInput,
@@ -55,31 +53,29 @@ const scrubInternalIds = (text: string): string =>
     .replace(/\s+([,.!?])/g, '$1')
     .trim()
 
-/** Resposta de saída quando o loop de tools se esgota. */
-const FALLBACK_OUTPUT: ScoutLlmOutput = {
-  action: 'RESPOND',
-  response:
-    'Me perdi no meio da busca agora. Pode repetir o que você procura, de forma mais direta?',
-  responseType: 'FALLBACK',
-  tool: null,
-}
+/** Texto de saída quando o loop de tools se esgota. */
+const EXHAUSTED_LOOP_TEXT =
+  'Me perdi no meio da busca agora. Pode repetir o que você procura, de forma mais direta?'
 
 /**
- * O modelo às vezes encerra o turno com `response` vazio. Sem isto a bolha
- * chega em branco no app e parece que a API não respondeu — daí este texto no
- * lugar, com log para o caso aparecer nos registros.
+ * O modelo pode encerrar o turno sem texto (acontece logo depois de uma tool).
+ * Bolha vazia no app é indistinguível de falha de rede, então entra este texto.
  */
 const EMPTY_RESPONSE_FALLBACK =
   'Não consegui formular a resposta agora. Pode reformular o que você procura?'
 
 /**
- * Chat Completions com structured output + loop de tools sintético: a cada
- * iteração o modelo devolve JSON no formato de `SCOUT_OUTPUT_JSON_SCHEMA`
- * (`CALL_TOOL` → executa e itera, `RESPOND` → encerra).
+ * Chat Completions com **tool calling nativo**: a OpenAI valida a chamada de
+ * tool contra o schema declarado em cada `ScoutTool` antes de nos entregar.
  *
- * A intenção de tool viaja dentro do próprio schema em vez do parâmetro nativo
- * `tools` porque Chat Completions não aceita json_schema e tools na mesma
- * chamada.
+ * A versão anterior embutia a intenção de tool num `json_schema` com
+ * `strict: false` — ou seja, sem validação nenhuma. Quando o modelo devolvia a
+ * forma ligeiramente diferente, o parser normalizava para um turno sem texto e
+ * sem tool, e o observador via o chat "não responder nada".
+ *
+ * O `responseType` deixou de vir do modelo: quem decide é o backend, a partir
+ * dos cards que as tools produziram (`resolveResponseType` no use case). Um
+ * rótulo do modelo nunca poderia dessincronizar a UI mesmo.
  */
 export class OpenAiScoutLlmService implements ScoutLlmService {
   private client: OpenAI | null
@@ -119,12 +115,9 @@ export class OpenAiScoutLlmService implements ScoutLlmService {
       cachedInputTokens += call.usage.cachedInputTokens
       model = call.model
 
-      const toolCall =
-        call.parsed.action === 'CALL_TOOL' ? call.parsed.tool : null
-
-      // RESPOND — ou CALL_TOOL sem tool preenchida, que tratamos como resposta.
-      if (!toolCall) {
-        return this.buildResult(call.parsed, {
+      // Sem tool_calls o turno acabou: o que veio é a resposta ao observador.
+      if (!call.message.tool_calls?.length) {
+        return this.buildResult(call.message.content ?? '', {
           cards,
           appliedFilters,
           savedSearchId,
@@ -136,29 +129,45 @@ export class OpenAiScoutLlmService implements ScoutLlmService {
         })
       }
 
-      const result = await this.tools.run(toolCall.name, toolCall.arguments, {
-        userId: input.userId,
-        turnId: input.turnId,
-        // A busca deste turno vence; sem ela, o que já valia na conversa.
-        standingFilters: appliedFilters ?? input.standingFilters,
-      })
+      // O histórico precisa da mensagem do assistente com os tool_calls antes
+      // dos resultados, senão a API rejeita a próxima chamada.
+      messages.push(call.message)
 
-      // Log por tool: é o único jeito de saber, de fora, o que o modelo pediu e
-      // o que o banco respondeu. O `summary` já traz o total encontrado.
-      scoutLog(
-        `🔎 scout-chat tool [${input.turnId}] it=${iteration} name=${toolCall.name} ` +
-          `args=${JSON.stringify(toolCall.arguments)} → ${result.summary}`,
-      )
+      for (const toolCall of call.message.tool_calls) {
+        if (toolCall.type !== 'function') continue
 
-      // Última tool que produziu cards vence: os cards refletem o passo final.
-      if (result.cards?.length) cards = result.cards
-      if (result.appliedFilters) appliedFilters = result.appliedFilters
-      if (result.savedSearchId) savedSearchId = result.savedSearchId
+        const args = parseToolArguments(toolCall.function.arguments)
 
-      this.appendToolTurn(messages, call.parsed, toolCall.name, result)
+        const result = await this.tools.run(toolCall.function.name, args, {
+          userId: input.userId,
+          turnId: input.turnId,
+          // A busca deste turno vence; sem ela, o que já valia na conversa.
+          standingFilters: appliedFilters ?? input.standingFilters,
+        })
+
+        scoutLog(
+          `🔎 scout-chat tool [${input.turnId}] it=${iteration} name=${toolCall.function.name} ` +
+            `args=${JSON.stringify(args)} → ${result.summary}`,
+        )
+
+        // Última tool que produziu cards vence: refletem o passo final.
+        if (result.cards?.length) cards = result.cards
+        if (result.appliedFilters) appliedFilters = result.appliedFilters
+        if (result.savedSearchId) savedSearchId = result.savedSearchId
+
+        messages.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: JSON.stringify({ ...result.data, resumo: result.summary }),
+        })
+      }
     }
 
-    return this.buildResult(FALLBACK_OUTPUT, {
+    scoutWarn(
+      `⚠️ scout-chat: loop esgotou ${MAX_TOOL_ITERATIONS} iterações [${input.turnId}]`,
+    )
+
+    return this.buildResult(EXHAUSTED_LOOP_TEXT, {
       cards,
       appliedFilters,
       savedSearchId,
@@ -173,7 +182,7 @@ export class OpenAiScoutLlmService implements ScoutLlmService {
   // ─── internos ─────────────────────────────────────────────────────────────
 
   private buildResult(
-    output: ScoutLlmOutput,
+    rawText: string,
     ctx: {
       cards: AthleteCard[]
       appliedFilters: AthleteSearchFilters | null
@@ -185,14 +194,22 @@ export class OpenAiScoutLlmService implements ScoutLlmService {
       iteration: number
     },
   ): ScoutTurnResult {
-    // Só o turno final passa por aqui, então é o lugar certo para garantir que
-    // exista texto: uma bolha vazia no app é indistinguível de falha de rede.
-    if (!output.response.trim()) {
+    let response = scrubInternalIds(humanizePunctuation(rawText))
+
+    if (!response) {
       scoutWarn(
-        `⚠️ scout-chat: modelo devolveu response vazio ` +
-          `(responseType=${output.responseType}, cards=${ctx.cards.length}) — usando fallback`,
+        `⚠️ scout-chat: modelo encerrou o turno sem texto (cards=${ctx.cards.length}) — usando fallback`,
       )
-      output = { ...output, response: EMPTY_RESPONSE_FALLBACK }
+      response = EMPTY_RESPONSE_FALLBACK
+    }
+
+    // `responseType` é decidido pelo backend a partir dos cards; aqui vai o
+    // valor neutro que o use case sobrescreve.
+    const output: ScoutLlmOutput = {
+      action: 'RESPOND',
+      response,
+      responseType: 'TEXT',
+      tool: null,
     }
 
     return {
@@ -213,9 +230,8 @@ export class OpenAiScoutLlmService implements ScoutLlmService {
     input: ScoutTurnInput,
   ): OpenAI.Chat.ChatCompletionMessageParam[] {
     const seeded: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      // Prefixo estável primeiro (prompt + tools) para o cache acertar.
+      // Prefixo estável primeiro para o cache de prompt acertar.
       { role: 'system', content: SCOUT_SYSTEM_PROMPT },
-      { role: 'system', content: this.tools.describe() },
     ]
 
     // Nota do turno, depois do prefixo cacheado.
@@ -232,27 +248,10 @@ export class OpenAiScoutLlmService implements ScoutLlmService {
     return seeded
   }
 
-  private appendToolTurn(
-    messages: OpenAI.Chat.ChatCompletionMessageParam[],
-    parsed: ScoutLlmOutput,
-    toolName: string,
-    result: ScoutToolResult,
-  ): void {
-    // Devolve o JSON do assistente + o resultado da tool para a próxima iteração.
-    messages.push({ role: 'assistant', content: JSON.stringify(parsed) })
-    messages.push({
-      role: 'system',
-      content:
-        `Resultado da tool "${toolName}":\n` +
-        JSON.stringify(result.data) +
-        (result.summary ? `\n\nResumo: ${result.summary}` : ''),
-    })
-  }
-
   private async callLlm(
     messages: OpenAI.Chat.ChatCompletionMessageParam[],
   ): Promise<{
-    parsed: ScoutLlmOutput
+    message: OpenAI.Chat.ChatCompletionMessage
     model: string
     usage: {
       promptTokens: number
@@ -260,74 +259,34 @@ export class OpenAiScoutLlmService implements ScoutLlmService {
       cachedInputTokens: number
     }
   }> {
-    const response = await this.client!.chat.completions.create({
-      model: env.AI_CHAT_MODEL,
-      messages,
-      ...(isReasoningModel(env.AI_CHAT_MODEL)
-        ? { reasoning_effort: 'minimal' as const }
-        : {}),
-      response_format: {
-        type: 'json_schema',
-        json_schema: SCOUT_OUTPUT_JSON_SCHEMA,
-      },
-      // Chave única e estável: toda chamada acerta o cache quente com o nosso
-      // prefixo (input muito mais barato). Subir SCOUT_PROMPT_VERSION invalida.
-      prompt_cache_key: `scout-${SCOUT_PROMPT_VERSION}`,
-    } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming & {
-      prompt_cache_key?: string
-    })
+    let response: OpenAI.Chat.ChatCompletion
+
+    try {
+      response = await this.client!.chat.completions.create({
+        model: env.AI_CHAT_MODEL,
+        messages,
+        tools: this.tools.toOpenAiTools(),
+        tool_choice: 'auto',
+        ...(isReasoningModel(env.AI_CHAT_MODEL)
+          ? { reasoning_effort: 'minimal' as const }
+          : {}),
+        // Chave estável para o prefixo cacheado. Subir SCOUT_PROMPT_VERSION
+        // invalida.
+        prompt_cache_key: `scout-${SCOUT_PROMPT_VERSION}`,
+      } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming & {
+        prompt_cache_key?: string
+      })
+    } catch (error) {
+      throw toScoutLlmError(error)
+    }
 
     const choice = response.choices[0]
 
     if (choice?.message?.refusal) {
       throw new Error(`LLM refused: ${choice.message.refusal}`)
     }
-    if (!choice?.message?.content) {
-      throw new Error('LLM returned empty content')
-    }
-
-    const rawContent = choice.message.content
-
-    let parsed: ScoutLlmOutput
-    try {
-      parsed = JSON.parse(rawContent) as ScoutLlmOutput
-    } catch {
-      throw new Error('LLM returned malformed JSON')
-    }
-
-    const rawAction = (parsed as { action?: unknown }).action
-    const rawTool = parsed.tool
-
-    // `strict: false` no schema permite o modelo omitir campos — completa aqui.
-    parsed.tool ??= null
-    parsed.responseType ??= 'TEXT'
-    parsed.response = scrubInternalIds(
-      humanizePunctuation(parsed.response ?? ''),
-    )
-
-    // Tool sem nome não é chamada válida; vira resposta em vez de quebrar.
-    const toolDiscarded = !!parsed.tool && typeof parsed.tool.name !== 'string'
-    if (toolDiscarded) {
-      parsed.tool = null
-    }
-    if (parsed.tool) {
-      parsed.tool.arguments ??= {}
-    }
-
-    // Os dois casos em que o backfill acima esconde a forma original e o app
-    // recebe 200 sem nada para mostrar. Logar o payload cru é o único jeito de
-    // saber o que o modelo realmente devolveu.
-    if (toolDiscarded) {
-      scoutWarn(
-        `⚠️ scout-chat: tool descartada por forma inválida — ` +
-          `tool=${JSON.stringify(rawTool)?.slice(0, 300)}`,
-      )
-    }
-    if (!parsed.response && !parsed.tool) {
-      scoutWarn(
-        `⚠️ scout-chat: turno sem texto e sem tool (model=${response.model}, ` +
-          `action=${String(rawAction)}) raw=${rawContent.slice(0, 700)}`,
-      )
+    if (!choice?.message) {
+      throw new Error('LLM returned no message')
     }
 
     const cachedInputTokens =
@@ -338,7 +297,7 @@ export class OpenAiScoutLlmService implements ScoutLlmService {
       )?.prompt_tokens_details?.cached_tokens ?? 0
 
     return {
-      parsed,
+      message: choice.message,
       model: response.model,
       usage: {
         promptTokens: response.usage?.prompt_tokens ?? 0,
@@ -347,4 +306,41 @@ export class OpenAiScoutLlmService implements ScoutLlmService {
       },
     }
   }
+}
+
+/**
+ * Argumentos vêm como string JSON. Um JSON quebrado vira `{}` e a tool responde
+ * com o erro de validação dela — nunca derruba o turno.
+ */
+function parseToolArguments(raw: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(raw || '{}')
+    return typeof parsed === 'object' && parsed !== null
+      ? (parsed as Record<string, unknown>)
+      : {}
+  } catch {
+    scoutWarn(
+      `⚠️ scout-chat: argumentos de tool não são JSON — ${raw.slice(0, 200)}`,
+    )
+    return {}
+  }
+}
+
+/**
+ * Falha de cota ou de infra da OpenAI vira erro tipado, para o controller
+ * devolver 503 com mensagem clara em vez de 500 genérico. Descobrimos que isso
+ * importa quando a chave ficou sem crédito e o log não dizia o motivo.
+ */
+function toScoutLlmError(error: unknown): Error {
+  const status = (error as { status?: number }).status
+  const code = (error as { code?: string }).code
+
+  if (status === 429 || status === 401 || (status && status >= 500)) {
+    scoutWarn(
+      `⚠️ scout-chat: OpenAI indisponível (status=${status} code=${code ?? '-'})`,
+    )
+    return new ScoutChatUnavailableError()
+  }
+
+  return error instanceof Error ? error : new Error(String(error))
 }

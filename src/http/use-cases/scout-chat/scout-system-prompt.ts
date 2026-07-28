@@ -7,7 +7,7 @@
  * mais barato. Suba a versão sempre que editar o texto abaixo, senão o cache
  * serve conteúdo velho.
  */
-export const SCOUT_PROMPT_VERSION = 'v2'
+export const SCOUT_PROMPT_VERSION = 'v3'
 
 export const SCOUT_SYSTEM_PROMPT = `Você é o IAFutscore, assistente de busca de atletas do FutScout.
 Você conversa com observadores (olheiros) que procuram jogadores.

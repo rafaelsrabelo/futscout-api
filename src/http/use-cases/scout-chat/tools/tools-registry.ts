@@ -16,12 +16,20 @@ export class ScoutToolsRegistry {
     this.tools = new Map(tools.map((tool) => [tool.name, tool]))
   }
 
-  /** Bloco de descrição das tools, anexado depois do system prompt. */
-  describe(): string {
-    const lines = [...this.tools.values()].map(
-      (tool) => `- ${tool.name}: ${tool.description}`,
-    )
-    return `## Tools disponíveis\n${lines.join('\n')}\n\nPara usar uma tool, responda com action="CALL_TOOL" e preencha "tool".`
+  /**
+   * Tools no formato nativo do Chat Completions. A OpenAI valida a chamada
+   * contra estes schemas antes de nos entregar, o que remove o caminho em que
+   * o modelo "quase" acertava a forma e o turno saía vazio.
+   */
+  toOpenAiTools() {
+    return [...this.tools.values()].map((tool) => ({
+      type: 'function' as const,
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters,
+      },
+    }))
   }
 
   async run(

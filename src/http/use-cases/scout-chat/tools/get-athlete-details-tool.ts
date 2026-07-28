@@ -31,6 +31,18 @@ export class GetAthleteDetailsTool implements ScoutTool {
     'search_athletes. Use quando o observador perguntar sobre um jogador da ' +
     'lista (biografia, empresário, medidas).'
 
+  readonly parameters = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['athleteId'],
+    properties: {
+      athleteId: {
+        type: 'string',
+        description: 'O athleteId exato devolvido por search_athletes.',
+      },
+    },
+  }
+
   constructor(private athleteProfileRepository: AthleteProfileRepository) {}
 
   // Não recebe `ctx`: o perfil do atleta é público para qualquer observador.

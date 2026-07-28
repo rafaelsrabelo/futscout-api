@@ -50,6 +50,16 @@ export interface ScoutToolResult {
 export interface ScoutTool {
   readonly name: string
   readonly description: string
+  /**
+   * JSON Schema dos parâmetros, enviado no `tools` nativo da OpenAI. É o que
+   * faz a própria API validar a chamada antes de chegar aqui — a versão
+   * anterior descrevia as tools só em texto e dependia do modelo acertar a
+   * forma sozinho, o que falhava em silêncio.
+   *
+   * Não substitui a validação Zod dentro da tool: esta guia o modelo, aquela
+   * é a fronteira de confiança antes do banco.
+   */
+  readonly parameters: Record<string, unknown>
   execute(
     args: Record<string, unknown>,
     ctx: ScoutToolContext,

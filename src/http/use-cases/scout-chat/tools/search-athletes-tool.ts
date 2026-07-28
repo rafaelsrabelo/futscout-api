@@ -72,6 +72,34 @@ export class SearchAthletesTool implements ScoutTool {
     'altura, clube...). Devolve os atletas encontrados e o total. Não chame ' +
     'com pedido vago — pergunte antes.'
 
+  // Espelha o `argsSchema` acima. Os enums aparecem aqui para o modelo não
+  // inventar posição em português ("meia") nem pé "canhoto".
+  readonly parameters = {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      primaryPosition: { type: 'string', enum: POSITIONS },
+      secondaryPosition: { type: 'string', enum: POSITIONS },
+      gender: { type: 'string', enum: ['MALE', 'FEMALE', 'OTHER'] },
+      dominantFoot: { type: 'string', enum: ['RIGHT', 'LEFT'] },
+      classification: {
+        type: 'string',
+        enum: ['DESENVOLVIMENTO', 'PERFORMANCE'],
+      },
+      minAge: { type: 'integer', minimum: 0, maximum: 60 },
+      maxAge: { type: 'integer', minimum: 0, maximum: 60 },
+      minHeight: { type: 'number', description: 'Em metros, ex.: 1.75' },
+      maxHeight: { type: 'number', description: 'Em metros, ex.: 1.90' },
+      minWeight: { type: 'number', description: 'Em kg' },
+      maxWeight: { type: 'number', description: 'Em kg' },
+      currentClub: { type: 'string' },
+      name: { type: 'string' },
+      nickname: { type: 'string' },
+      hasManager: { type: 'boolean', description: 'true = tem empresário' },
+      limit: { type: 'integer', minimum: 1, maximum: 20 },
+    },
+  }
+
   constructor(private athleteProfileRepository: AthleteProfileRepository) {}
 
   // Não recebe `ctx`: a busca não é escopada por usuário — todo observador vê

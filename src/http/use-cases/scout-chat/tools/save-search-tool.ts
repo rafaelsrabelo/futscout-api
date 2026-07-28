@@ -30,6 +30,20 @@ export class SaveSearchTool implements ScoutTool {
     'buscado — os filtros vêm da busca que rodou, você não precisa repeti-los. ' +
     'Passe apenas title (curto) e, opcionalmente, description.'
 
+  // Sem `filters` de propósito: eles vêm do backend, não do modelo.
+  readonly parameters = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['title'],
+    properties: {
+      title: {
+        type: 'string',
+        description: 'Nome curto dado pelo observador.',
+      },
+      description: { type: 'string' },
+    },
+  }
+
   constructor(private savedSearchRepository: SavedSearchRepository) {}
 
   async execute(
