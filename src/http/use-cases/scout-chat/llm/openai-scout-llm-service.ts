@@ -286,12 +286,17 @@ export class OpenAiScoutLlmService implements ScoutLlmService {
       throw new Error('LLM returned empty content')
     }
 
+    const rawContent = choice.message.content
+
     let parsed: ScoutLlmOutput
     try {
-      parsed = JSON.parse(choice.message.content) as ScoutLlmOutput
+      parsed = JSON.parse(rawContent) as ScoutLlmOutput
     } catch {
       throw new Error('LLM returned malformed JSON')
     }
+
+    const rawAction = (parsed as { action?: unknown }).action
+    const rawTool = parsed.tool
 
     // `strict: false` no schema permite o modelo omitir campos — completa aqui.
     parsed.tool ??= null
@@ -301,11 +306,28 @@ export class OpenAiScoutLlmService implements ScoutLlmService {
     )
 
     // Tool sem nome não é chamada válida; vira resposta em vez de quebrar.
-    if (parsed.tool && typeof parsed.tool.name !== 'string') {
+    const toolDiscarded = !!parsed.tool && typeof parsed.tool.name !== 'string'
+    if (toolDiscarded) {
       parsed.tool = null
     }
     if (parsed.tool) {
       parsed.tool.arguments ??= {}
+    }
+
+    // Os dois casos em que o backfill acima esconde a forma original e o app
+    // recebe 200 sem nada para mostrar. Logar o payload cru é o único jeito de
+    // saber o que o modelo realmente devolveu.
+    if (toolDiscarded) {
+      scoutWarn(
+        `⚠️ scout-chat: tool descartada por forma inválida — ` +
+          `tool=${JSON.stringify(rawTool)?.slice(0, 300)}`,
+      )
+    }
+    if (!parsed.response && !parsed.tool) {
+      scoutWarn(
+        `⚠️ scout-chat: turno sem texto e sem tool (model=${response.model}, ` +
+          `action=${String(rawAction)}) raw=${rawContent.slice(0, 700)}`,
+      )
     }
 
     const cachedInputTokens =

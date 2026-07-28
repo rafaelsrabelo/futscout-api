@@ -130,7 +130,8 @@ export class SendScoutMessageUseCase {
       `💬 scout-chat turn [${turnId}] thread=${thread.id} ` +
         `iterations=${turn.toolLoopIterations} responseType=${responseType} ` +
         `items=${turn.cards.length} filters=${JSON.stringify(appliedFilters)} ` +
-        `tokens=${turn.totalTokens} responseLen=${turn.output.response.length}`,
+        `tokens=${turn.totalTokens} responseLen=${turn.output.response.length} ` +
+        `model=${turn.model}`,
     )
 
     return {
