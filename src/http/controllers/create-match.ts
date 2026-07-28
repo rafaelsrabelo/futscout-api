@@ -7,6 +7,7 @@ import { PrismaTeamRepository } from '../repositories/prisma/prisma-team-reposit
 import { CreateCompetitionUseCase } from '../use-cases/create-competition.js'
 import { CreateMatchUseCase } from '../use-cases/create-match.js'
 import { incrementMatchUsage } from '../utils/increment-usage.js'
+import { notifyFavoritesInBackground } from '../utils/notify-favorites.js'
 
 export async function createMatch(
   request: FastifyRequest,
@@ -316,6 +317,10 @@ export async function createMatch(
 
   // Incrementar contador de uso de partidas
   await incrementMatchUsage(request.user.sub)
+
+  // Avisa quem favoritou este atleta. Não aguardado de propósito: notificação
+  // não pode atrasar nem derrubar o cadastro da partida.
+  notifyFavoritesInBackground(athleteProfile.id, 'FAVORITE_MATCH')
 
   return reply.status(201).send({ match })
 }

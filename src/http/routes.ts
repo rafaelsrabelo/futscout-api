@@ -111,6 +111,10 @@ import { regenerateThumbnail } from './controllers/regenerate-thumbnail.js'
 import { registerPushToken } from './controllers/register-push-token.js'
 import { register } from './controllers/register.js'
 import { removePushToken } from './controllers/remove-push-token.js'
+import { getUnreadNotificationCount } from './controllers/notifications/get-unread-count.js'
+import { listNotifications } from './controllers/notifications/list-notifications.js'
+import { markAllNotificationsRead } from './controllers/notifications/mark-all-notifications-read.js'
+import { markNotificationRead } from './controllers/notifications/mark-notification-read.js'
 import { closeScoutThread } from './controllers/scout-chat/close-scout-thread.js'
 import { getScoutThread } from './controllers/scout-chat/get-scout-thread.js'
 import { listScoutThreads } from './controllers/scout-chat/list-scout-threads.js'
@@ -335,6 +339,24 @@ export async function appRoutes(app: FastifyInstance) {
     '/scout-chat/threads/:id',
     { onRequest: [verifyJwt] },
     closeScoutThread,
+  )
+
+  // Caixa de entrada de notificações do usuário (atividade de favoritos)
+  app.get('/notifications', { onRequest: [verifyJwt] }, listNotifications)
+  app.get(
+    '/notifications/unread-count',
+    { onRequest: [verifyJwt] },
+    getUnreadNotificationCount,
+  )
+  app.patch(
+    '/notifications/:id/read',
+    { onRequest: [verifyJwt] },
+    markNotificationRead,
+  )
+  app.post(
+    '/notifications/read-all',
+    { onRequest: [verifyJwt] },
+    markAllNotificationsRead,
   )
 
   // Push notification tokens (mobile)

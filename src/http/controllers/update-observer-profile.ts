@@ -19,9 +19,11 @@ export async function updateObserverProfile(
     currentClub: z.string().optional(),
     phone: z.string().optional(),
     profilePhoto: z.string().optional(),
+    // Interruptor dos avisos de atividade dos atletas favoritados.
+    notifyOnFavoriteActivity: z.boolean().optional(),
   })
 
-  const { name, currentClub, phone, profilePhoto } =
+  const { name, currentClub, phone, profilePhoto, notifyOnFavoriteActivity } =
     updateObserverProfileBodySchema.parse(request.body)
 
   try {
@@ -36,6 +38,9 @@ export async function updateObserverProfile(
       ...(currentClub !== undefined && { currentClub }),
       ...(phone !== undefined && { phone }),
       ...(profilePhoto !== undefined && { profilePhoto }),
+      ...(notifyOnFavoriteActivity !== undefined && {
+        notifyOnFavoriteActivity,
+      }),
     }
 
     const { observerProfile } =

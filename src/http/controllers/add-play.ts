@@ -5,6 +5,7 @@ import { PrismaMatchRepository } from '../repositories/prisma/prisma-match-repos
 import { PrismaPlayRepository } from '../repositories/prisma/prisma-play-repository.js'
 import { AddPlayToMatchUseCase } from '../use-cases/add-play-to-match.js'
 import { incrementVideoUsage } from '../utils/increment-usage.js'
+import { notifyFavoritesInBackground } from '../utils/notify-favorites.js'
 
 export async function addPlay(request: FastifyRequest, reply: FastifyReply) {
   const addPlayParamsSchema = z.object({
@@ -113,6 +114,9 @@ export async function addPlay(request: FastifyRequest, reply: FastifyReply) {
   if (play.videoUrl) {
     await incrementVideoUsage(request.user.sub)
   }
+
+  // Avisa quem favoritou este atleta, sem aguardar.
+  notifyFavoritesInBackground(athleteProfile.id, 'FAVORITE_PLAY')
 
   return reply.status(201).send({ play })
 }

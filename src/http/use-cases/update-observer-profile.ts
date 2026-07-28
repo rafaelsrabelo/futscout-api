@@ -8,6 +8,7 @@ interface UpdateObserverProfileRequest {
   currentClub?: string
   phone?: string
   profilePhoto?: string
+  notifyOnFavoriteActivity?: boolean
 }
 
 interface UpdateObserverProfileResponse {
@@ -17,6 +18,7 @@ interface UpdateObserverProfileResponse {
     currentClub: string | null
     phone: string
     profilePhoto: string | null
+    notifyOnFavoriteActivity: boolean
     createdAt: Date
     updatedAt: Date
   }
@@ -31,6 +33,7 @@ export class UpdateObserverProfileUseCase {
     currentClub,
     phone,
     profilePhoto,
+    notifyOnFavoriteActivity,
   }: UpdateObserverProfileRequest): Promise<UpdateObserverProfileResponse> {
     const existingProfile =
       await this.observerProfileRepository.findByUserId(userId)
@@ -43,6 +46,10 @@ export class UpdateObserverProfileUseCase {
       ...(currentClub && { currentClub }),
       ...(phone && { phone }),
       ...(profilePhoto && { profilePhoto }),
+      // `!== undefined` e não truthy: `false` é um valor válido aqui.
+      ...(notifyOnFavoriteActivity !== undefined && {
+        notifyOnFavoriteActivity,
+      }),
     }
 
     const observerProfile = await this.observerProfileRepository.update(

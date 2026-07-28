@@ -191,6 +191,7 @@ model User {
   // Notificações que esse usuário (admin) disparou
   notificationsSent          NotificationLog[]          @relation("NotificationsSentBy")
   scoutThreads               ScoutThread[]
+  notifications              UserNotification[]
 
   @@unique([provider, providerId])
   @@map("users")
@@ -281,6 +282,9 @@ model AthleteProfile {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  // Notificações geradas pela atividade deste atleta
+  notificationsGenerated UserNotification[]
+
 
   @@map("athlete_profiles")
 }
@@ -312,6 +316,9 @@ model ObserverProfile {
   currentClub  String? // Clube atual é opcional
   phone        String // Telefone de contato
   profilePhoto String? // Foto de perfil
+
+  // Avisar quando um atleta favoritado cadastra partida ou publica lance.
+  notifyOnFavoriteActivity Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -762,4 +769,46 @@ model ScoutMessage {
 
   @@index([threadId, createdAt])
   @@map("scout_messages")
+}
+
+// ============================================================
+// ====== Notificações do usuário (caixa de entrada) ======
+// ============================================================
+// Diferente de NotificationLog, que é o registro de uma campanha do admin.
+// Aqui é o que CADA usuário recebeu — hoje, atividade dos atletas que ele
+// favoritou. Push sozinho é efêmero: se o observador não vê na hora, some.
+
+enum UserNotificationType {
+  FAVORITE_MATCH
+  FAVORITE_PLAY
+}
+
+model UserNotification {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type  UserNotificationType
+  title String
+  body  String
+  // Deep link para o app: { screen, params }.
+  data  Json?
+
+  // Atleta que gerou o evento. Cascade porque a notificação perde o sentido
+  // se o perfil deixa de existir.
+  actorAthleteId String?
+  actorAthlete   AthleteProfile? @relation(fields: [actorAthleteId], references: [id], onDelete: Cascade)
+
+  // Chave de agregação (userId:type:atleta). Um atleta que sobe 8 lances
+  // gera UMA notificação com eventCount=8, não 8 pushes.
+  groupKey   String
+  eventCount Int    @default(1)
+
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId, readAt, createdAt])
+  @@index([groupKey, readAt])
+  @@map("user_notifications")
 }

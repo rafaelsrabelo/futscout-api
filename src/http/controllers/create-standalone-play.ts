@@ -7,9 +7,8 @@ import { VideoThumbnailService } from '../../lib/video-thumbnail.js'
 import { PrismaAthleteProfileRepository } from '../repositories/prisma/prisma-athlete-profile-repository.js'
 import { PrismaPlayRepository } from '../repositories/prisma/prisma-play-repository.js'
 import { CreateStandalonePlayUseCase } from '../use-cases/create-standalone-play.js'
-import {
-  incrementStandaloneVideoUsage,
-} from '../utils/increment-usage.js'
+import { incrementStandaloneVideoUsage } from '../utils/increment-usage.js'
+import { notifyFavoritesInBackground } from '../utils/notify-favorites.js'
 
 export async function createStandalonePlay(
   request: FastifyRequest,
@@ -404,6 +403,11 @@ export async function createStandalonePlay(
           )
         }
       }, 0)
+    }
+
+    // Avisa quem favoritou este atleta, sem aguardar.
+    if (play.athleteId) {
+      notifyFavoritesInBackground(play.athleteId, 'FAVORITE_PLAY')
     }
 
     return reply.status(201).send({ play })

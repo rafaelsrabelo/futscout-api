@@ -50,4 +50,20 @@ export class PrismaObserverProfileRepository
 
     return observerProfile
   }
+
+  async filterUserIdsAcceptingFavoriteActivity(
+    userIds: string[],
+  ): Promise<string[]> {
+    if (userIds.length === 0) return []
+
+    const profiles = await prisma.observerProfile.findMany({
+      where: {
+        userId: { in: userIds },
+        notifyOnFavoriteActivity: true,
+      },
+      select: { userId: true },
+    })
+
+    return profiles.map((profile) => profile.userId)
+  }
 }

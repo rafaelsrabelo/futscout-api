@@ -85,4 +85,13 @@ export class PrismaFavoriteRepository implements FavoriteRepository {
 
     return count
   }
+
+  async findUserIdsByAthlete(athleteId: string): Promise<string[]> {
+    const favorites = await prisma.favorite.findMany({
+      where: { athleteId },
+      select: { userId: true },
+    })
+
+    return favorites.map((favorite) => favorite.userId)
+  }
 }

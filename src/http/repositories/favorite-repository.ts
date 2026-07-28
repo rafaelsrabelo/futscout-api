@@ -34,4 +34,9 @@ export interface FavoriteRepository {
   isFavorite(userId: string, athleteId: string): Promise<boolean>
   findFavoritesByUser(filters: FavoriteFilters): Promise<FavoriteWithAthlete[]>
   countFavoritesByAthlete(athleteId: string): Promise<number>
+  /**
+   * Caminho inverso: quem favoritou este atleta. Usado quando ele cadastra
+   * partida ou publica lance, para avisar os observadores que o acompanham.
+   */
+  findUserIdsByAthlete(athleteId: string): Promise<string[]>
 }
