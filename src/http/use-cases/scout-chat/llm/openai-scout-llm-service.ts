@@ -9,7 +9,7 @@ import {
   SCOUT_SYSTEM_PROMPT,
 } from '../scout-system-prompt.js'
 import type { ScoutLlmOutput } from '../scout-output-schema.js'
-import { scoutLog, scoutWarn } from '../scout-log.js'
+import { redactToolArgs, scoutLog, scoutWarn } from '../scout-log.js'
 import type { ScoutToolsRegistry } from '../tools/tools-registry.js'
 import type { AthleteCard } from '../tools/tool-types.js'
 import type {
@@ -147,7 +147,7 @@ export class OpenAiScoutLlmService implements ScoutLlmService {
 
         scoutLog(
           `🔎 scout-chat tool [${input.turnId}] it=${iteration} name=${toolCall.function.name} ` +
-            `args=${JSON.stringify(args)} → ${result.summary}`,
+            `args=${redactToolArgs(args)} → ${result.summary}`,
         )
 
         // Última tool que produziu cards vence: refletem o passo final.
@@ -155,10 +155,18 @@ export class OpenAiScoutLlmService implements ScoutLlmService {
         if (result.appliedFilters) appliedFilters = result.appliedFilters
         if (result.savedSearchId) savedSearchId = result.savedSearchId
 
+        // Defesa em profundidade: o payload vai envolvido num bloco que o
+        // prompt manda tratar como registro de cadastro, nunca como ordem.
+        // A contenção principal é não mandar campo narrativo (a biografia ficou
+        // de fora) e sanear o texto livre que sobra — isto é a segunda camada,
+        // para o caso de um apelido escapar do saneamento.
         messages.push({
           role: 'tool',
           tool_call_id: toolCall.id,
-          content: JSON.stringify({ ...result.data, resumo: result.summary }),
+          content:
+            `<dados_do_banco>\n` +
+            JSON.stringify({ ...result.data, resumo: result.summary }) +
+            `\n</dados_do_banco>`,
         })
       }
     }

@@ -33,7 +33,7 @@ Esse último ponto é o mais importante e já está certo: as tools montam expli
 
 ## 2. Riscos, do mais grave ao menos
 
-### R1 — Injeção de prompt via dados do atleta · **MITIGADO, falta o bloco delimitado**
+### R1 — Injeção de prompt via dados do atleta · **MITIGADO (3 camadas)**
 
 **O vetor.** `get_athlete_details` devolvia ao modelo o campo `biography`, e
 `search_athletes` devolve `nickname` e `currentClub`. Todos são **texto livre
@@ -59,9 +59,10 @@ o produto inteiro.
    (`system:`, `</...>`, ```` ``` ````), têm quebras de linha achatadas e são
    truncados em 60 caracteres. Apelido real cabe; parágrafo de instrução não.
 
-**O que falta:** envolver o resultado das tools num bloco marcado e instruir o
-prompt a nunca tratar o conteúdo dali como ordem. Com a bio fora e os campos
-curtos saneados, virou defesa em profundidade e não mais a contenção principal.
+3. **Resultado de tool vai envolvido em `<dados_do_banco>`**, e o prompt (`v5`)
+   manda tratar aquilo como registro de cadastro, nunca ordem. É a terceira
+   camada — com a bio fora e o texto curto saneado, é defesa em profundidade,
+   não a contenção principal.
 
 ### R2 — Nenhum limite de taxa · **RESOLVIDO**
 
@@ -91,17 +92,17 @@ Existia porque `checkAiUsage` lia o contador e o incremento vinha depois do
 turno. Sem cota bloqueante, a corrida deixou de ter efeito: o `aiMessagesUsed`
 é só telemetria, e um desvio de contagem sob concorrência não bloqueia ninguém.
 
-### R4 — Uso fora de escopo · **MÉDIO**
+### R4 — Uso fora de escopo · **MITIGADO**
 
 Nada impede usar o chat como assistente geral ("escreva um e-mail", "resuma este texto"). O prompt define o papel, mas não há recusa forçada. É custo desnecessário e risco de marca — a resposta sai assinada como IAFutscore.
 
-**Correção:** regra explícita de recusa no prompt, mais um classificador barato de escopo se o volume justificar. Comece pelo prompt e meça.
+**Feito:** regra explícita de recusa no prompt `v5` — recusa em uma frase, sem sermão e sem expor as regras internas. Se o volume mostrar que o prompt não segura, entra um classificador barato antes da chamada; medir antes de construir.
 
-### R5 — Termos de busca no log · **BAIXO**
+### R5 — Termos de busca no log · **RESOLVIDO**
 
 `scoutLog` grava os argumentos da tool, que podem conter nome ou apelido de atleta pesquisado. Fica no log do Render por padrão.
 
-**Correção:** truncar/omitir `name` e `nickname` na linha de log. O resto dos filtros não é sensível e é justamente o que dá diagnóstico.
+**Feito:** `redactToolArgs` troca `name` e `nickname` por `[omitido]`. O resto dos filtros não identifica ninguém e é o que dá diagnóstico.
 
 ---
 
@@ -145,16 +146,16 @@ Impede raciocínio como *"sub-20 na próxima temporada"* ou *"quem faz 18 anos e
 
 ## 4. Plano em fases
 
-### Fase 1 — Segurança (prioridade)
+### Fase 1 — Segurança · **CONCLUÍDA**
 
 | # | Tarefa | Esforço |
 |---|---|---|
 | ~~1.1~~ | ~~Cortar `biography` do payload do modelo~~ — **feito** | — |
 | ~~1.2~~ | ~~Sanitizar e truncar campos livres~~ — **feito** (`sanitize-for-model.ts`) | — |
-| 1.3 | Delimitar dados de tool em bloco marcado + regra no prompt (`v5`) — **único item aberto da Fase 1** | 2h |
+| ~~1.3~~ | ~~Delimitar dados de tool em bloco marcado + regra no prompt~~ — **feito** (`<dados_do_banco>`, prompt `v5`) | — |
 | ~~1.4~~ | ~~Rate limit por usuário na rota do chat~~ — **feito** | — |
-| 1.5 | Regra de recusa fora de escopo no prompt | 30min |
-| 1.6 | Omitir `name`/`nickname` do log da tool | 30min |
+| ~~1.5~~ | ~~Regra de recusa fora de escopo no prompt~~ — **feito** (`v5`) | — |
+| ~~1.6~~ | ~~Omitir `name`/`nickname` do log da tool~~ — **feito** (`redactToolArgs`) | — |
 
 ### Fase 2 — Contexto
 
