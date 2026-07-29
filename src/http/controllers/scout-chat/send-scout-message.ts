@@ -33,7 +33,9 @@ export async function sendScoutMessage(
       ...(threadId ? { threadId } : {}),
     })
 
-    // Só conta depois do turno completar: turno que falhou não gasta cota.
+    // Telemetria de custo, não cota: o chat não é limitado por plano (ver
+    // `rateLimitScoutChat`). Conta só depois do turno completar, para o número
+    // refletir chamadas que de fato foram pagas à OpenAI.
     await incrementAiMessageUsage(request.user.sub)
 
     return reply.status(200).send(result)

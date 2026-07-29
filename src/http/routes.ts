@@ -136,8 +136,8 @@ import { uploadProfilePhoto } from './controllers/upload-profile-photo.js'
 import { uploadVideoToPlay } from './controllers/upload-video-to-play.js'
 import { verifyEmail } from './controllers/verify-email.js'
 
-import { checkAiUsage } from './middlewares/check-ai-usage.js'
 import { checkUsage } from './middlewares/check-usage.js'
+import { rateLimitScoutChat } from './middlewares/rate-limit-scout-chat.js'
 import { verifyAdmin } from './middlewares/verify-admin.js'
 import { verifyJwt } from './middlewares/verify-jwt.js'
 
@@ -323,7 +323,7 @@ export async function appRoutes(app: FastifyInstance) {
   // Substitui o formulário de filtros: o observador conversa e a IA monta a busca.
   app.post(
     '/scout-chat/messages',
-    { onRequest: [verifyJwt, checkAiUsage] },
+    { onRequest: [verifyJwt, rateLimitScoutChat] },
     sendScoutMessage,
   )
   // Salva o filtro de UM turno da conversa. Sem IA no caminho: o observador

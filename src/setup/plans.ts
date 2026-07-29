@@ -1,8 +1,13 @@
 import { prisma } from '../lib/prisma.js'
 
-// Mensagens/mês no chat de busca (IAFutscore) para o plano FREE.
-// PREMIUM fica com null = ilimitado.
-const FREE_AI_MESSAGES = 30
+// `null` = sem cota por plano no chat de busca (IAFutscore).
+//
+// Planos são exclusivos de atleta e o chat é exclusivo de observador — todo
+// observador caía no fallback do FREE e recebia "faça upgrade do seu plano"
+// sem ter plano para comprar. O Helper IA vem incluso no app; quem contém
+// abuso agora é o `rateLimitScoutChat`. A coluna fica para o caso de um dia
+// existir um recurso de IA do lado do atleta.
+const FREE_AI_MESSAGES = null
 
 export async function seedPlans() {
   // Verificar se os planos já existem

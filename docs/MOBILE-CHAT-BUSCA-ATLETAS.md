@@ -108,7 +108,7 @@ Content-Type: application/json
 
 | Status | Quando | O que mostrar |
 |---|---|---|
-| **402** | Estourou a cota mensal de mensagens (plano FREE = **30/mês**; PREMIUM é ilimitado) | Tela/modal de upgrade. O body traz `{ message, limit, used, planName }` — o `message` já está em pt-BR e pode ser exibido. |
+| **429** | Muitas mensagens em pouco tempo (12/min ou 120/hora por usuário) | Aviso temporário, **não** de upgrade. O body traz `{ message, retryAfterSeconds }` e o header `Retry-After`. Desabilite o envio por esse tempo em vez de deixar o usuário tentar de novo à toa. |
 | **403** | Usuário não é `OBSERVER` | Não deve acontecer se o chat só existe na visão observador. |
 | **404** | `threadId` não existe **ou é de outro usuário** | Limpe o `threadId` local e comece conversa nova. |
 | **503** | Chat desligado no servidor (sem chave da OpenAI) | "Chat indisponível no momento". Não é erro do usuário, não sugira reformular. |
@@ -284,7 +284,7 @@ closeThread(id): Promise<void>
 - `sendText` passa a `await scoutChat.sendMessage(...)` em vez do `setTimeout`. O `isTyping` já serve de loading.
 - `HelperIaMessage` ganha `items: AthleteCard[]`, `responseType` e `savedSearchId`.
 - `startNewConversation` limpa o `threadId` (não precisa chamar a API — a thread nova nasce no próximo `POST`).
-- Tratar 402 / 503 / 404 conforme a tabela de erros.
+- Tratar 429 / 503 / 404 conforme a tabela de erros.
 
 **Novo componente `AthleteResultCard`** — renderizado abaixo da bolha da IA quando `items.length > 0`. Toque navega para o perfil do atleta. É o maior trabalho novo de UI. Lembre dos campos anuláveis.
 
