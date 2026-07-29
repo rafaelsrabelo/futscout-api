@@ -4,6 +4,7 @@ import type {
   AthleteProfileRepository,
   AthleteProfileWithUser,
 } from '../../../repositories/athlete-profile-repository.js'
+import { sanitizeForModel } from './sanitize-for-model.js'
 import type { AthleteCard, ScoutTool, ScoutToolResult } from './tool-types.js'
 
 const POSITIONS = ['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD'] as const
@@ -145,14 +146,16 @@ export class SearchAthletesTool implements ScoutTool {
       data: {
         total,
         returned: cards.length,
+        // Só métricas + o identificador. Apelido e clube são filtros, mas
+        // também texto livre do atleta — passam pelo saneamento.
         athletes: cards.map((c) => ({
           // O modelo repassa este id ao get_athlete_details. Se vazar para o
           // texto, o scrub de UUID no serviço de LLM remove.
           athleteId: c.id,
-          nickname: c.nickname ?? c.name,
+          nickname: sanitizeForModel(c.nickname ?? c.name),
           position: c.primaryPosition,
           age: c.age,
-          club: c.currentClub,
+          club: sanitizeForModel(c.currentClub),
         })),
       },
       summary:

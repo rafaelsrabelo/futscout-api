@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { AthleteProfileRepository } from '../../../repositories/athlete-profile-repository.js'
+import { sanitizeForModel } from './sanitize-for-model.js'
 import type { AthleteCard, ScoutTool, ScoutToolResult } from './tool-types.js'
 
 const argsSchema = z.object({
@@ -73,18 +74,21 @@ export class GetAthleteDetailsTool implements ScoutTool {
       currentClub: athlete.currentClub,
     }
 
+    // Só métricas. A `biography` NÃO vai ao modelo: é texto narrativo escrito
+    // pelo próprio atleta, não serve de critério de busca, e é o vetor mais
+    // largo de injeção de prompt num produto onde aparecer melhor na busca do
+    // olheiro é o incentivo. Quem quiser ler a bio abre o perfil do atleta.
     return {
       data: {
         athlete: {
-          nickname: card.nickname ?? card.name,
+          nickname: sanitizeForModel(card.nickname ?? card.name),
           position: card.primaryPosition,
           secondaryPosition: card.secondaryPosition,
           age: card.age,
           height: card.height,
           weight: card.weight,
           dominantFoot: card.dominantFoot,
-          club: card.currentClub,
-          biography: athlete.biography,
+          club: sanitizeForModel(card.currentClub),
           hasManager: athlete.hasManager,
         },
       },
