@@ -1,6 +1,5 @@
-import OpenAI from 'openai'
+import type OpenAI from 'openai'
 
-import { env } from '@/env/index.js'
 import type { AthleteSearchFilters } from '../../../repositories/saved-search-repository.js'
 import { ScoutChatDisabledError } from '../../errors/scout-chat-disabled-error.js'
 import { ScoutChatUnavailableError } from '../../errors/scout-chat-unavailable-error.js'
@@ -17,6 +16,16 @@ import type {
   ScoutTurnInput,
   ScoutTurnResult,
 } from './scout-llm-service.js'
+
+/**
+ * A fatia do cliente da OpenAI que este serviço usa. Estreita de propósito: o
+ * dublê do teste implementa três linhas em vez de imitar o SDK inteiro.
+ */
+export interface ScoutChatCompletionClient {
+  create(
+    params: OpenAI.Chat.ChatCompletionCreateParamsNonStreaming,
+  ): Promise<OpenAI.Chat.ChatCompletion>
+}
 
 /**
  * Teto de idas ao modelo por turno. Cada iteração é uma chamada paga, então o
@@ -78,13 +87,17 @@ const EMPTY_RESPONSE_FALLBACK =
  * rótulo do modelo nunca poderia dessincronizar a UI mesmo.
  */
 export class OpenAiScoutLlmService implements ScoutLlmService {
-  private client: OpenAI | null
-
-  constructor(private tools: ScoutToolsRegistry) {
-    this.client = env.OPENAI_API_KEY
-      ? new OpenAI({ apiKey: env.OPENAI_API_KEY })
-      : null
-  }
+  /**
+   * Cliente e modelo entram pelo construtor em vez de sair de `env` aqui
+   * dentro. Dois motivos: dá para dublar o cliente no teste, e este módulo
+   * deixa de importar `@/env`, que valida no load e derrubaria qualquer suíte
+   * que não tenha as credenciais de admin (mesma razão do `expo-push.ts`).
+   */
+  constructor(
+    private readonly tools: ScoutToolsRegistry,
+    private readonly client: ScoutChatCompletionClient | null,
+    private readonly model: string,
+  ) {}
 
   get enabled(): boolean {
     return this.client !== null
@@ -103,7 +116,7 @@ export class OpenAiScoutLlmService implements ScoutLlmService {
     let promptTokens = 0
     let completionTokens = 0
     let cachedInputTokens = 0
-    let model = env.AI_CHAT_MODEL
+    let model = this.model
     let iteration = 0
 
     while (iteration < MAX_TOOL_ITERATIONS) {
@@ -270,12 +283,12 @@ export class OpenAiScoutLlmService implements ScoutLlmService {
     let response: OpenAI.Chat.ChatCompletion
 
     try {
-      response = await this.client!.chat.completions.create({
-        model: env.AI_CHAT_MODEL,
+      response = await this.client!.create({
+        model: this.model,
         messages,
         tools: this.tools.toOpenAiTools(),
         tool_choice: 'auto',
-        ...(isReasoningModel(env.AI_CHAT_MODEL)
+        ...(isReasoningModel(this.model)
           ? { reasoning_effort: 'minimal' as const }
           : {}),
         // Chave estável para o prefixo cacheado. Subir SCOUT_PROMPT_VERSION

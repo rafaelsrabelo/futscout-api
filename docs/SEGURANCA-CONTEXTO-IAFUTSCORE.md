@@ -168,24 +168,32 @@ Impede raciocínio como *"sub-20 na próxima temporada"* ou *"quem faz 18 anos e
 | ~~2.3~~ | ~~Data de hoje no contexto~~ — **feito** | — |
 | ~~2.4~~ | ~~Calibragem por `total` no prompt~~ — **feito** (regra 4, `v6`) | — |
 
-### Fase 3 — Confiança
+### Fase 3 — Confiança · **CONCLUÍDA**
 
 | # | Tarefa | Esforço |
 |---|---|---|
-| 3.1 | **Testes do loop de LLM** com cliente OpenAI dublê — hoje o motor não tem cobertura | 4h |
-| 3.2 | Suíte de injeção: biografias maliciosas conhecidas devem falhar em manipular | 3h |
+| ~~3.1~~ | ~~Testes do loop de LLM com cliente dublê~~ — **feito**, 17 testes | — |
+| ~~3.2~~ | ~~Suíte de injeção~~ — **feito**, 12 testes | — |
 
 
-> **A 3.1 é dívida assumida.** Quando troquei o loop sintético por tool calling nativo, os 24 testes continuaram passando porque batem na interface `ScoutLlmService`, não na implementação. O motor em si — a parte que já quebrou uma vez em produção — segue sem cobertura. O cliente hoje é construído dentro da classe; injetá-lo é pré-requisito.
+> **Dívida quitada.** O cliente da OpenAI e o modelo passaram a entrar pelo construtor, então o motor virou testável — e o módulo deixou de importar `@/env`, que valida no load e derrubaria a suíte (mesma razão documentada no `expo-push.ts`). Quem lê o ambiente agora é só a fábrica.
+>
+> Os 17 testes cobrem o caminho que quebrou em produção: turno sem tool, tool chamada e iterada, ordem `assistant` → `tool` no histórico (a API rejeita o contrário), argumentos malformados, tool inexistente, resposta vazia virando fallback, loop esgotado, 429/401 virando 503 e ausência de chave.
 
 ---
 
 ## 5. Como medir que funcionou
 
-- **Injeção:** um atleta de teste com biografia hostil não muda a ordem nem o texto da resposta.
-- **Rate limit:** 20 requisições em 10 segundos → as excedentes voltam 429, e o gasto na OpenAI não sobe junto.
-- **Contexto:** *"me fala do segundo da lista"* passa a funcionar.
+Coberto por teste automatizado:
+
+- **Injeção:** 12 testes verificam que nenhum dos quatro payloads hostis conhecidos chega ao payload do modelo, por `search_athletes` ou `get_athlete_details`, e que a biografia nunca é enviada.
+- **Rate limit:** 8 testes no limitador — limite respeitado, usuários isolados, janela virando.
+- **Contexto:** teste garante que a lista numerada com rótulo chega ao `contextBlock`.
+
+Só dá para verificar em produção, com o app na mão:
+
 - **Escopo:** *"escreva um e-mail de cobrança"* é recusado com cordialidade.
+- **Injeção ponta a ponta:** um atleta real com apelido hostil não muda a ordem nem o texto da resposta. Os testes garantem que a instrução não sai do backend; que o modelo se comporta bem com o que sai, só o uso mostra.
 
 ---
 
