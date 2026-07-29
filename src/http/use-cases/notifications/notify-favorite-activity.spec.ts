@@ -132,6 +132,74 @@ describe('Notify Favorite Activity Use Case', () => {
     })
   })
 
+  it('should point a match notification at the match itself', async () => {
+    const athleteId = await seedAthlete()
+    await seedObserver()
+    await favoriteRepository.toggleFavorite(OBSERVER_ID, athleteId)
+
+    await sut.execute({
+      athleteId,
+      type: 'FAVORITE_MATCH',
+      matchId: 'match-1',
+    })
+
+    expect(userNotificationRepository.items[0]?.data).toEqual({
+      screen: 'match',
+      params: { matchId: 'match-1' },
+    })
+  })
+
+  it('should fall back to the athlete once matches aggregate', async () => {
+    const athleteId = await seedAthlete()
+    await seedObserver()
+    await favoriteRepository.toggleFavorite(OBSERVER_ID, athleteId)
+
+    await sut.execute({ athleteId, type: 'FAVORITE_MATCH', matchId: 'match-1' })
+    await sut.execute({ athleteId, type: 'FAVORITE_MATCH', matchId: 'match-2' })
+
+    // Duas partidas numa notificação só: linkar uma delas seria mentira.
+    expect(userNotificationRepository.items[0]?.data).toEqual({
+      screen: 'athlete',
+      params: { athleteId },
+    })
+  })
+
+  it('should not double count when a video is attached to an announced play', async () => {
+    const athleteId = await seedAthlete('João Vitor')
+    await seedObserver()
+    await favoriteRepository.toggleFavorite(OBSERVER_ID, athleteId)
+
+    // Lance criado sem vídeo avisa; o vídeo chegando depois é o MESMO conteúdo.
+    await sut.execute({ athleteId, type: 'FAVORITE_PLAY' })
+    const attach = await sut.execute({
+      athleteId,
+      type: 'FAVORITE_PLAY',
+      aggregateOnly: true,
+    })
+
+    expect(attach).toMatchObject({ notified: 0, aggregated: 0, pushed: 0 })
+    expect(userNotificationRepository.items[0]).toMatchObject({
+      eventCount: 1,
+      body: 'João Vitor publicou um novo lance.',
+    })
+  })
+
+  it('should still notify when the video is the first news in the window', async () => {
+    const athleteId = await seedAthlete()
+    await seedObserver()
+    await favoriteRepository.toggleFavorite(OBSERVER_ID, athleteId)
+
+    // Nada foi anunciado antes — o vídeo é a novidade.
+    const result = await sut.execute({
+      athleteId,
+      type: 'FAVORITE_PLAY',
+      aggregateOnly: true,
+    })
+
+    expect(result.notified).toEqual(1)
+    expect(expoSender.sent).toHaveLength(1)
+  })
+
   it('should prefer the nickname when the athlete has one', async () => {
     const athleteId = await seedAthlete('João Vitor Andrade', 'Joãozinho')
     await seedObserver()

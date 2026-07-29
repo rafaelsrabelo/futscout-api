@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { CloudflareR2Service } from '../../lib/cloudflare-r2.js'
 import { prisma } from '../../lib/prisma.js'
 import { verifyJwt } from '../middlewares/verify-jwt.js'
+import { notifyFavoritesInBackground } from '../utils/notify-favorites.js'
 
 const updatePlayVideoUrlSchema = z.object({
   playId: z.string().uuid(),
@@ -125,6 +126,18 @@ export async function updatePlayVideoUrl(
         },
       },
     })
+
+    // O fluxo preferido é URL assinada → upload direto no R2 → anexa aqui.
+    // Sem este gatilho, um lance criado sem vídeo nunca avisaria o observador
+    // de que o vídeo chegou. `aggregateOnly` evita contar duas vezes o mesmo
+    // conteúdo quando a criação já avisou minutos antes.
+    const athleteId = play.athleteId ?? play.match?.athleteId
+
+    if (athleteId) {
+      notifyFavoritesInBackground(athleteId, 'FAVORITE_PLAY', {
+        aggregateOnly: true,
+      })
+    }
 
     return reply.status(200).send({
       message: 'Vídeo atualizado no lance com sucesso!',

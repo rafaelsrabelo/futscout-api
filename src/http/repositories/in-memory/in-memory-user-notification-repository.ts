@@ -4,6 +4,7 @@ import type { UserNotification } from '../../../../generated/prisma/client.js'
 import type {
   CreateUserNotificationData,
   ListUserNotificationsFilters,
+  UserNotificationData,
   UserNotificationRepository,
 } from '../user-notification-repository.js'
 
@@ -53,7 +54,7 @@ export class InMemoryUserNotificationRepository
 
   async incrementEvent(
     id: string,
-    data: { title: string; body: string },
+    data: { title: string; body: string; data?: UserNotificationData | null },
   ): Promise<UserNotification> {
     const notification = this.items.find((item) => item.id === id)
 
@@ -64,6 +65,9 @@ export class InMemoryUserNotificationRepository
     notification.eventCount += 1
     notification.title = data.title
     notification.body = data.body
+    if (data.data) {
+      notification.data = JSON.parse(JSON.stringify(data.data))
+    }
     notification.updatedAt = new Date()
 
     return notification

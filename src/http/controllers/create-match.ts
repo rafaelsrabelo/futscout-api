@@ -57,8 +57,14 @@ export async function createMatch(
       .object({
         name: z.string().min(1), // Apenas nome obrigatório para criar inline
         description: z.string().optional(),
-        start_date: z.string().transform((val) => new Date(val)).optional(),
-        end_date: z.string().transform((val) => new Date(val)).optional(),
+        start_date: z
+          .string()
+          .transform((val) => new Date(val))
+          .optional(),
+        end_date: z
+          .string()
+          .transform((val) => new Date(val))
+          .optional(),
         location: z.string().optional(),
         modality: z.enum(['FUT_11', 'FUT_7', 'FUTSAL']).optional(),
         category: z
@@ -251,7 +257,8 @@ export async function createMatch(
 
   if (!finalMyTeamId) {
     return reply.status(400).send({
-      message: 'Could not resolve myTeamId. Please provide a valid myTeamId or myTeam object.',
+      message:
+        'Could not resolve myTeamId. Please provide a valid myTeamId or myTeam object.',
     })
   }
 
@@ -320,7 +327,9 @@ export async function createMatch(
 
   // Avisa quem favoritou este atleta. Não aguardado de propósito: notificação
   // não pode atrasar nem derrubar o cadastro da partida.
-  notifyFavoritesInBackground(athleteProfile.id, 'FAVORITE_MATCH')
+  notifyFavoritesInBackground(athleteProfile.id, 'FAVORITE_MATCH', {
+    matchId: match.id,
+  })
 
   return reply.status(201).send({ match })
 }

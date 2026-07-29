@@ -16,6 +16,7 @@ import { NotifyFavoriteActivityUseCase } from '../use-cases/notifications/notify
 export function notifyFavoritesInBackground(
   athleteId: string,
   type: UserNotificationType,
+  options: { matchId?: string; aggregateOnly?: boolean } = {},
 ): void {
   const useCase = new NotifyFavoriteActivityUseCase({
     favoriteRepository: new PrismaFavoriteRepository(),
@@ -26,7 +27,7 @@ export function notifyFavoritesInBackground(
   })
 
   useCase
-    .execute({ athleteId, type })
+    .execute({ athleteId, type, ...options })
     .then((result) => {
       if (result.notified > 0 || result.aggregated > 0) {
         console.log(

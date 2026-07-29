@@ -2,6 +2,7 @@ import { prisma } from '../../../lib/prisma.js'
 import type {
   CreateUserNotificationData,
   ListUserNotificationsFilters,
+  UserNotificationData,
   UserNotificationRepository,
 } from '../user-notification-repository.js'
 
@@ -33,13 +34,17 @@ export class PrismaUserNotificationRepository
     })
   }
 
-  async incrementEvent(id: string, data: { title: string; body: string }) {
+  async incrementEvent(
+    id: string,
+    data: { title: string; body: string; data?: UserNotificationData | null },
+  ) {
     return prisma.userNotification.update({
       where: { id },
       data: {
         eventCount: { increment: 1 },
         title: data.title,
         body: data.body,
+        ...(data.data ? { data: JSON.parse(JSON.stringify(data.data)) } : {}),
       },
     })
   }

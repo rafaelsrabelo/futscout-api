@@ -39,9 +39,14 @@ export interface UserNotificationRepository {
   ): Promise<UserNotification | null>
 
   /** Soma um evento ao grupo e reescreve o texto. */
+  /**
+   * `data` é reescrito junto porque o deep link muda ao agregar: apontar para
+   * UMA partida deixa de fazer sentido quando a notificação passa a
+   * representar três.
+   */
   incrementEvent(
     id: string,
-    data: { title: string; body: string },
+    data: { title: string; body: string; data?: UserNotificationData | null },
   ): Promise<UserNotification>
 
   findManyByUser(

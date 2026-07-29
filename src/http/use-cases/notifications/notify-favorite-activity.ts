@@ -21,6 +21,16 @@ interface NotifyFavoriteActivityRequest {
   /** AthleteProfile.id de quem gerou o evento. */
   athleteId: string
   type: UserNotificationType
+  /** Leva o toque direto para a partida em vez do perfil do atleta. */
+  matchId?: string
+  /**
+   * Só avisa se ainda não houver notificação aberta do mesmo grupo.
+   *
+   * Usado quando o vídeo é anexado a um lance que já existe: criar o lance e
+   * anexar o vídeo são dois eventos do MESMO conteúdo, então somar os dois
+   * faria a contagem dizer "publicou 2 novos lances" para um lance só.
+   */
+  aggregateOnly?: boolean
 }
 
 interface NotifyFavoriteActivityDeps {
@@ -61,6 +71,19 @@ function buildBody(
 }
 
 /**
+ * Para onde o toque na notificação leva. Partida abre a própria partida —
+ * é o conteúdo que interessa. Lance abre o perfil do atleta, que é onde o
+ * observador vê o vídeo no contexto do jogador.
+ */
+function buildDeepLink(athleteId: string, matchId?: string) {
+  if (matchId) {
+    return { screen: 'match', params: { matchId } }
+  }
+
+  return { screen: 'athlete', params: { athleteId } }
+}
+
+/**
  * Avisa os observadores que favoritaram um atleta quando ele cadastra partida
  * ou publica lance.
  *
@@ -73,6 +96,8 @@ export class NotifyFavoriteActivityUseCase {
   async execute({
     athleteId,
     type,
+    matchId,
+    aggregateOnly = false,
   }: NotifyFavoriteActivityRequest): Promise<NotifyFavoriteActivityResponse> {
     const empty = { notified: 0, aggregated: 0, pushed: 0 }
 
@@ -110,9 +135,16 @@ export class NotifyFavoriteActivityUseCase {
         )
 
       if (open) {
+        // Anexo de vídeo em lance já anunciado: o observador já foi avisado,
+        // não há evento novo para somar.
+        if (aggregateOnly) continue
+
         await this.deps.userNotificationRepository.incrementEvent(open.id, {
           title: TITLE[type],
           body: buildBody(type, athleteName, open.eventCount + 1),
+          // Agregou, então o link para UMA partida deixa de representar o
+          // conjunto — volta para o perfil do atleta.
+          data: buildDeepLink(athleteId),
         })
         aggregated += 1
         continue
@@ -123,10 +155,7 @@ export class NotifyFavoriteActivityUseCase {
         type,
         title: TITLE[type],
         body: buildBody(type, athleteName, 1),
-        data: {
-          screen: 'athlete',
-          params: { athleteId },
-        },
+        data: buildDeepLink(athleteId, matchId),
         actorAthleteId: athleteId,
         groupKey,
       })

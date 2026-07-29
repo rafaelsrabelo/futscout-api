@@ -2,7 +2,7 @@
 
 Plano para a aba de notificações no app e para levar a classificação (Desenvolvimento / Performance) ao Explorar e ao Helper IA.
 
-> **Resumo executivo:** boa parte disto **já está pronta no backend**. Os quatro endpoints de notificação, o push, a agregação anti-spam e os gatilhos de partida e lance foram entregues no commit `81783ce`. O filtro de classificação **já funciona no Helper IA e no `GET /athletes`**. O que falta é: (a) três gatilhos que ficaram de fora, sendo um deles justamente o de "adicionar vídeo"; (b) o app consumir os endpoints; (c) o app mandar `classification` na busca do Explorar.
+> **Resumo executivo:** o **backend está pronto**. Os quatro endpoints, o push, a agregação anti-spam e os gatilhos de partida, lance e anexo de vídeo estão no ar; o deep link varia por tipo (partida abre a partida, lance abre o perfil). O filtro de classificação **já funciona no Helper IA e no `GET /athletes`**. O que falta é tudo no app: (a) consumir os endpoints e montar a aba; (b) mandar `classification` — e mais cinco filtros defasados — na busca do Explorar.
 
 Auditoria feita sobre `main` em 28/07/2026.
 
@@ -22,7 +22,9 @@ Auditoria feita sobre `main` em 28/07/2026.
 | Push via Expo, com deep link | `notify-favorite-activity.ts` |
 | Agregação anti-spam (janela de 30 min) | idem |
 | Interruptor `notifyOnFavoriteActivity` no perfil | `PUT /observer/profile` |
-| 10 testes | `notify-favorite-activity.spec.ts` |
+| Gatilho no anexo de vídeo, com `aggregateOnly` | `update-play-video-url.ts` |
+| Deep link por tipo | `buildDeepLink` |
+| 14 testes | `notify-favorite-activity.spec.ts` |
 
 ### Classificação — já chega no Helper IA
 
@@ -34,7 +36,7 @@ O `GET /athletes` também já aceita `classification` como query param, e o admi
 
 ## 2. As lacunas que encontrei
 
-### L1 — "Adicionar vídeo" não notifica · **a mais importante**
+### L1 — "Adicionar vídeo" não notifica · **RESOLVIDO**
 
 Você citou vídeo explicitamente, e é justamente o caso que escapou.
 
@@ -45,21 +47,19 @@ Existem quatro caminhos para conteúdo novo, e três notificam:
 | `POST /matches` | ✅ |
 | `POST /plays` (standalone) | ✅ |
 | `POST /plays/with-url` | ✅ |
-| **`PUT /plays/:playId/video-url`** | ❌ |
+| **`PUT /plays/:playId/video-url`** | ✅ *(era ❌ — resolvido abaixo)* |
 
 O último é o fluxo **preferido** segundo o `CLAUDE.md`: o app pede URL assinada, sobe o vídeo direto para o R2 e depois anexa. Se o lance nasce sem vídeo e o vídeo chega nesse segundo passo, o observador nunca é avisado do vídeo.
 
 **Cuidado no desenho:** notificar aqui do jeito ingênuo gera contagem errada. Criar o lance e anexar o vídeo são dois eventos do *mesmo* conteúdo — a agregação somaria "publicou 2 novos lances" quando foi um só.
 
-**Proposta:** um modo `aggregateOnly` no disparo. Se já existe notificação aberta do mesmo grupo na janela, o anexo de vídeo **não faz nada** (o observador já foi avisado); se não existe, cria uma normal. Assim o lance que nasce completo notifica uma vez, e o que nasce vazio notifica quando o vídeo chega.
+**Feito:** `PUT /plays/:playId/video-url` dispara com `aggregateOnly: true`. Se já existe notificação aberta do mesmo grupo na janela, o anexo **não faz nada** — o observador já foi avisado; se não existe, cria normal. O lance que nasce completo notifica uma vez, e o que nasce vazio notifica quando o vídeo chega.
 
-### L2 — Conquistas e histórico de times não notificam
+### L2 — Conquistas e histórico de times não notificam · **decidido: fica de fora**
 
 Seu "e etc..." provavelmente inclui isso. `POST /achievements` e `POST /team-history` não disparam nada.
 
-**Minha recomendação: deixar de fora por enquanto.** Conquista e time novo são eventos de cadastro, não de desempenho — é o que o olheiro quer ver *no perfil*, não o que justifica vibrar o celular dele. Somar tipos agora é o caminho mais rápido para o observador desligar as notificações. Se depois o uso mostrar que faz falta, entra como tipo próprio.
-
-Se você quiser incluir mesmo assim, é barato: dois gatilhos e dois valores no enum.
+**Decisão tomada: fica de fora.** Conquista e time novo são eventos de cadastro, não de desempenho — é o que o olheiro quer ver *no perfil*, não o que justifica vibrar o celular dele. Somar tipos agora é o caminho mais rápido para o observador desligar as notificações. Se um dia o uso mostrar que faz falta, é barato: dois gatilhos e dois valores no enum.
 
 ### L3 — Sem doc mobile das notificações
 
@@ -124,7 +124,7 @@ Tudo autenticado, `Authorization: Bearer <accessToken>`.
 |---|---|
 | `type` | `FAVORITE_MATCH` ou `FAVORITE_PLAY` — escolhe o ícone. A tela já prevê `'match'` e `'favorite'`. |
 | `title` / `body` | Texto pronto em pt-BR. Renderize como veio. |
-| `data` | Deep link do toque: `screen: 'athlete'` + `athleteId`. |
+| `data` | Deep link do toque. Varia por tipo — ver seção 6. Navegue por ele, não deduza pelo `type`. |
 | `eventCount` | Quantos eventos foram agrupados. `> 1` já vem refletido no `body` ("publicou 3 novos lances") — não precisa exibir separado. |
 | `read` | Estado visual. |
 | `unreadCount` | Vem junto na listagem, para o badge não precisar de outra chamada. |
@@ -161,12 +161,13 @@ Vale o time mobile entender o modelo, porque ele explica comportamentos que pare
 
 ## 5. Plano
 
-### Fase A — fechar o backend (eu)
+### Fase A — fechar o backend · **CONCLUÍDA**
 
 | # | Tarefa | Esforço |
 |---|---|---|
-| A1 | Gatilho em `PUT /plays/:playId/video-url` com modo `aggregateOnly` (L1) | 2h |
-| A2 | Testes do `aggregateOnly` | 1h |
+| ~~A1~~ | ~~Gatilho em `PUT /plays/:playId/video-url` com `aggregateOnly`~~ — **feito** | — |
+| ~~A2~~ | ~~Deep link por tipo: partida abre a partida~~ — **feito** | — |
+| ~~A3~~ | ~~Testes~~ — **feito**, 4 novos (14 no total) | — |
 
 ### Fase B — aba de notificações no app
 
@@ -193,10 +194,18 @@ Fases B e C são independentes entre si e da A — dá para tocar em paralelo.
 
 ---
 
-## 6. Duas decisões suas
+## 6. Decisões tomadas
 
-1. **Conquista e histórico de times entram como notificação?** Recomendo não, por fadiga de notificação — mas é sua chamada de produto.
-2. **O que o toque na notificação deve abrir?** Hoje o deep link aponta para o **perfil do atleta**. Faz sentido para "publicou um lance"; para "cadastrou uma partida" talvez fosse melhor abrir a partida. Se você quiser diferenciar, eu mudo o `data` por tipo — é uma linha.
+1. **Conquista e histórico de times NÃO viram notificação**, por fadiga. Reversível quando o uso pedir.
+2. **O deep link varia por tipo:**
+
+| Tipo | `data.screen` | Abre |
+|---|---|---|
+| `FAVORITE_MATCH` | `match` + `matchId` | A partida |
+| `FAVORITE_PLAY` | `athlete` + `athleteId` | O perfil do atleta |
+| Qualquer um, **depois de agregar** | `athlete` + `athleteId` | O perfil |
+
+A última linha é sutil e o app precisa respeitá-la: quando duas partidas viram uma notificação só, linkar uma delas seria mentira — o backend reescreve o `data` para o perfil. **Navegue sempre pelo `data` que veio, nunca deduza pelo `type`.**
 
 ---
 
