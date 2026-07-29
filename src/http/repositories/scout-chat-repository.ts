@@ -16,7 +16,13 @@ export interface ScoutMessageToolCall {
   responseType?: string
   appliedFilters?: AthleteSearchFilters
   savedSearchId?: string
-  /** Ids mostrados no turno, para o modelo reusar em vez de inventar. */
+  /**
+   * Atletas mostrados no turno, com rótulo legível. O modelo não carrega isso
+   * entre turnos: sem o rótulo ele recebe só um UUID e não consegue atender
+   * "me fala do segundo da lista".
+   */
+  shownAthletes?: Array<{ athleteId: string; label: string }>
+  /** @deprecated Formato antigo, só ids. Lido para threads criadas antes. */
   shownAthleteIds?: string[]
 }
 

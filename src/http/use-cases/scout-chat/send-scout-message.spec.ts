@@ -198,11 +198,17 @@ describe('Send Scout Message Use Case', () => {
     expect((assistant.toolCall as ScoutMessageToolCall).appliedFilters).toEqual(
       filters,
     )
-    expect(
-      (assistant.toolCall as ScoutMessageToolCall).shownAthleteIds,
-    ).toEqual([
-      '11111111-1111-1111-1111-111111111111',
-      '33333333-3333-3333-3333-333333333333',
+    // Guarda o rótulo junto do id: sem ele o próximo turno não liga "o
+    // segundo da lista" a ninguém.
+    expect((assistant.toolCall as ScoutMessageToolCall).shownAthletes).toEqual([
+      {
+        athleteId: '11111111-1111-1111-1111-111111111111',
+        label: 'Testinho (Atacante, 19)',
+      },
+      {
+        athleteId: '33333333-3333-3333-3333-333333333333',
+        label: 'Testinho (Atacante, 19)',
+      },
     ])
   })
 
@@ -229,6 +235,77 @@ describe('Send Scout Message Use Case', () => {
     expect(secondCall.contextBlock).toContain(
       '11111111-1111-1111-1111-111111111111',
     )
+  })
+
+  it('should name and number the athletes it showed', async () => {
+    llm.enqueue({
+      cards: [
+        makeCard({ nickname: 'Joãozinho' }),
+        makeCard({
+          id: '33333333-3333-3333-3333-333333333333',
+          nickname: 'Pedrinho',
+          primaryPosition: 'DEFENDER',
+          age: 21,
+        }),
+      ],
+      appliedFilters: { primaryPosition: 'FORWARD' },
+    })
+    const { threadId } = await sut.execute({
+      userId: OBSERVER_ID,
+      message: 'atacantes',
+    })
+
+    llm.enqueue()
+    await sut.execute({
+      userId: OBSERVER_ID,
+      message: 'me fala do segundo',
+      threadId,
+    })
+
+    // Numerados e com rótulo: é o que permite atender "o segundo da lista".
+    const contextBlock = llm.calls[1].contextBlock
+    expect(contextBlock).toContain('1. Joãozinho (Atacante, 19)')
+    expect(contextBlock).toContain('2. Pedrinho (Zagueiro, 21)')
+  })
+
+  it('should tell the model what day it is', async () => {
+    llm.enqueue()
+
+    await sut.execute({ userId: OBSERVER_ID, message: 'zagueiros' })
+
+    expect(llm.calls[0].contextBlock).toContain('Hoje é')
+  })
+
+  it('should include the session note when a provider is given', async () => {
+    const withSession = new SendScoutMessageUseCase(scoutChatRepository, llm, {
+      build: async () => 'Você está falando com Rafael, observador do Ceará.',
+    })
+    llm.enqueue()
+
+    await withSession.execute({ userId: OBSERVER_ID, message: 'zagueiros' })
+
+    expect(llm.calls[0].contextBlock).toContain('Rafael')
+  })
+
+  it('should still answer when the session note fails', async () => {
+    const withBrokenSession = new SendScoutMessageUseCase(
+      scoutChatRepository,
+      llm,
+      {
+        build: async () => {
+          throw new Error('banco fora do ar')
+        },
+      },
+    )
+    llm.enqueue({ response: 'Achei 3.' })
+
+    // Contexto é enfeite: sem ele o chat responde igual.
+    const result = await withBrokenSession.execute({
+      userId: OBSERVER_ID,
+      message: 'zagueiros',
+    })
+
+    expect(result.response).toEqual('Achei 3.')
   })
 
   it('should carry the standing filters when the turn only talked', async () => {

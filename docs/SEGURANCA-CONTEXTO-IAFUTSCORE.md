@@ -110,25 +110,27 @@ Nada impede usar o chat como assistente geral ("escreva um e-mail", "resuma este
 
 Não são falhas de segurança; são o que faz a conversa parecer menos inteligente do que poderia.
 
-### C1 — O modelo esquece o que mostrou
+### C1 — O modelo esquece o que mostrou · **RESOLVIDO**
 
 Resultados de tool **não são persistidos** no histórico — `findRecentMessages` filtra só `USER`/`ASSISTANT`. No turno seguinte, o modelo só recebe de volta os `shownAthleteIds` (ids crus, sem nome).
 
 Consequência prática: *"me fala do segundo da lista"* ou *"e o João, quantos anos tem?"* falham, porque ele não tem como ligar posição ou nome a um id.
 
-**Correção:** o `contextBlock` já existe e é o lugar certo. Injetar uma lista enxuta do último turno com cards — `"1. Joãozinho (Atacante, 19) → athleteId abc"` — em vez de só os ids. Custo: poucas dezenas de tokens.
+**Feito:** o `toolCall` passou a gravar `shownAthletes` com `{ athleteId, label }`, e o `contextBlock` reinjeta a lista numerada — `"1. Joãozinho (Atacante, 19) → <id>"`. Threads criadas antes continuam funcionando pelo `shownAthleteIds` antigo, sem rótulo. Custo: poucas dezenas de tokens.
 
-### C2 — Não sabe o tamanho da base
+### C2 — Não sabe o tamanho da base · **RESOLVIDO**
 
 Sem noção de escala, o modelo não calibra a resposta. Com 800 atacantes, o certo é sugerir refinar; com 3, o certo é mostrar todos e parar de perguntar.
 
-**Correção:** o `search_athletes` já devolve `total` — reforçar no prompt como usá-lo. Opcionalmente, injetar o total da base no `contextBlock` da primeira mensagem.
+**Feito:** regra 4 do prompt `v6` manda calibrar pelo `total` que a busca devolveu — muitos resultados, diz o total e sugere UM critério; poucos, mostra e para de perguntar.
 
-### C3 — Não conhece o observador
+### C3 — Não conhece o observador · **RESOLVIDO em parte**
 
 O modelo não sabe o nome dele, o clube, o que ele já salvou nem quem já favoritou. Então repete buscas que ele já tem salvas e trata como novidade um atleta que ele acompanha há semanas.
 
-**Correção:** nota de sessão no `contextBlock`, no molde do `buildSessionContext` do api-sales-brasil: primeiro nome, clube, títulos das buscas salvas (não os filtros — só os títulos) e a contagem de favoritos. **Depois** do prefixo estável, para não quebrar o cache de prompt.
+**Feito:** `PrismaScoutSessionContextProvider` injeta primeiro nome, clube e os títulos das últimas 8 buscas salvas — depois do prefixo estável, para não quebrar o cache de prompt. Uma query só, em paralelo com as demais, e falha nela não derruba o turno.
+
+**Favoritos ficaram de fora de propósito.** Uma contagem ("ele tem 12 favoritos") não ajuda o modelo a decidir nada. O que teria valor é marcar nos resultados quais atletas ele já segue — mas isso é mudança na tool de busca, não nota de sessão. Fica como item próprio se o uso mostrar que faz falta.
 
 ### C4 — Janela de 4 turnos, sem resumo
 
@@ -136,11 +138,11 @@ O modelo não sabe o nome dele, o clube, o que ele já salvou nem quem já favor
 
 **Correção:** os `appliedFilters` já preservam os critérios que viraram busca, que é o essencial. Para o resto, um resumo rolante da conversa quando ela passar de N turnos. Baixa prioridade.
 
-### C5 — Não sabe a data de hoje
+### C5 — Não sabe a data de hoje · **RESOLVIDO**
 
 Impede raciocínio como *"sub-20 na próxima temporada"* ou *"quem faz 18 anos este ano"*.
 
-**Correção:** uma linha no `contextBlock`. Barato e resolve.
+**Feito:** primeira linha do `contextBlock`, por extenso em pt-BR.
 
 ---
 
@@ -157,14 +159,14 @@ Impede raciocínio como *"sub-20 na próxima temporada"* ou *"quem faz 18 anos e
 | ~~1.5~~ | ~~Regra de recusa fora de escopo no prompt~~ — **feito** (`v5`) | — |
 | ~~1.6~~ | ~~Omitir `name`/`nickname` do log da tool~~ — **feito** (`redactToolArgs`) | — |
 
-### Fase 2 — Contexto
+### Fase 2 — Contexto · **CONCLUÍDA**
 
 | # | Tarefa | Esforço |
 |---|---|---|
-| 2.1 | `contextBlock` com a lista nomeada do último turno (C1) | 2h |
-| 2.2 | Nota de sessão: nome, clube, buscas salvas, favoritos (C3) | 3h |
-| 2.3 | Data de hoje no contexto (C5) | 15min |
-| 2.4 | Reforço de calibragem por `total` no prompt (C2) | 30min |
+| ~~2.1~~ | ~~Lista nomeada e numerada do último turno~~ — **feito** (`shownAthletes`) | — |
+| ~~2.2~~ | ~~Nota de sessão: nome, clube, buscas salvas~~ — **feito** (`ScoutSessionContextProvider`). Favoritos ficaram de fora — ver abaixo | — |
+| ~~2.3~~ | ~~Data de hoje no contexto~~ — **feito** | — |
+| ~~2.4~~ | ~~Calibragem por `total` no prompt~~ — **feito** (regra 4, `v6`) | — |
 
 ### Fase 3 — Confiança
 

@@ -9,6 +9,12 @@ import type { AthleteSearchFilters } from '../../repositories/saved-search-repos
  * deixaria de bater com o da busca salva.
  */
 
+/** Também usado para rotular os atletas mostrados no contexto do turno. */
+export function translatePosition(position: string | null): string | null {
+  if (!position) return null
+  return POSITION_LABEL[position] ?? position
+}
+
 const POSITION_LABEL: Record<string, string> = {
   GOALKEEPER: 'Goleiro',
   DEFENDER: 'Zagueiro',

@@ -2,6 +2,7 @@ import { PrismaAthleteProfileRepository } from '../../repositories/prisma/prisma
 import { PrismaSavedSearchRepository } from '../../repositories/prisma/prisma-saved-search-repository.js'
 import { PrismaScoutChatRepository } from '../../repositories/prisma/prisma-scout-chat-repository.js'
 import { OpenAiScoutLlmService } from './llm/openai-scout-llm-service.js'
+import { PrismaScoutSessionContextProvider } from './scout-session-context.js'
 import { SendScoutMessageUseCase } from './send-scout-message.js'
 import { GetAthleteDetailsTool } from './tools/get-athlete-details-tool.js'
 import { SaveSearchTool } from './tools/save-search-tool.js'
@@ -27,5 +28,6 @@ export function makeSendScoutMessageUseCase(): SendScoutMessageUseCase {
   return new SendScoutMessageUseCase(
     scoutChatRepository,
     new OpenAiScoutLlmService(registry),
+    new PrismaScoutSessionContextProvider(),
   )
 }
